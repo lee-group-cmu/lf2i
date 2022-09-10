@@ -1,4 +1,3 @@
-import io
 import os
 from setuptools import setup, find_packages
 
@@ -8,29 +7,43 @@ DESCRIPTION = 'Likelihood-Free Frequentist Inference'
 KEYWORDS = "likelihood-free inference simulator likelihood posterior parameter"
 URL = "https://github.com/lee-group-cmu/lf2i"
 EMAIL = "lee.group.cmu@gmail.com"
-AUTHOR = "Luca Masserano, Niccolo Dalmasso, Ann B. Lee"
+AUTHOR = "Niccolò Dalmasso, Luca Masserano, David Zhao, Rafael Izbicki, Ann B. Lee"
 REQUIRES_PYTHON = ">=3.9.0"
 
 REQUIRED = [
-
+    "click",
+    "numpy",
+    "scikit-learn",
+    "scipy",
+    "torch>=1.11.0",
+    "tqdm"
 ]
 
-EXTRAS = [
+EXTRAS = {
+    "dev": [
+        "aquirdturtle-collapsible-headings",
+        "ipykernel",
+        "jupyterlab",
+        "pytest"
+    ]
+}
 
-]
+ENTRY_POINTS = {
+    "console_scripts": ["lf2i=lf2i.cli:lf2i"]
+}
 
 pwd = os.path.abspath(os.path.dirname(__file__))
 
 # Import the README and use it as the long-description.
 try:
-    with io.open(os.path.join(pwd, "README.md"), encoding="utf-8") as f:
+    with open(os.path.join(pwd, "README.md"), encoding="utf-8") as f:
         long_description = "\n" + f.read()
 except FileNotFoundError:
     long_description = DESCRIPTION
 
 setup(
     name=NAME,
-    version="",
+    version="0.1.0",
     description=DESCRIPTION,
     keywords=KEYWORDS,
     long_description=long_description,
@@ -39,12 +52,10 @@ setup(
     author_email=EMAIL,
     python_requires=REQUIRES_PYTHON,
     url=URL,
-    packages="",
+    packages=find_packages(where="src", exclude=("tests",)),
+    package_dir={"": "src"},
     install_requires=REQUIRED,
     extras_require=EXTRAS,
-    include_package_data=True,
-    license="",
-    classifiers=[],
-    # $ setup.py publish support.
-    cmdclass=None, # dict(upload=UploadCommand),
+    license="MIT",
+    entry_points=ENTRY_POINTS
 )

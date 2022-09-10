@@ -1,6 +1,6 @@
 # Part of this code was adapted from https://colab.research.google.com/drive/1nXOlrmVHqCHiixqiMF6H8LSciz583_W2
 
-from typing import Union
+from typing import Union, List, Tuple
 from tqdm import tqdm
 
 from itertools import chain
@@ -9,16 +9,16 @@ import torch
 
 
 class QuantileLoss(torch.nn.Module):
-    """Quantile loss ready for backpropagation.
+    """Quantile loss as a PyTorch module.
 
     Parameters
     ----------
-    quantiles : Union[list, np.ndarray, torch.Tensor]
-        Target quantiles. Values must be in the range `[0, 1]`.
+    quantiles : Union[Tuple, List, np.ndarray, torch.Tensor]
+        Target quantiles. Values must be in the range `(0, 1)`.
     """
     def __init__(
         self, 
-        quantiles: Union[list, np.ndarray, torch.Tensor]
+        quantiles: Union[Tuple, List, np.ndarray, torch.Tensor]
     ) -> None:
         super.__init__()
         self.quantiles = quantiles
@@ -40,29 +40,29 @@ class QuantileLoss(torch.nn.Module):
 
 
 class QuantileNN(torch.nn.Module):
-    """Fully connected Neural Network for Quantile Regression.
+    """Fully connected neural network for quantile regression.
 
     Parameters
     ----------
-    quantiles : Union[list, np.ndarray, torch.Tensor]
-        Target quantiles. Values must be in the range `[0, 1]`.
+    n_quantiles : int
+        Number of target quantiles.
     input_d : int
         Dimensionality of the input. 
-    hidden_layer_shapes : list
-        The ith element represents the number of neurons in the ith hidden layer.
+    hidden_layer_shapes : Union[Tuple, List]
+        The i-th element represents the number of neurons in the i-th hidden layer.
     dropout_p : float, optional
         Probability for the dropout layers, by default 0.0
     """
     def __init__(
         self,
-        quantiles: Union[list, np.ndarray, torch.Tensor],
+        n_quantiles: int,
         input_d: int,
-        hidden_layer_shapes: list, 
-        hidden_activation: torch.nn.Module = torch.nn.ReLU,
+        hidden_layer_shapes: Union[Tuple, List],
+        hidden_activation: torch.nn.Module = torch.nn.ReLU(),
         dropout_p: float = 0.0,
     ) -> None:
         super().__init__()
-        self.quantiles = quantiles
+        self.n_quantiles = n_quantiles
         self.input_d = input_d
         self.hidden_layer_shapes = hidden_layer_shapes
         self.hidden_activation = hidden_activation
@@ -79,7 +79,7 @@ class QuantileNN(torch.nn.Module):
             torch.nn.Dropout(p=self.dropout_p)
         ]
         # hidden 
-        for i in range(1, len(self.hidden_layer_shapes)-1):
+        for i in range(0, len(self.hidden_layer_shapes)-1):
             self.model += [
                 torch.nn.Linear(self.hidden_layer_shapes[i], self.hidden_layer_shapes[i+1]), 
                 self.hidden_activation, 
@@ -88,7 +88,7 @@ class QuantileNN(torch.nn.Module):
         # output
         self.model = torch.nn.Sequential(*self.model)
         self.final_layers = torch.nn.ModuleList(
-            [torch.nn.Linear(self.hidden_layer_shapes[-1], 1) for _ in range(len(self.quantiles))]
+            [torch.nn.Linear(self.hidden_layer_shapes[-1], 1) for _ in range(len(self.n_quantiles))]
         )
     
     def init_weights(self) -> None:
@@ -104,7 +104,7 @@ class QuantileNN(torch.nn.Module):
 
     
 class Learner:
-    """Learner for the Quantile Neural Network. Implements fit and predict methods.
+    """Learner for the quantile neural network. Implements methods for training and inference.
 
     Parameters
         ----------
@@ -132,13 +132,13 @@ class Learner:
     
     def fit(
         self,
-        X: torch.Tensor, 
-        y: torch.Tensor, 
+        X: np.ndarray, 
+        y: np.ndarray, 
         epochs: int, 
         batch_size: int
     ) -> None:
         self.model.train()
-        for epc in tqdm(range(epochs), desc="Training Quantile NN"):
+        for _ in tqdm(range(epochs), desc="Training Quantile NN"):
             shuffle_idx = np.arange(X.shape[0])
             np.random.shuffle(shuffle_idx)
             X = X[shuffle_idx, :]
@@ -163,7 +163,7 @@ class Learner:
 
     def predict(
         self,
-        X: torch.Tensor
-    ) -> torch.Tensor:
+        X: np.ndarray
+    ) -> np.ndarray:
         self.model.eval()
         return self.model(torch.from_numpy(X).to(self.device).requires_grad_(False)).cpu().detach().numpy()
