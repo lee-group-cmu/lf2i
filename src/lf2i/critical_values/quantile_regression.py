@@ -1,10 +1,8 @@
 from typing import Union, Callable, Dict, Tuple, Any
-from pydantic import Field
 
 import numpy as np
 import torch
 from sklearn.ensemble import GradientBoostingRegressor
-
 from lf2i.critical_values.nn_qr_algorithm import QuantileLoss, QuantileNN, Learner
 
 
@@ -13,7 +11,7 @@ def train_qr_algorithm(
     parameters: np.ndarray,
     algorithm: Union[str, Callable],
     prediction_grid: np.ndarray,
-    alpha: float = Field(gt=0, lt=1),
+    alpha: float,
     algorithm_kwargs: Dict = {},
 ) -> Tuple[Any, np.ndarray]:
     """Dispatcher to train different quantile regressors.

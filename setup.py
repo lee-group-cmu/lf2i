@@ -13,10 +13,13 @@ REQUIRES_PYTHON = ">=3.9.0"
 REQUIRED = [
     "click",
     "numpy",
+    "rpy2>=3.5.4",
+    "sbi>=0.19.2",
     "scikit-learn",
     "scipy",
-    "torch>=1.11.0",
-    "tqdm"
+    "torch>=1.12.1",
+    "tqdm",
+    "xgboost>=1.6.2"
 ]
 
 EXTRAS = {
