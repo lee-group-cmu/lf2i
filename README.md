@@ -31,7 +31,7 @@ If you want to contribute, feel free to open an issue and/or a pull request.
 
 ## References
 
-LF2I is based on the following research articles:
-    - [Confidence sets and hypothesis testing in a likelihood-free inference setting (2020)](http://proceedings.mlr.press/v119/dalmasso20a/dalmasso20a.pdf)
-    - [Likelihood-Free Frequentist Inference: Confidence Sets with Correct Conditional Coverage (2021)](https://arxiv.org/pdf/2107.03920.pdf)
+LF2I is based on the following research articles:\
+    - [Confidence sets and hypothesis testing in a likelihood-free inference setting (2020)](http://proceedings.mlr.press/v119/dalmasso20a/dalmasso20a.pdf)\
+    - [Likelihood-Free Frequentist Inference: Confidence Sets with Correct Conditional Coverage (2021)](https://arxiv.org/pdf/2107.03920.pdf)\
     - [Simulation-Based Inference with Waldo: Confidence Regions by Leveraging Prediction Algorithms or Posterior Estimators for Inverse Problems (2022)](https://arxiv.org/pdf/2205.15680.pdf)
