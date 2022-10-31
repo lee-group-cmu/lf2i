@@ -8,12 +8,12 @@ from sbi.inference import SNPE
 
 ESTIMATORS = {
     # regression/prediction algorithms
-    'xgb': lambda kwargs: XGBRegressor(**kwargs),
-    'rf': lambda kwargs: RandomForestRegressor(**kwargs),
-    'mlp': lambda kwargs: MLPRegressor(**kwargs),
+    'gb': lambda **kwargs: XGBRegressor(**kwargs),
+    'rf': lambda **kwargs: RandomForestRegressor(**kwargs),
+    'mlp': lambda **kwargs: MLPRegressor(**kwargs),
 
     # posterior estimators
-    'snpe': lambda kwargs: SNPE(**kwargs)
+    'snpe': lambda **kwargs: SNPE(**kwargs)
 
     # probabilistic classification algorithms (for likelihood estimation)
 

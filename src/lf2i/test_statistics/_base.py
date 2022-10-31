@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Dict, Any, List
 from abc import ABC, abstractmethod
 
 from lf2i.test_statistics._estimators import ESTIMATORS
@@ -9,34 +9,34 @@ class TestStatistic(ABC):
 
     Parameters
     ----------
-    estimator : Union[str, object]
+    estimator : Union[str, Any]
         Model used to estimate the building blocks of the test statistic. 
-        If `object`, it is expected to be trained. If `str`, it will need to be trained by calling `self.estimate`.
+        If `Any`, it is expected to be trained. If `str`, it will need to be trained by calling `self.estimate`.
     acceptance_region : str
         Whether the acceptance region for the corresponding test is defined to be on the right or on the left of the critical value. 
         Must be either `left` or `right`.
+    estimator_kwargs: Dict
+        Hyperparameters and settings for the estimator, by default {}.
     """
     
     def __init__(
         self,
-        estimator: Union[str, object],  # not sure what would be the type of a general estimator
-        acceptance_region: str
+        acceptance_region: str,
     ) -> None:
-        self.estimator = self._choose_estimator(estimator, 'estimand')  # leave it general for now
         self.acceptance_region = acceptance_region
-        
         self._estimator_trained = dict()
     
     def _choose_estimator(
         self, 
-        estimator: Union[str, object],
+        estimator: Union[str, Any],
+        estimator_kwargs: Dict,
         estimand_name: str
-    ) -> object:
+    ) -> Any:
         if isinstance(estimator, str):
             self._estimator_trained[estimand_name] = False
             if estimator not in ESTIMATORS:
                 raise ValueError(f'Invalid estimator name. Available: {list(ESTIMATORS.keys())}; got {estimator}')
-            return ESTIMATORS[estimator]
+            return ESTIMATORS[estimator](**estimator_kwargs)
         else:
             # just flag it as trained
             self._estimator_trained[estimand_name] = True
@@ -44,9 +44,8 @@ class TestStatistic(ABC):
     
     def _check_is_trained(
         self
-    ) -> None:
-        if not all([is_trained for _, is_trained in self._estimator_trained.items()]):
-            raise RuntimeError("Not all needed estimators are trained. Check self._estimator_trained")
+    ) -> List[bool]:
+        return all([is_trained for _, is_trained in self._estimator_trained.items()])
 
     @abstractmethod
     def estimate(self):

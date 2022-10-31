@@ -19,6 +19,8 @@ __pycache__/
 /.cache
 /.pytest_cache
 /.mypy_cache
+.ipynb_checkpoints/
+sbi-logs/
 
 /doc/_apidoc/
 /build

@@ -7,16 +7,18 @@ DESCRIPTION = 'Likelihood-Free Frequentist Inference'
 KEYWORDS = "likelihood-free inference simulator likelihood posterior parameter"
 URL = "https://github.com/lee-group-cmu/lf2i"
 EMAIL = "lee.group.cmu@gmail.com"
-AUTHOR = "Niccolò Dalmasso, Luca Masserano, David Zhao, Rafael Izbicki, Ann B. Lee"
+AUTHOR = "Luca Masserano, Niccolò Dalmasso, David Zhao, Rafael Izbicki, Ann B. Lee"
 REQUIRES_PYTHON = ">=3.9.0"
 
 REQUIRED = [
     "click",
+    "matplotlib>=3.6.0",
     "numpy",
     "rpy2>=3.5.4",
     "sbi>=0.19.2",
     "scikit-learn",
     "scipy",
+    "seaborn>=0.12.1"
     "torch>=1.12.1",
     "tqdm",
     "xgboost>=1.6.2"
@@ -27,6 +29,7 @@ EXTRAS = {
         "aquirdturtle-collapsible-headings",
         "ipykernel",
         "jupyterlab",
+        "numpydoc"
         "pytest"
     ]
 }

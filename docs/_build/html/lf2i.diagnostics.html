@@ -1,0 +1,576 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>lf2i.diagnostics package &#8212; LF2I: Likelihood-Free Frequentist Inference 0.1.0 documentation</title>
+  <script>
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=1e1de1a1873e13ef5536" rel="stylesheet">
+<link href="_static/styles/pydata-sphinx-theme.css?digest=1e1de1a1873e13ef5536" rel="stylesheet">
+
+  
+  <link rel="stylesheet"
+    href="_static/vendor/fontawesome/6.1.2/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2">
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=1e1de1a1873e13ef5536">
+
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'lf2i.diagnostics';</script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="docsearch:language" content="en">
+  </head>
+  
+  
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="180" data-default-mode="">
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__primary" id="__primary">
+  <label class="overlay overlay-primary" for="__primary"></label>
+
+  
+  <input type="checkbox" class="sidebar-toggle" name="__secondary" id="__secondary">
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+      
+<form class="bd-search d-flex align-items-center" action="search.html" method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+    </div>
+  </div>
+
+  
+  <nav class="bd-header navbar navbar-expand-lg bd-navbar" id="navbar-main"><div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+      <span class="fa-solid fa-bars"></span>
+  </label>
+  <div id="navbar-start">
+    
+    
+  
+
+
+<a class="navbar-brand logo" href="index.html">
+
+  
+  
+  
+  
+  
+  
+  
+
+  
+  
+    <p class="title logo__title">LF2I: Likelihood-Free Frequentist Inference 0.1.0 documentation</p>
+  
+</a>
+    
+  </div>
+
+  
+  <div class="col-lg-9 navbar-header-items">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                <li class="nav-item">
+                    <a class="nav-link" href="modules.html">
+                        src
+                    </a>
+                </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      <div class="navbar-end-item navbar-end__search-button-container">
+        
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+      </div>
+      
+      <div class="navbar-end-item">
+        <span class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" data-toggle="tooltip">
+    <a class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></a>
+    <a class="theme-switch" data-mode="dark"><i class="fa-regular fa-moon"></i></a>
+    <a class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></a>
+</span>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+
+
+  
+  <div class="search-button-container--mobile">
+<button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" data-toggle="tooltip">
+  <i class="fa-solid fa-magnifying-glass"></i>
+</button>
+  </div>
+
+  
+  <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+  </label>
+  
+
+</div>
+  </nav>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+      
+      <div class="navbar-center-item">
+        <nav class="navbar-nav">
+    <p class="sidebar-header-items__title" role="heading" aria-level="1" aria-label="Site Navigation">
+        Site Navigation
+    </p>
+    <ul id="navbar-main-elements" class="navbar-nav">
+        
+                <li class="nav-item">
+                    <a class="nav-link" href="modules.html">
+                        src
+                    </a>
+                </li>
+                
+    </ul>
+</nav>
+      </div>
+      
+      </div>
+    
+
+    
+    
+    <div class="sidebar-header-items__end">
+      
+      <div class="navbar-end-item">
+        <span class="theme-switch-button btn btn-sm btn-outline-primary navbar-btn rounded-circle" title="light/dark" data-toggle="tooltip">
+    <a class="theme-switch" data-mode="light"><i class="fa-solid fa-sun"></i></a>
+    <a class="theme-switch" data-mode="dark"><i class="fa-regular fa-moon"></i></a>
+    <a class="theme-switch" data-mode="auto"><i class="fa-solid fa-circle-half-stroke"></i></a>
+</span>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+      </ul>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  
+
+  
+  <div class="sidebar-end-items sidebar-primary__section">
+    <div class="sidebar-end-items__item">
+    </div>
+  </div>
+
+      </div>
+      <main class="bd-main">
+        
+        
+        <div class="bd-content">
+          <div class="bd-article-container">
+            
+            <div class="bd-header-article">
+                
+            </div>
+            
+            
+            <article class="bd-article" role="main">
+              
+  <section id="lf2i-diagnostics-package">
+<h1>lf2i.diagnostics package<a class="headerlink" href="#lf2i-diagnostics-package" title="Permalink to this heading">#</a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this heading">#</a></h2>
+</section>
+<section id="module-lf2i.diagnostics.diagnostics">
+<span id="lf2i-diagnostics-diagnostics-module"></span><h2>lf2i.diagnostics.diagnostics module<a class="headerlink" href="#module-lf2i.diagnostics.diagnostics" title="Permalink to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="lf2i.diagnostics.diagnostics.compute_indicators_lf2i">
+<span class="sig-prename descclassname"><span class="pre">lf2i.diagnostics.diagnostics.</span></span><span class="sig-name descname"><span class="pre">compute_indicators_lf2i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">test_statistics</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">critical_values</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">acceptance_region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#lf2i.diagnostics.diagnostics.compute_indicators_lf2i" title="Permalink to this definition">#</a></dt>
+<dd><p>Construct an array of indicators which mark whether each value in <cite>parameters</cite> is included or not in the corresponding LF2I confidence region.</p>
+<p>This assumes that <cite>parameters</cite> is an array containing the “true” values, as simulated for the diagnostics branch.
+Instead of actually checking if the parameter is geometrically included in the confidence region or not, this allows to simply deem
+a value as included if the corresponding test does not reject it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>test_statistics</strong><span class="classifier">np.ndarray</span></dt><dd><p>Array of test statistics. Each value must be computed for the test with corresponding (null) value of <cite>parameters</cite>, given a sample generate from it.</p>
+</dd>
+<dt><strong>critical_values</strong><span class="classifier">np.ndarray</span></dt><dd><p>Array of critical values, each computed for the test with corresponding (null) value of <cite>parameters</cite>, against which to compare the test statistics.</p>
+</dd>
+<dt><strong>parameters</strong><span class="classifier">np.ndarray</span></dt><dd><p>True (simulated) parameter values. If a parameter is in the acceptance region of the corresponding test, then it is included in the confidence set.</p>
+</dd>
+<dt><strong>acceptance_region</strong><span class="classifier">str</span></dt><dd><p>Whether the acceptance region for the corresponding test is defined to be on the right or on the left of the critical value. 
+Must be either <cite>left</cite> or <cite>right</cite>.</p>
+</dd>
+<dt><strong>param_dim</strong><span class="classifier">int</span></dt><dd><p>Dimensionality of the parameter.</p>
+</dd>
+<dt><strong>Returns</strong></dt><dd></dd>
+<dt><strong>——-</strong></dt><dd></dd>
+<dt><strong>np.ndarray</strong></dt><dd><p>Array of zeros and ones that indicate whether the corresponding value in <cite>parameters</cite> is included or not in the confidence region.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>ValueError</dt><dd><p><cite>acceptance_region</cite> must be either <cite>left</cite> or <cite>right</cite>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lf2i.diagnostics.diagnostics.compute_indicators_posterior">
+<span class="sig-prename descclassname"><span class="pre">lf2i.diagnostics.diagnostics.</span></span><span class="sig-name descname"><span class="pre">compute_indicators_posterior</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">posterior</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DirectPosterior</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameter_grid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_p_levels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.01</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#lf2i.diagnostics.diagnostics.compute_indicators_posterior" title="Permalink to this definition">#</a></dt>
+<dd><p>Construct an array of indicators which mark whether each value in <cite>parameters</cite> is included or not in the corresponding posterior credible region.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>posterior</strong><span class="classifier">DirectPosterior</span></dt><dd><p>Estimated posterior distribution. Must have <cite>log_prob(theta=…, x=…)</cite> method.</p>
+</dd>
+<dt><strong>parameters</strong><span class="classifier">np.ndarray</span></dt><dd><p>True (simulated) parameter values, for which inclusion in the corresponding credible region is checked.</p>
+</dd>
+<dt><strong>samples</strong><span class="classifier">np.ndarray</span></dt><dd><p>Array of d-dimensional samples, each generated from the corresponding value in <cite>parameters</cite>.</p>
+</dd>
+<dt><strong>parameter_grid</strong><span class="classifier">np.ndarray</span></dt><dd><p>Parameter space over which <cite>posterior</cite> is defined. This is used to construct the credible region.</p>
+</dd>
+<dt><strong>confidence_level</strong><span class="classifier">float</span></dt><dd><p>Confidence level of the credible regions to be constructed. Must be in (0, 1).</p>
+</dd>
+<dt><strong>param_dim</strong><span class="classifier">int</span></dt><dd><p>Dimensionality of the parameter.</p>
+</dd>
+<dt><strong>sample_size</strong><span class="classifier">int</span></dt><dd><p>Number of simulations generated from the same parameter value, for each sample in <cite>samples</cite>. 
+Each sample/element of <cite>samples</cite> is of size (n, d).</p>
+</dd>
+<dt><strong>num_p_levels</strong><span class="classifier">int, optional</span></dt><dd><p>Number of level sets to consider to construct the high-posterior-density credible region, by default 100_000.</p>
+</dd>
+<dt><strong>tol</strong><span class="classifier">float, optional</span></dt><dd><p>Tolerance for the coverage probability of the credible region, used as stopping criterion to construct it, by default 0.01.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>np.ndarray</dt><dd><p>Array of zeros and ones that indicate whether the corresponding value in <cite>parameters</cite> is included or not in the credible region.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lf2i.diagnostics.diagnostics.coverage_diagnostics">
+<span class="sig-prename descclassname"><span class="pre">lf2i.diagnostics.diagnostics.</span></span><span class="sig-name descname"><span class="pre">coverage_diagnostics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indicators</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimator_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_parameters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#lf2i.diagnostics.diagnostics.coverage_diagnostics" title="Permalink to this definition">#</a></dt>
+<dd><p>Estimate conditional coverage probabilities by regressing dummy <cite>indicators</cite>, which signal if 
+the corresponding value in <cite>parameters</cite> was included or not in the parameter region, against the <cite>parameters</cite> themselves.</p>
+<p>Note that <cite>indicators</cite> can be computed from any parameter region (posterior credible sets, confidence sets, prediction sets, etc …).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>indicators</strong><span class="classifier">np.ndarray</span></dt><dd><p>Array of zeros and ones to mark which <cite>parameters</cite> were included or not in the corresponding parameter regions.</p>
+</dd>
+<dt><strong>parameters</strong><span class="classifier">np.ndarray</span></dt><dd><p>Array of p-dimensional parameters.</p>
+</dd>
+<dt><strong>estimator</strong><span class="classifier">str</span></dt><dd><p>Name of the probabilistic classifier to use to estimate conditional coverage probabilities.</p>
+</dd>
+<dt><strong>estimator_kwargs</strong><span class="classifier">Dict</span></dt><dd><p>Settings for <cite>estimator</cite>.</p>
+</dd>
+<dt><strong>param_dim</strong><span class="classifier">int</span></dt><dd><p>Dimensionality of the parameter.</p>
+</dd>
+<dt><strong>new_parameters</strong><span class="classifier">Optional[np.ndarray], optional</span></dt><dd><p>Array of parameters over which to estimate/evaluate conditional coverage probabilities, by default None.
+If not provided, both training and evaluation of the probabilistic classifier are done over <cite>parameters</cite>.</p>
+</dd>
+<dt><strong>n_sigma</strong><span class="classifier">int, optional</span></dt><dd><p>Uncertainties around the estimated mean coverage proabilities are computed as mean +- se * n_sigma, by default 2.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>Tuple[Any, np.ndarray, np.ndarray, np.ndarray, np.ndarray]</dt><dd><p>Fitted estimator, evaluated parameters, and estimated conditional coverage probabilities – mean, upper-n_sigma bound. lower-n_sigma bound</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ValueError</dt><dd><p><cite>Estimator</cite> must be one of [<cite>gam</cite>, TBD]</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lf2i.diagnostics.diagnostics.fit_r_estimator">
+<span class="sig-prename descclassname"><span class="pre">lf2i.diagnostics.diagnostics.</span></span><span class="sig-name descname"><span class="pre">fit_r_estimator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">estimator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indicators</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#lf2i.diagnostics.diagnostics.fit_r_estimator" title="Permalink to this definition">#</a></dt>
+<dd><p>Estimate conditional coverage probabilities using a pre-defined estimator available in R.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>estimator</strong><span class="classifier">str</span></dt><dd><p>Name of the estimator to use.</p>
+</dd>
+<dt><strong>indicators</strong><span class="classifier">np.ndarray</span></dt><dd><p>Array of zeros and ones that indicate whether the corresponding value in <cite>parameters</cite> is included or not in the parameter region.</p>
+</dd>
+<dt><strong>parameters</strong><span class="classifier">np.ndarray</span></dt><dd><p>True (simulated) parameter values.</p>
+</dd>
+<dt><strong>param_dim</strong><span class="classifier">int</span></dt><dd><p>Dimensionality of the parameter.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>Any</dt><dd><p>A model object returned by the corresponding R code.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>NotImplementedError</dt><dd><p>Estimator must be one of [<cite>gam</cite>, TBD]</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lf2i.diagnostics.diagnostics.predict_r_estimator">
+<span class="sig-prename descclassname"><span class="pre">lf2i.diagnostics.diagnostics.</span></span><span class="sig-name descname"><span class="pre">predict_r_estimator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fitted_estimator</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_sigma</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#lf2i.diagnostics.diagnostics.predict_r_estimator" title="Permalink to this definition">#</a></dt>
+<dd><p>Evaluate the trained R estimator and estimate the conditional coverage probabilities given <cite>parameters</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>fitted_estimator</strong><span class="classifier">Any</span></dt><dd><p>Trained estimator, as returned by <cite>fit_r_estimator</cite>.</p>
+</dd>
+<dt><strong>param_dim</strong><span class="classifier">int</span></dt><dd><p>Dimensionality of the parameter.</p>
+</dd>
+<dt><strong>n_sigma</strong><span class="classifier">int</span></dt><dd><p>Uncertainties around the estimated mean coverage proabilities are computed as mean +- se * n_sigma, by default 2.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>Tuple[np.ndarray, np.ndarray, np.ndarray]</dt><dd><p>Estimated conditional coverage probabilities – mean, upper-n_sigma bound. lower-n_sigma bound</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-lf2i.diagnostics">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-lf2i.diagnostics" title="Permalink to this heading">#</a></h2>
+</section>
+</section>
+
+
+            </article>
+            
+            
+            
+            <footer class="bd-footer-article">
+                <!-- Previous / next buttons -->
+<div class='prev-next-area'>
+</div>
+            </footer>
+            
+          </div>
+          
+          
+          
+            <div class="bd-sidebar-secondary bd-toc">
+              
+<div class="toc-item">
+  
+<div class="tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+</div>
+<nav id="bd-toc-nav" class="page-toc">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#submodules">
+   Submodules
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-lf2i.diagnostics.diagnostics">
+   lf2i.diagnostics.diagnostics module
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#lf2i.diagnostics.diagnostics.compute_indicators_lf2i">
+     <code class="docutils literal notranslate">
+      <span class="pre">
+       compute_indicators_lf2i()
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#lf2i.diagnostics.diagnostics.compute_indicators_posterior">
+     <code class="docutils literal notranslate">
+      <span class="pre">
+       compute_indicators_posterior()
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#lf2i.diagnostics.diagnostics.coverage_diagnostics">
+     <code class="docutils literal notranslate">
+      <span class="pre">
+       coverage_diagnostics()
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#lf2i.diagnostics.diagnostics.fit_r_estimator">
+     <code class="docutils literal notranslate">
+      <span class="pre">
+       fit_r_estimator()
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#lf2i.diagnostics.diagnostics.predict_r_estimator">
+     <code class="docutils literal notranslate">
+      <span class="pre">
+       predict_r_estimator()
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-lf2i.diagnostics">
+   Module contents
+  </a>
+ </li>
+</ul>
+
+</nav>
+</div>
+
+<div class="toc-item">
+  
+<div id="searchbox"></div>
+</div>
+
+<div class="toc-item">
+  
+</div>
+
+<div class="toc-item">
+  
+<div class="tocsection sourcelink">
+    <a href="_sources/lf2i.diagnostics.rst.txt">
+        <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+</div>
+
+</div>
+
+            </div>
+          
+          
+        </div>
+        <footer class="bd-footer-content">
+          <div class="bd-footer-content__inner">
+            
+          </div>
+        </footer>
+        
+      </main>
+    </div>
+  </div>
+
+  
+    
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="_static/scripts/pydata-sphinx-theme.js?digest=1e1de1a1873e13ef5536"></script>
+
+  <footer class="bd-footer"><div class="bd-footer__inner container">
+  
+  <div class="footer-item">
+    
+<p class="copyright">
+
+    &copy; Copyright 2022, Luca Masserano, Niccolò Dalmasso, David Zhao, Rafael Izbicki, Ann B. Lee.<br>
+
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+<p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 5.3.0.<br>
+</p>
+
+  </div>
+  
+</div>
+  </footer>
+  </body>
+</html>

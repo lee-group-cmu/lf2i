@@ -1,9 +1,11 @@
 from random import sample
 from typing import Tuple, Union, List
+import warnings
 
 import numpy as np
 import torch
 from sklearn.base import BaseEstimator
+from xgboost.sklearn import XGBModel
 
 
 def preprocess_waldo_estimation(
@@ -20,8 +22,8 @@ def preprocess_waldo_estimation(
                 parameters = torch.from_numpy(parameters)
             if isinstance(samples, np.ndarray):
                 samples = torch.from_numpy(samples)
-        if isinstance(estimator, BaseEstimator):
-            # Scikit-Learn models
+        if isinstance(estimator, (BaseEstimator, XGBModel)):
+            # Scikit-Learn or XGBoost models
             if isinstance(parameters, torch.Tensor):
                 parameters = parameters.numpy()
             if isinstance(samples, torch.Tensor):
@@ -32,7 +34,10 @@ def preprocess_waldo_estimation(
             parameters = torch.from_numpy(parameters)
         if isinstance(samples, np.ndarray):
             samples = torch.from_numpy(samples)
-    return parameters, samples
+    
+    if (len(samples.shape) == 3) and (samples.shape[1] > 1):
+        warnings.warn(f"You provided a simulated set with single-sample size = {samples.shape[1]}. This dimension will be flattened for estimation or evaluation. Is this the desired behaviour?")
+    return parameters, samples.reshape(-1, samples.shape[-1])
 
 
 def preprocess_waldo_evaluation(
@@ -45,11 +50,13 @@ def preprocess_waldo_evaluation(
 
 
 def preprocess_waldo_computation(
-    parameters: np.ndarray,
+    parameters: Union[np.ndarray, torch.Tensor],
     conditional_mean: Union[np.ndarray, List],
     conditional_var: Union[np.ndarray, List],
     param_dim: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    if isinstance(parameters, torch.Tensor):
+        parameters = parameters.numpy()
     if param_dim == 1:
         parameters = parameters.reshape(-1, param_dim)
         if isinstance(conditional_mean, List):
