@@ -3,14 +3,24 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-LF2I: Likelihood-Free Frequentist Inference
-=======================================================================
+.. mdinclude:: ../README.md
+
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :name: Tutorials
+   :caption: Tutorials
+   :maxdepth: 1
+   :hidden:
 
-   modules
+   tutorials/waldo/index_waldo_tutorials
+
+
+.. toctree::
+   :name: API docs
+   :caption: API docs
+   :maxdepth: 1
+   :hidden:
+
    lf2i.inference
    lf2i.test_statistics
    lf2i.critical_values
@@ -19,11 +29,3 @@ LF2I: Likelihood-Free Frequentist Inference
    lf2i.simulator
    lf2i.plot
    lf2i.utils
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

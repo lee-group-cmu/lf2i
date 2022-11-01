@@ -29,8 +29,12 @@ EXTRAS = {
         "aquirdturtle-collapsible-headings",
         "ipykernel",
         "jupyterlab",
-        "numpydoc"
-        "pytest"
+        "furo",  # sphinx theme
+        "myst-parser",
+        "nbsphinx",
+        "pytest",
+        "sphinx"
+        "sphinx-mdinclude"
     ]
 }
 

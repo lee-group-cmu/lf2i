@@ -80,7 +80,7 @@ class LF2I:
             The `i`-th element is a confidence region for the `i`-th sample in `x`.
         """
         if (quantile_regressor == 'gb') and (quantile_regressor_kwargs == {}):
-            quantile_regressor_kwargs = {'n_estimators': 500, 'max_depth': 1}
+            quantile_regressor_kwargs = {'n_estimators': 500, 'max_depth': self.simulator.param_dim}  # deeper trees for higher-dimensional parameters
 
         # estimate test statistics
         if (not self.test_statistic._check_is_trained()) or re_estimate_test_statistics:
@@ -123,7 +123,7 @@ class LF2I:
         parameters: Optional[np.ndarray] = None,
         posterior: Union[DirectPosterior, Any] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Independent diagnostics check for the empirical conditional coverage of the constructed confidence regions.
+        """Independent diagnostics check for the empirical conditional coverage of the desired parameter regions.
 
         Parameters
         ----------
@@ -179,6 +179,7 @@ class LF2I:
             else:
                 raise NotImplementedError
         
+        # TODO: re-use previously trained probabilistic classifier if desired
         self.diagnostics_estimator, out_parameters, mean_proba, upper_proba, lower_proba = coverage_diagnostics(
             indicators=indicators,
             parameters=parameters,

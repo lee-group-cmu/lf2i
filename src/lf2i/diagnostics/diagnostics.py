@@ -219,7 +219,7 @@ def fit_r_estimator(
     rpy2.robjects.numpy2ri.activate()
 
     indicators = robj.r.matrix(indicators)
-    parameters = robj.r.matrix(parameters)
+    parameters = robj.r.matrix(parameters.reshape((parameters.size)), nrow=parameters.shape[0], ncol=parameters.shape[1], byrow=True)
 
     if estimator == 'gam':
         output_dict = robj.globalenv['fit_gam'](indicators, parameters, param_dim)
@@ -257,7 +257,7 @@ def predict_r_estimator(
     robj.conversion.py2ri = robj.numpy2ri
     rpy2.robjects.numpy2ri.activate()
 
-    parameters = robj.r.matrix(parameters)
+    parameters = robj.r.matrix(parameters.reshape((parameters.size)), nrow=parameters.shape[0], ncol=parameters.shape[1], byrow=True)
     output_dict = robj.globalenv['predict_gam'](fitted_estimator, parameters, param_dim)
     output_dict = dict(zip(output_dict.names, list(output_dict)))
 

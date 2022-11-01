@@ -42,13 +42,14 @@ def coverage_regions_plot(
     elif param_dim == 2:
         fig, ax = plt.subplots(1, 1, figsize=figsize)
         scatter = plt.scatter(parameters[:, 0], parameters[:, 1], c=np.round(mean_proba*100, 2), 
-                                cmap=cm.get_cmap(name='inferno'), vmin=0, vmax=100, alpha=1)
+                                cmap=cm.get_cmap(name='inferno'), vmin=np.min(mean_proba)*100, vmax=np.max(mean_proba)*100, alpha=1)
         cbar = fig.colorbar(scatter, format='%1.2f')
         
         cbar.set_label('Estimated Coverage', fontsize=45)
         cbar.ax.tick_params(labelsize=30)
-        cbar.set_ticks(np.linspace(0, 100, 11))
-        cbar.set_ticklabels(np.linspace(0, 100, 11).astype(int))
+        from warnings import simplefilter
+        simplefilter(action="ignore", category=UserWarning)
+        cbar.ax.yaxis.set_ticklabels([label.get_text()+"%" for label in cbar.ax.yaxis.get_ticklabels()])
         ax.set_xlabel(r"$\theta^{{(1)}}$", fontsize=45)
         ax.set_ylabel(r"$\theta^{{(2)}}$", fontsize=45, rotation=0, labelpad=40)
         plt.tick_params(axis='both', labelsize=30)

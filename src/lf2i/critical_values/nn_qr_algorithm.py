@@ -107,15 +107,15 @@ class Learner:
     """Learner for the quantile neural network. Implements methods for training and inference.
 
     Parameters
-        ----------
-        model : torch.nn.Module
-            Quantile Neural Network architecture.
-        optimizer : torch.optim.Optimizer
-            Chosen optimizer.
-        loss : torch.nn.Module
-            Quantile Loss.
-        device : str, optional
-            Device on which to perform computations, by default "cpu". Use "cuda" for GPU.
+    ----------
+    model : torch.nn.Module
+        Quantile Neural Network architecture.
+    optimizer : torch.optim.Optimizer
+        Chosen optimizer.
+    loss : torch.nn.Module
+        Quantile Loss.
+    device : str, optional
+        Device on which to perform computations, by default "cpu". Use "cuda" for GPU.
     """
     def __init__(
         self,
