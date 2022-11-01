@@ -21,7 +21,7 @@ pip install -e ".[dev]"
 
 ## Usage
 
-See [tutorials](https://github.com/lee-group-cmu/lf2i/tree/main/tutorials) for a few basic examples.
+See the tutorials section available on the [docs website](https://lee-group-cmu.github.io/lf2i/) for a few examples.
 
 ## Feedback and Contributions
 
