@@ -24,6 +24,7 @@ sbi-logs/
 
 /doc/_apidoc/
 /build
+/dist/
 
 playground/
 TODOs.txt
