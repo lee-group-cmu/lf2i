@@ -91,7 +91,7 @@ class LF2I:
         if (self.quantile_regressor is None) or re_estimate_critical_values:
             parameters_cv, samples_cv = self.simulator.simulate_for_critical_values(b_prime)
             test_statistics_cv = self.test_statistic.evaluate(parameters_cv, samples_cv, mode='critical_values')
-            self.quantile_regressor, self.critical_values = train_qr_algorithm(
+            self.quantile_regressor, self.critical_values = train_qr_algorithm(  # TODO: decouple training from prediction
                 test_statistics=test_statistics_cv,
                 parameters=parameters_cv,
                 algorithm=quantile_regressor,

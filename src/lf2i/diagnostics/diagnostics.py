@@ -4,7 +4,7 @@ import pathlib
 import rpy2.robjects as robj
 import rpy2.robjects.numpy2ri
 import numpy as np
-from sbi.inference.posteriors import DirectPosterior
+from sbi.inference.posteriors.base_posterior import NeuralPosterior
 
 from lf2i.utils.lf2i_inputs import preprocess_indicators_lf2i, preprocess_indicators_posterior, preprocess_diagnostics
 from lf2i.utils.posterior import hpd_region
@@ -124,7 +124,7 @@ def compute_indicators_lf2i(
 
 
 def compute_indicators_posterior(
-    posterior: DirectPosterior,
+    posterior: NeuralPosterior,
     parameters: np.ndarray,
     samples: np.ndarray,
     parameter_grid: np.ndarray,
@@ -138,7 +138,7 @@ def compute_indicators_posterior(
 
     Parameters
     ----------
-    posterior : DirectPosterior
+    posterior : NeuralPosterior
         Estimated posterior distribution. Must have `log_prob(theta=..., x=...)` method. 
     parameters : np.ndarray
         True (simulated) parameter values, for which inclusion in the corresponding credible region is checked.
@@ -163,7 +163,6 @@ def compute_indicators_posterior(
     np.ndarray
         Array of zeros and ones that indicate whether the corresponding value in `parameters` is included or not in the credible region.
     """
-    # TODO: convert torch Tensors into numpy arrays
     parameters, samples, parameter_grid = \
         preprocess_indicators_posterior(parameters, samples, parameter_grid, param_dim, sample_size)
     
@@ -171,11 +170,10 @@ def compute_indicators_posterior(
     for i in range(parameters.shape[0]):
         _, credible_region, _ = hpd_region(
             posterior=posterior,
-            prior=None,
             param_grid=np.concatenate((parameter_grid, parameters[i, :].reshape(1, param_dim))),
             x=samples[i, :, :],
             confidence_level=confidence_level,
-            n_p_stars=num_p_levels, tol=tol
+            num_p_levels=num_p_levels, tol=tol
         )
         if parameters[i, :] in credible_region:
             # TODO: this is not safe. Better to return an array of bools and check if True

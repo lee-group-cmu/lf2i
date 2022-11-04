@@ -18,7 +18,7 @@ REQUIRED = [
     "sbi>=0.19.2",
     "scikit-learn",
     "scipy",
-    "seaborn>=0.12.1"
+    "seaborn>=0.12.1",
     "torch>=1.12.1",
     "tqdm",
     "xgboost>=1.6.2"
@@ -33,7 +33,7 @@ EXTRAS = {
         "myst-parser",
         "nbsphinx",
         "pytest",
-        "sphinx"
+        "sphinx",
         "sphinx-mdinclude"
     ]
 }
@@ -53,7 +53,7 @@ except FileNotFoundError:
 
 setup(
     name=NAME,
-    version="0.1.0",
+    version="0.1.1",
     description=DESCRIPTION,
     keywords=KEYWORDS,
     long_description=long_description,
