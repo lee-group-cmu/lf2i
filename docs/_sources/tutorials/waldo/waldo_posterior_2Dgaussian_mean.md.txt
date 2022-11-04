@@ -88,7 +88,7 @@ waldo = WALDO(
 
 
 ```python
-confidence_region = waldo.infer(x=observed_x, b=10_000, b_prime=5_000, re_estimate_critical_values=False)
+confidence_region = waldo.infer(x=observed_x, b=10_000, b_prime=5_000)
 ```
 
      Neural network successfully converged after 87 epochs.

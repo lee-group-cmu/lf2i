@@ -1,6 +1,6 @@
 # LF2I: Likelihood-Free Frequentist Inference
 
-<!--- [![PyPI](https://img.shields.io/pypi/v/gluonts.svg?style=flat-square&color=b75347)](https://pypi.org/project/gluonts/) ---> 
+[![PyPI](https://img.shields.io/pypi/v/lf2i)](https://pypi.org/project/lf2i/)
 [![GitHub](https://img.shields.io/github/license/lee-group-cmu/lf2i?style=flat-square)](./LICENSE.txt)
 
 <!--- - [LF2I: Likelihood-Free Frequentist Inference](#lf2i-likelihood-free-frequentist-inference)---> 

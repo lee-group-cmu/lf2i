@@ -211,7 +211,7 @@
 <span class="kn">import</span> <span class="nn">rpy2.robjects</span> <span class="k">as</span> <span class="nn">robj</span>
 <span class="kn">import</span> <span class="nn">rpy2.robjects.numpy2ri</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">sbi.inference.posteriors</span> <span class="kn">import</span> <span class="n">DirectPosterior</span>
+<span class="kn">from</span> <span class="nn">sbi.inference.posteriors.base_posterior</span> <span class="kn">import</span> <span class="n">NeuralPosterior</span>
 
 <span class="kn">from</span> <span class="nn">lf2i.utils.lf2i_inputs</span> <span class="kn">import</span> <span class="n">preprocess_indicators_lf2i</span><span class="p">,</span> <span class="n">preprocess_indicators_posterior</span><span class="p">,</span> <span class="n">preprocess_diagnostics</span>
 <span class="kn">from</span> <span class="nn">lf2i.utils.posterior</span> <span class="kn">import</span> <span class="n">hpd_region</span>
@@ -331,7 +331,7 @@
 
 
 <div class="viewcode-block" id="compute_indicators_posterior"><a class="viewcode-back" href="../../../lf2i.diagnostics.html#lf2i.diagnostics.diagnostics.compute_indicators_posterior">[docs]</a><span class="k">def</span> <span class="nf">compute_indicators_posterior</span><span class="p">(</span>
-    <span class="n">posterior</span><span class="p">:</span> <span class="n">DirectPosterior</span><span class="p">,</span>
+    <span class="n">posterior</span><span class="p">:</span> <span class="n">NeuralPosterior</span><span class="p">,</span>
     <span class="n">parameters</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">samples</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">parameter_grid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
@@ -345,7 +345,7 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    posterior : DirectPosterior</span>
+<span class="sd">    posterior : NeuralPosterior</span>
 <span class="sd">        Estimated posterior distribution. Must have `log_prob(theta=..., x=...)` method. </span>
 <span class="sd">    parameters : np.ndarray</span>
 <span class="sd">        True (simulated) parameter values, for which inclusion in the corresponding credible region is checked.</span>
@@ -370,7 +370,6 @@
 <span class="sd">    np.ndarray</span>
 <span class="sd">        Array of zeros and ones that indicate whether the corresponding value in `parameters` is included or not in the credible region.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># TODO: convert torch Tensors into numpy arrays</span>
     <span class="n">parameters</span><span class="p">,</span> <span class="n">samples</span><span class="p">,</span> <span class="n">parameter_grid</span> <span class="o">=</span> \
         <span class="n">preprocess_indicators_posterior</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">samples</span><span class="p">,</span> <span class="n">parameter_grid</span><span class="p">,</span> <span class="n">param_dim</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">)</span>
     
@@ -378,11 +377,10 @@
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">parameters</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
         <span class="n">_</span><span class="p">,</span> <span class="n">credible_region</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">hpd_region</span><span class="p">(</span>
             <span class="n">posterior</span><span class="o">=</span><span class="n">posterior</span><span class="p">,</span>
-            <span class="n">prior</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">param_grid</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">parameter_grid</span><span class="p">,</span> <span class="n">parameters</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">param_dim</span><span class="p">))),</span>
             <span class="n">x</span><span class="o">=</span><span class="n">samples</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span>
             <span class="n">confidence_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
-            <span class="n">n_p_stars</span><span class="o">=</span><span class="n">num_p_levels</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="n">tol</span>
+            <span class="n">num_p_levels</span><span class="o">=</span><span class="n">num_p_levels</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="n">tol</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="n">parameters</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:]</span> <span class="ow">in</span> <span class="n">credible_region</span><span class="p">:</span>
             <span class="c1"># TODO: this is not safe. Better to return an array of bools and check if True</span>

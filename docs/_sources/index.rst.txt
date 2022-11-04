@@ -29,3 +29,6 @@
    lf2i.simulator
    lf2i.plot
    lf2i.utils
+
+.. math:: ``
+
