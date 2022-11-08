@@ -156,8 +156,14 @@
   <p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/waldo/index_waldo_tutorials.html">WALDO</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html">CONFIDENCE SETS via PREDICTION ALGORITHMS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html">CONFIDENCE SETS via POSTERIOR ESTIMATORS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#simulate">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#confidence-set-by-leveraging-a-prediction-algorithm">CONFIDENCE SET by leveraging a PREDICTION ALGORITHM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#diagnostics">DIAGNOSTICS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#simulate">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#confidence-set-by-leveraging-a-posterior-estimator">CONFIDENCE SET by leveraging a POSTERIOR ESTIMATOR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#diagnostics">DIAGNOSTICS</a></li>
 </ul>
 </li>
 </ul>
@@ -219,7 +225,8 @@
     <span class="n">parameters</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> 
     <span class="n">samples</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> 
     <span class="n">method</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">estimator</span><span class="p">:</span> <span class="nb">object</span>
+    <span class="n">estimator</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+    <span class="n">param_dim</span><span class="p">:</span> <span class="nb">int</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="o">...</span><span class="p">]:</span>
     <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;prediction&#39;</span><span class="p">:</span>
         <span class="c1"># make sure types are correct for:</span>
@@ -244,6 +251,10 @@
     
     <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">samples</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">samples</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">):</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;You provided a simulated set with single-sample size = </span><span class="si">{</span><span class="n">samples</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">. This dimension will be flattened for estimation or evaluation. Is this the desired behaviour?&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">param_dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">parameters</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">parameters</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">param_dim</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">samples</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">samples</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span></div>
 
 
@@ -251,9 +262,10 @@
     <span class="n">parameters</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> 
     <span class="n">samples</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> 
     <span class="n">method</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">estimator</span><span class="p">:</span> <span class="nb">object</span>
+    <span class="n">estimator</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+    <span class="n">param_dim</span><span class="p">:</span> <span class="nb">int</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span> <span class="o">...</span><span class="p">]:</span>
-    <span class="k">return</span> <span class="n">preprocess_waldo_estimation</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">samples</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">estimator</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">preprocess_waldo_estimation</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">samples</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">estimator</span><span class="p">,</span> <span class="n">param_dim</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="preprocess_waldo_computation"><a class="viewcode-back" href="../../../lf2i.utils.html#lf2i.utils.waldo_inputs.preprocess_waldo_computation">[docs]</a><span class="k">def</span> <span class="nf">preprocess_waldo_computation</span><span class="p">(</span>
@@ -278,11 +290,25 @@
         <span class="c1"># so that when sliced it is still 2-dimensional</span>
         <span class="n">parameters</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">param_dim</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">conditional_mean</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
-            <span class="c1"># method == prediction; this should be rarely used</span>
+            <span class="c1"># only when method == prediction; this should rarely be used</span>
             <span class="n">conditional_mean</span> <span class="o">=</span> <span class="n">conditional_mean</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">param_dim</span><span class="p">)</span>
             <span class="n">conditional_var</span> <span class="o">=</span> <span class="n">conditional_var</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">param_dim</span><span class="p">,</span> <span class="n">param_dim</span><span class="p">)</span>
     
-    <span class="k">return</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">conditional_mean</span><span class="p">,</span> <span class="n">conditional_var</span></div>
+    <span class="k">return</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">conditional_mean</span><span class="p">,</span> <span class="n">epsilon_variance_correction</span><span class="p">(</span><span class="n">conditional_var</span><span class="p">,</span> <span class="n">param_dim</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="epsilon_variance_correction"><a class="viewcode-back" href="../../../lf2i.utils.html#lf2i.utils.waldo_inputs.epsilon_variance_correction">[docs]</a><span class="k">def</span> <span class="nf">epsilon_variance_correction</span><span class="p">(</span>
+    <span class="n">conditional_var</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+    <span class="n">param_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-3</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Make sure the estimated conditional variance is always &gt;= 0+epsilon to avoid ZeroDivisionError or exploding test statistics.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">param_dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">conditional_var</span> <span class="o">-</span> <span class="nb">min</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">conditional_var</span><span class="p">))</span> <span class="o">+</span> <span class="n">epsilon</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># not implemented</span>
+        <span class="k">return</span> <span class="n">conditional_var</span></div>
 </pre></div>
         </article>
       </div>

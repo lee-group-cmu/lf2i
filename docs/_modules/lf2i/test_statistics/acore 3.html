@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
     <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
-        <title>lf2i.utils.posterior - LF2I: Likelihood-Free Frequentist Inference 0.1.0 documentation</title>
+        <title>lf2i.test_statistics.acore - LF2I: Likelihood-Free Frequentist Inference 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -156,7 +156,10 @@
   <p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/waldo/index_waldo_tutorials.html">WALDO</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html">CONFIDENCE SETS via PREDICTION ALGORITHMS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#simulate">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#confidence-set-by-leveraging-a-prediction-algorithm">CONFIDENCE SET by leveraging a PREDICTION ALGORITHM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#diagnostics">DIAGNOSTICS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html">CONFIDENCE SETS via POSTERIOR ESTIMATORS</a></li>
 </ul>
 </li>
@@ -204,63 +207,12 @@
           </label>
         </div>
         <article role="main">
-          <h1>Source code for lf2i.utils.posterior</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Tuple</span>
+          <h1>Source code for lf2i.test_statistics.acore</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">lf2i.test_statistics._base</span> <span class="kn">import</span> <span class="n">TestStatistic</span>
 
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">torch</span>
 
-<span class="kn">from</span> <span class="nn">sbi.inference.posteriors.base_posterior</span> <span class="kn">import</span> <span class="n">NeuralPosterior</span>
-
-<div class="viewcode-block" id="hpd_region"><a class="viewcode-back" href="../../../lf2i.utils.html#lf2i.utils.posterior.hpd_region">[docs]</a><span class="k">def</span> <span class="nf">hpd_region</span><span class="p">(</span>
-    <span class="n">posterior</span><span class="p">:</span> <span class="n">NeuralPosterior</span><span class="p">,</span> 
-    <span class="n">param_grid</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> 
-    <span class="n">x</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
-    <span class="n">confidence_level</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
-    <span class="n">num_p_levels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100_000</span><span class="p">,</span> 
-    <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]:</span>
-    <span class="sd">&quot;&quot;&quot;Compute a high-posterior-density region at the desired confidence (technically, credible) level.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    posterior : NeuralPosterior</span>
-<span class="sd">        Estimated posterior distribution. Must implement `log_prob(theta=..., x=...)` method.</span>
-<span class="sd">    param_grid : Union[torch.Tensor, np.ndarray]</span>
-<span class="sd">        Fine grid of evaluation points in the support of the posterior.</span>
-<span class="sd">    x : Union[torch.Tensor, np.ndarray]</span>
-<span class="sd">        Observed sample given which the posterior p(theta|x) is evaluated.</span>
-<span class="sd">    confidence_level : float</span>
-<span class="sd">        Desired confidence level for the credible region.</span>
-<span class="sd">    num_p_levels : int, optional</span>
-<span class="sd">        Number of level sets to examine, by default 100_000. More level sets imply higher precision in the confidence level.</span>
-<span class="sd">    tol : float, optional</span>
-<span class="sd">        Coverage levels within tol of `confidence_level` will be accepted, by default 0.01.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    Tuple[float, Union[np.ndarray, torch.Tensor]]</span>
-<span class="sd">        Final confidence level, hpd credible region</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># evaluate posterior over fine grid of values in support</span>
-    <span class="n">posterior_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">posterior</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">theta</span><span class="o">=</span><span class="n">param_grid</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">))</span>
-    <span class="n">posterior_probs</span> <span class="o">/=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">posterior_probs</span><span class="p">)</span>  <span class="c1"># make sure they sum to 1</span>
-
-    <span class="c1"># descend the level sets of the posterior (p_levels) and stop when the area above the level equals confidence level </span>
-    <span class="n">p_levels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.99</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">num_p_levels</span><span class="p">)</span>  <span class="c1"># thresholds to include or not parameters</span>
-    <span class="n">current_confidence_level</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">new_confidence_levels</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">idx</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="k">while</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">current_confidence_level</span> <span class="o">-</span> <span class="n">confidence_level</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">tol</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">idx</span> <span class="o">==</span> <span class="n">num_p_levels</span><span class="p">:</span>  <span class="c1"># no more to examine</span>
-            <span class="k">break</span>
-        <span class="n">new_confidence_level</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">posterior_probs</span><span class="p">[</span><span class="n">posterior_probs</span> <span class="o">&gt;=</span> <span class="n">p_levels</span><span class="p">[</span><span class="n">idx</span><span class="p">]])</span>
-        <span class="n">new_confidence_levels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_confidence_level</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">new_confidence_level</span> <span class="o">-</span> <span class="n">confidence_level</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">current_confidence_level</span> <span class="o">-</span> <span class="n">confidence_level</span><span class="p">):</span>
-            <span class="n">current_confidence_level</span> <span class="o">=</span> <span class="n">new_confidence_level</span>
-        <span class="n">idx</span> <span class="o">+=</span> <span class="mi">1</span>
-    <span class="c1"># all params such that p(params|x) &gt; p_level, where p_levels is the last chosen one</span>
-    <span class="k">return</span> <span class="n">current_confidence_level</span><span class="p">,</span> <span class="n">param_grid</span><span class="p">[</span><span class="n">posterior_probs</span> <span class="o">&gt;=</span> <span class="n">p_levels</span><span class="p">[</span><span class="n">idx</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="p">:]</span></div>
+<div class="viewcode-block" id="ACORE"><a class="viewcode-back" href="../../../lf2i.test_statistics.html#lf2i.test_statistics.acore.ACORE">[docs]</a><span class="k">class</span> <span class="nc">ACORE</span><span class="p">(</span><span class="n">TestStatistic</span><span class="p">):</span>
+    <span class="k">pass</span></div>
 </pre></div>
         </article>
       </div>

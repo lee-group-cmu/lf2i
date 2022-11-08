@@ -156,8 +156,14 @@
   <p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/waldo/index_waldo_tutorials.html">WALDO</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html">CONFIDENCE SETS via PREDICTION ALGORITHMS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html">CONFIDENCE SETS via POSTERIOR ESTIMATORS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#simulate">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#confidence-set-by-leveraging-a-prediction-algorithm">CONFIDENCE SET by leveraging a PREDICTION ALGORITHM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#diagnostics">DIAGNOSTICS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#simulate">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#confidence-set-by-leveraging-a-posterior-estimator">CONFIDENCE SET by leveraging a POSTERIOR ESTIMATOR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#diagnostics">DIAGNOSTICS</a></li>
 </ul>
 </li>
 </ul>
@@ -207,14 +213,21 @@
           <h1>Source code for lf2i.diagnostics.diagnostics</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
 <span class="kn">import</span> <span class="nn">pathlib</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
 
 <span class="kn">import</span> <span class="nn">rpy2.robjects</span> <span class="k">as</span> <span class="nn">robj</span>
 <span class="kn">import</span> <span class="nn">rpy2.robjects.numpy2ri</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">sbi.inference.posteriors.base_posterior</span> <span class="kn">import</span> <span class="n">NeuralPosterior</span>
 
-<span class="kn">from</span> <span class="nn">lf2i.utils.lf2i_inputs</span> <span class="kn">import</span> <span class="n">preprocess_indicators_lf2i</span><span class="p">,</span> <span class="n">preprocess_indicators_posterior</span><span class="p">,</span> <span class="n">preprocess_diagnostics</span>
-<span class="kn">from</span> <span class="nn">lf2i.utils.posterior</span> <span class="kn">import</span> <span class="n">hpd_region</span>
+<span class="kn">from</span> <span class="nn">lf2i.test_statistics.waldo</span> <span class="kn">import</span> <span class="n">Waldo</span>
+<span class="kn">from</span> <span class="nn">lf2i.utils.lf2i_inputs</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">preprocess_indicators_lf2i</span><span class="p">,</span> 
+    <span class="n">preprocess_indicators_posterior</span><span class="p">,</span> 
+    <span class="n">preprocess_indicators_prediction</span><span class="p">,</span> 
+    <span class="n">preprocess_diagnostics</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">lf2i.utils.other_methods</span> <span class="kn">import</span> <span class="n">hpd_region</span><span class="p">,</span> <span class="n">central_prediction_sets</span>
 
 
 <div class="viewcode-block" id="coverage_diagnostics"><a class="viewcode-back" href="../../../lf2i.diagnostics.html#lf2i.diagnostics.diagnostics.coverage_diagnostics">[docs]</a><span class="k">def</span> <span class="nf">coverage_diagnostics</span><span class="p">(</span>
@@ -337,7 +350,7 @@
     <span class="n">parameter_grid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">confidence_level</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">param_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-    <span class="n">sample_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">data_sample_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">num_p_levels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100_000</span><span class="p">,</span>
     <span class="n">tol</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -357,8 +370,8 @@
 <span class="sd">        Confidence level of the credible regions to be constructed. Must be in (0, 1).</span>
 <span class="sd">    param_dim : int</span>
 <span class="sd">        Dimensionality of the parameter.</span>
-<span class="sd">    sample_size : int</span>
-<span class="sd">        Number of simulations generated from the same parameter value, for each sample in `samples`. </span>
+<span class="sd">    data_sample_size : int</span>
+<span class="sd">        Number of samples generated from the same parameter value, for each sample in `samples`. </span>
 <span class="sd">        Each sample/element of `samples` is of size (n, d).</span>
 <span class="sd">    num_p_levels : int, optional</span>
 <span class="sd">        Number of level sets to consider to construct the high-posterior-density credible region, by default 100_000.</span>
@@ -371,11 +384,11 @@
 <span class="sd">        Array of zeros and ones that indicate whether the corresponding value in `parameters` is included or not in the credible region.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">parameters</span><span class="p">,</span> <span class="n">samples</span><span class="p">,</span> <span class="n">parameter_grid</span> <span class="o">=</span> \
-        <span class="n">preprocess_indicators_posterior</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">samples</span><span class="p">,</span> <span class="n">parameter_grid</span><span class="p">,</span> <span class="n">param_dim</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">)</span>
+        <span class="n">preprocess_indicators_posterior</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">samples</span><span class="p">,</span> <span class="n">parameter_grid</span><span class="p">,</span> <span class="n">param_dim</span><span class="p">,</span> <span class="n">data_sample_size</span><span class="p">)</span>
     
     <span class="n">indicators</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">parameters</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">))</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">parameters</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">credible_region</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">hpd_region</span><span class="p">(</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">parameters</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Computing indicators for credible regions&quot;</span><span class="p">):</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">credible_region</span> <span class="o">=</span> <span class="n">hpd_region</span><span class="p">(</span>
             <span class="n">posterior</span><span class="o">=</span><span class="n">posterior</span><span class="p">,</span>
             <span class="n">param_grid</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">parameter_grid</span><span class="p">,</span> <span class="n">parameters</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">param_dim</span><span class="p">))),</span>
             <span class="n">x</span><span class="o">=</span><span class="n">samples</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span>
@@ -386,6 +399,60 @@
             <span class="c1"># TODO: this is not safe. Better to return an array of bools and check if True</span>
             <span class="n">indicators</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
     
+    <span class="k">return</span> <span class="n">indicators</span></div>
+
+
+<div class="viewcode-block" id="compute_indicators_prediction"><a class="viewcode-back" href="../../../lf2i.diagnostics.html#lf2i.diagnostics.diagnostics.compute_indicators_prediction">[docs]</a><span class="k">def</span> <span class="nf">compute_indicators_prediction</span><span class="p">(</span>
+    <span class="n">test_statistic</span><span class="p">:</span> <span class="n">Waldo</span><span class="p">,</span>
+    <span class="n">parameters</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">samples</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">confidence_level</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">param_dim</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Construct an array of indicators which mark whether each value in `parameters` is included or not in the corresponding prediction set.</span>
+<span class="sd">    The (central) prediction set is computed using a gaussian approximation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    test_statistic: Waldo</span>
+<span class="sd">        An instance of the Waldo test statistic object, where Waldo.estimator and Waldo.cond_variance_estimator </span>
+<span class="sd">        have been trained and have a `predict(X=...)` method to estimate the conditional mean and conditional variance given `samples`.</span>
+<span class="sd">    parameters : np.ndarray</span>
+<span class="sd">        True (simulated) parameter values, for which inclusion in the corresponding prediction set is checked.</span>
+<span class="sd">    confidence_level : float</span>
+<span class="sd">        Confidence level of the credible regions to be constructed. Must be in (0, 1).</span>
+<span class="sd">    param_dim : int</span>
+<span class="sd">        Dimensionality of the parameter.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        Array of zeros and ones that indicate whether the corresponding value in `parameters` is included or not in the prediction set.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    NotImplementedError</span>
+<span class="sd">        Only implemented for one-dimensional parameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">parameters</span><span class="p">,</span> <span class="n">samples</span> <span class="o">=</span> <span class="n">preprocess_indicators_prediction</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">samples</span><span class="p">,</span> <span class="n">param_dim</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">param_dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">prediction_sets_bounds</span> <span class="o">=</span> <span class="n">central_prediction_sets</span><span class="p">(</span>
+            <span class="n">conditional_mean_estimator</span><span class="o">=</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">estimator</span><span class="p">,</span>
+            <span class="n">conditional_variance_estimator</span><span class="o">=</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">cond_variance_estimator</span><span class="p">,</span>
+            <span class="n">samples</span><span class="o">=</span><span class="n">samples</span><span class="p">,</span>
+            <span class="n">confidence_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
+            <span class="n">param_dim</span><span class="o">=</span><span class="n">param_dim</span>
+        <span class="p">)</span>
+        <span class="n">indicators</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">parameters</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">))</span>
+        <span class="n">indicators</span><span class="p">[</span>
+            <span class="p">(</span>
+                <span class="p">(</span><span class="n">parameters</span> <span class="o">&gt;=</span> <span class="n">prediction_sets_bounds</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="o">&amp;</span> 
+                <span class="p">(</span><span class="n">parameters</span> <span class="o">&lt;=</span> <span class="n">prediction_sets_bounds</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">)</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> 
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
     <span class="k">return</span> <span class="n">indicators</span></div>
 
 

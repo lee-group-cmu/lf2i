@@ -155,8 +155,14 @@
   <p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul>
 <li class="toctree-l1 has-children"><a class="reference internal" href="tutorials/waldo/index_waldo_tutorials.html">WALDO</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="tutorials/waldo/waldo_prediction_1Dgaussian_mean.html">CONFIDENCE SETS via PREDICTION ALGORITHMS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorials/waldo/waldo_posterior_2Dgaussian_mean.html">CONFIDENCE SETS via POSTERIOR ESTIMATORS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/waldo/waldo_prediction_1Dgaussian_mean.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#simulate">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#confidence-set-by-leveraging-a-prediction-algorithm">CONFIDENCE SET by leveraging a PREDICTION ALGORITHM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#diagnostics">DIAGNOSTICS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/waldo/waldo_posterior_2Dgaussian_mean.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#simulate">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#confidence-set-by-leveraging-a-posterior-estimator">CONFIDENCE SET by leveraging a POSTERIOR ESTIMATOR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#diagnostics">DIAGNOSTICS</a></li>
 </ul>
 </li>
 </ul>
@@ -206,7 +212,7 @@
           
 <section class="genindex-section">
   <h1 id="index">Index</h1>
-  <div class="genindex-jumpbox"><a href="#A"><strong>A</strong></a> | <a href="#B"><strong>B</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#D"><strong>D</strong></a> | <a href="#E"><strong>E</strong></a> | <a href="#F"><strong>F</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#H"><strong>H</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#L"><strong>L</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#P"><strong>P</strong></a> | <a href="#Q"><strong>Q</strong></a> | <a href="#S"><strong>S</strong></a> | <a href="#T"><strong>T</strong></a> | <a href="#W"><strong>W</strong></a></div>
+  <div class="genindex-jumpbox"><a href="#A"><strong>A</strong></a> | <a href="#B"><strong>B</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#D"><strong>D</strong></a> | <a href="#E"><strong>E</strong></a> | <a href="#F"><strong>F</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#H"><strong>H</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#L"><strong>L</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#N"><strong>N</strong></a> | <a href="#P"><strong>P</strong></a> | <a href="#Q"><strong>Q</strong></a> | <a href="#S"><strong>S</strong></a> | <a href="#T"><strong>T</strong></a> | <a href="#W"><strong>W</strong></a></div>
 </section>
 <section id="A" class="genindex-section">
   <h2>A</h2>
@@ -236,6 +242,8 @@
   <h2>C</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="lf2i.utils.html#lf2i.utils.other_methods.central_prediction_sets">central_prediction_sets() (in module lf2i.utils.other_methods)</a>
+</li>
         <li><a href="lf2i.confidence_regions.html#lf2i.confidence_regions.neyman_inversion.compute_confidence_regions">compute_confidence_regions() (in module lf2i.confidence_regions.neyman_inversion)</a>
 </li>
         <li><a href="lf2i.diagnostics.html#lf2i.diagnostics.diagnostics.compute_indicators_lf2i">compute_indicators_lf2i() (in module lf2i.diagnostics.diagnostics)</a>
@@ -244,6 +252,8 @@
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="lf2i.diagnostics.html#lf2i.diagnostics.diagnostics.compute_indicators_prediction">compute_indicators_prediction() (in module lf2i.diagnostics.diagnostics)</a>
+</li>
         <li><a href="lf2i.plot.html#lf2i.plot.coverage_diagnostics.coverage_barplot">coverage_barplot() (in module lf2i.plot.coverage_diagnostics)</a>
 </li>
         <li><a href="lf2i.diagnostics.html#lf2i.diagnostics.diagnostics.coverage_diagnostics">coverage_diagnostics() (in module lf2i.diagnostics.diagnostics)</a>
@@ -268,10 +278,12 @@
   <h2>E</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="lf2i.test_statistics.html#lf2i.test_statistics.waldo.Waldo.estimate">estimate() (lf2i.test_statistics.waldo.Waldo method)</a>
+        <li><a href="lf2i.utils.html#lf2i.utils.waldo_inputs.epsilon_variance_correction">epsilon_variance_correction() (in module lf2i.utils.waldo_inputs)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="lf2i.test_statistics.html#lf2i.test_statistics.waldo.Waldo.estimate">estimate() (lf2i.test_statistics.waldo.Waldo method)</a>
+</li>
         <li><a href="lf2i.test_statistics.html#lf2i.test_statistics.waldo.Waldo.evaluate">evaluate() (lf2i.test_statistics.waldo.Waldo method)</a>
 </li>
     </ul></td>
@@ -312,7 +324,7 @@
   <h2>H</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="lf2i.utils.html#lf2i.utils.posterior.hpd_region">hpd_region() (in module lf2i.utils.posterior)</a>
+        <li><a href="lf2i.utils.html#lf2i.utils.other_methods.hpd_region">hpd_region() (in module lf2i.utils.other_methods)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -427,17 +439,17 @@
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li>
-    lf2i.plot.confidence_regions
-
-        <ul>
-          <li><a href="lf2i.plot.html#module-lf2i.plot.confidence_regions">module</a>
-</li>
-        </ul></li>
-        <li>
     lf2i.plot.coverage_diagnostics
 
         <ul>
           <li><a href="lf2i.plot.html#module-lf2i.plot.coverage_diagnostics">module</a>
+</li>
+        </ul></li>
+        <li>
+    lf2i.plot.parameter_regions
+
+        <ul>
+          <li><a href="lf2i.plot.html#module-lf2i.plot.parameter_regions">module</a>
 </li>
         </ul></li>
         <li>
@@ -504,10 +516,10 @@
 </li>
         </ul></li>
         <li>
-    lf2i.utils.posterior
+    lf2i.utils.other_methods
 
         <ul>
-          <li><a href="lf2i.utils.html#module-lf2i.utils.posterior">module</a>
+          <li><a href="lf2i.utils.html#module-lf2i.utils.other_methods">module</a>
 </li>
         </ul></li>
         <li>
@@ -553,9 +565,9 @@
 </li>
           <li><a href="lf2i.plot.html#module-lf2i.plot">lf2i.plot</a>
 </li>
-          <li><a href="lf2i.plot.html#module-lf2i.plot.confidence_regions">lf2i.plot.confidence_regions</a>
-</li>
           <li><a href="lf2i.plot.html#module-lf2i.plot.coverage_diagnostics">lf2i.plot.coverage_diagnostics</a>
+</li>
+          <li><a href="lf2i.plot.html#module-lf2i.plot.parameter_regions">lf2i.plot.parameter_regions</a>
 </li>
           <li><a href="lf2i.simulator.html#module-lf2i.simulator">lf2i.simulator</a>
 </li>
@@ -575,7 +587,7 @@
 </li>
           <li><a href="lf2i.utils.html#module-lf2i.utils.miscellanea">lf2i.utils.miscellanea</a>
 </li>
-          <li><a href="lf2i.utils.html#module-lf2i.utils.posterior">lf2i.utils.posterior</a>
+          <li><a href="lf2i.utils.html#module-lf2i.utils.other_methods">lf2i.utils.other_methods</a>
 </li>
           <li><a href="lf2i.utils.html#module-lf2i.utils.waldo_inputs">lf2i.utils.waldo_inputs</a>
 </li>
@@ -584,11 +596,25 @@
   </tr></table>
 </section>
 
+<section id="N" class="genindex-section">
+  <h2>N</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="lf2i.utils.html#lf2i.utils.miscellanea.np_to_pd">np_to_pd() (in module lf2i.utils.miscellanea)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
 <section id="P" class="genindex-section">
   <h2>P</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="lf2i.plot.html#lf2i.plot.confidence_regions.plot_parameter_region">plot_parameter_region() (in module lf2i.plot.confidence_regions)</a>
+        <li><a href="lf2i.plot.html#lf2i.plot.parameter_regions.plot_parameter_region">plot_parameter_region() (in module lf2i.plot.parameter_regions)</a>
+</li>
+        <li><a href="lf2i.plot.html#lf2i.plot.parameter_regions.plot_parameter_region_1D">plot_parameter_region_1D() (in module lf2i.plot.parameter_regions)</a>
+</li>
+        <li><a href="lf2i.plot.html#lf2i.plot.parameter_regions.plot_parameter_region_2D">plot_parameter_region_2D() (in module lf2i.plot.parameter_regions)</a>
 </li>
         <li><a href="lf2i.critical_values.html#lf2i.critical_values.nn_qr_algorithm.Learner.predict">predict() (lf2i.critical_values.nn_qr_algorithm.Learner method)</a>
 </li>
@@ -601,6 +627,8 @@
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="lf2i.utils.html#lf2i.utils.lf2i_inputs.preprocess_indicators_posterior">preprocess_indicators_posterior() (in module lf2i.utils.lf2i_inputs)</a>
+</li>
+        <li><a href="lf2i.utils.html#lf2i.utils.lf2i_inputs.preprocess_indicators_prediction">preprocess_indicators_prediction() (in module lf2i.utils.lf2i_inputs)</a>
 </li>
         <li><a href="lf2i.utils.html#lf2i.utils.lf2i_inputs.preprocess_neyman_inversion">preprocess_neyman_inversion() (in module lf2i.utils.lf2i_inputs)</a>
 </li>

@@ -156,8 +156,14 @@
   <p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/waldo/index_waldo_tutorials.html">WALDO</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html">CONFIDENCE SETS via PREDICTION ALGORITHMS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html">CONFIDENCE SETS via POSTERIOR ESTIMATORS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#simulate">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#confidence-set-by-leveraging-a-prediction-algorithm">CONFIDENCE SET by leveraging a PREDICTION ALGORITHM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#diagnostics">DIAGNOSTICS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#simulate">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#confidence-set-by-leveraging-a-posterior-estimator">CONFIDENCE SET by leveraging a POSTERIOR ESTIMATOR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#diagnostics">DIAGNOSTICS</a></li>
 </ul>
 </li>
 </ul>
@@ -209,14 +215,18 @@
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">torch</span>
-<span class="kn">from</span> <span class="nn">sbi.inference.posteriors</span> <span class="kn">import</span> <span class="n">DirectPosterior</span>
 
 <span class="kn">from</span> <span class="nn">lf2i.simulator._base</span> <span class="kn">import</span> <span class="n">Simulator</span>
 <span class="kn">from</span> <span class="nn">lf2i.test_statistics._base</span> <span class="kn">import</span> <span class="n">TestStatistic</span>
 <span class="kn">from</span> <span class="nn">lf2i.test_statistics.waldo</span> <span class="kn">import</span> <span class="n">Waldo</span>
 <span class="kn">from</span> <span class="nn">lf2i.critical_values.quantile_regression</span> <span class="kn">import</span> <span class="n">train_qr_algorithm</span>
 <span class="kn">from</span> <span class="nn">lf2i.confidence_regions.neyman_inversion</span> <span class="kn">import</span> <span class="n">compute_confidence_regions</span>
-<span class="kn">from</span> <span class="nn">lf2i.diagnostics.diagnostics</span> <span class="kn">import</span> <span class="n">coverage_diagnostics</span><span class="p">,</span> <span class="n">compute_indicators_lf2i</span><span class="p">,</span> <span class="n">compute_indicators_posterior</span>
+<span class="kn">from</span> <span class="nn">lf2i.diagnostics.diagnostics</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">coverage_diagnostics</span><span class="p">,</span> 
+    <span class="n">compute_indicators_lf2i</span><span class="p">,</span> 
+    <span class="n">compute_indicators_posterior</span><span class="p">,</span> 
+    <span class="n">compute_indicators_prediction</span>
+<span class="p">)</span>
 
 
 <div class="viewcode-block" id="LF2I"><a class="viewcode-back" href="../../../lf2i.inference.html#lf2i.inference.lf2i.LF2I">[docs]</a><span class="k">class</span> <span class="nc">LF2I</span><span class="p">:</span>
@@ -277,9 +287,9 @@
 <span class="sd">        quantile_regressor_kwargs : Dict, optional</span>
 <span class="sd">            Settings for the chosen quantile regressor, by default {}</span>
 <span class="sd">        re_estimate_test_statistics : bool, optional</span>
-<span class="sd">            Whether to re-estimate the test statistics, if a previous call to `.infer()` was made, by default False.</span>
+<span class="sd">            Whether to re-estimate the test statistics if a previous call to `.infer()` was made, by default False.</span>
 <span class="sd">        re_estimate_critical_values : bool, optional</span>
-<span class="sd">            Whether to re-estimate the critical values, if a previous call to `.infer()` was made, by default False.</span>
+<span class="sd">            Whether to re-estimate the critical values if a previous call to `.infer()` was made, by default False.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -287,13 +297,13 @@
 <span class="sd">            The `i`-th element is a confidence region for the `i`-th sample in `x`.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">quantile_regressor</span> <span class="o">==</span> <span class="s1">&#39;gb&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">quantile_regressor_kwargs</span> <span class="o">==</span> <span class="p">{}):</span>
-            <span class="n">quantile_regressor_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;n_estimators&#39;</span><span class="p">:</span> <span class="mi">500</span><span class="p">,</span> <span class="s1">&#39;max_depth&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">param_dim</span><span class="p">}</span>  <span class="c1"># deeper trees for higher-dimensional parameters</span>
+            <span class="n">quantile_regressor_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;n_estimators&#39;</span><span class="p">:</span> <span class="mi">500</span><span class="p">,</span> <span class="s1">&#39;max_depth&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
 
         <span class="c1"># estimate test statistics</span>
         <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">_check_is_trained</span><span class="p">())</span> <span class="ow">or</span> <span class="n">re_estimate_test_statistics</span><span class="p">:</span>
             <span class="n">parameters_ts</span><span class="p">,</span> <span class="n">samples_ts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">simulate_for_test_statistic</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span><span class="n">parameters_ts</span><span class="p">,</span> <span class="n">samples_ts</span><span class="p">)</span>
-
+            
         <span class="c1"># estimate critical values</span>
         <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quantile_regressor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">re_estimate_critical_values</span><span class="p">:</span>
             <span class="n">parameters_cv</span><span class="p">,</span> <span class="n">samples_cv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">simulate_for_critical_values</span><span class="p">(</span><span class="n">b_prime</span><span class="p">)</span>
@@ -322,13 +332,12 @@
 <div class="viewcode-block" id="LF2I.diagnose"><a class="viewcode-back" href="../../../lf2i.inference.html#lf2i.inference.lf2i.LF2I.diagnose">[docs]</a>    <span class="k">def</span> <span class="nf">diagnose</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">b_doubleprime</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">region_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">region_type</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span>
         <span class="n">proba_estimator</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;gam&#39;</span><span class="p">,</span>
         <span class="n">proba_estimator_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
         <span class="n">new_parameters</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">indicators</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">parameters</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">posterior</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">DirectPosterior</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">parameters</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;Independent diagnostics check for the empirical conditional coverage of the desired parameter regions.</span>
 
@@ -336,8 +345,11 @@
 <span class="sd">        ----------</span>
 <span class="sd">        b_doubleprime : int</span>
 <span class="sd">            Number of simulations to estimate the conditional coverage probability.</span>
-<span class="sd">        region_type : str</span>
-<span class="sd">            Whether the parameter regions to be checked are confidence regions from LF2I (&#39;lf2i&#39;), credible regions from a posterior distribution (&#39;posterior&#39;) or TBD.</span>
+<span class="sd">        region_type : Union[str, None]</span>
+<span class="sd">            Whether the parameter regions to be checked are confidence regions from LF2I (&#39;lf2i&#39;), </span>
+<span class="sd">            credible regions from a posterior distribution (&#39;posterior&#39;) or central (Gaussian approximation) prediction intervals (&#39;prediction&#39;).</span>
+<span class="sd">            If `posterior` or `prediction`, then `self.test_statistic` must be an instance of `Waldo`. If not, then must provide `indicators` and `parameters`.</span>
+<span class="sd">            If `None`, then must provide `indicators` and `parameters`.</span>
 <span class="sd">        proba_estimator : str, optional</span>
 <span class="sd">            Identifier for the probabilistic classifier to use to estimate conditional coverage probabilities, by default &#39;gam&#39;</span>
 <span class="sd">        proba_estimator_kwargs : Dict, optional</span>
@@ -349,8 +361,6 @@
 <span class="sd">            Pre-computed indicators (0-1) that mark whether the corresponding value in `parameters` is included or not in the target parameter region, by default None</span>
 <span class="sd">        parameters : Optional[np.ndarray], optional</span>
 <span class="sd">            Array of parameters for which the corresponding `indicators` have been pre-computed, by default None</span>
-<span class="sd">        posterior : Union[DirectPosterior, Any], optional</span>
-<span class="sd">            If `region_type == &quot;posterior&quot;`, this is the posterior estimator, by default None. Will be used to compute HPD credible regions and determine whether they include or not the corresponding simulated parameter.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -359,6 +369,8 @@
 
 <span class="sd">        Raises</span>
 <span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If both `region_type is None` and `indicators is None` </span>
 <span class="sd">        NotImplementedError</span>
 <span class="sd">            If `region_type not in [&#39;lf2i&#39;, &#39;posterior&#39;]`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -374,14 +386,32 @@
                     <span class="n">param_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">param_dim</span>
                 <span class="p">)</span>
             <span class="k">elif</span> <span class="n">region_type</span> <span class="o">==</span> <span class="s1">&#39;posterior&#39;</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="p">,</span> <span class="n">Waldo</span><span class="p">),</span> \
+                        <span class="s2">&quot;Test statistic is not an instance of `Waldo`. You must provide `indicators` and `parameters` to diagnose posteriors.&quot;</span>
                 <span class="n">indicators</span> <span class="o">=</span> <span class="n">compute_indicators_posterior</span><span class="p">(</span>
-                    <span class="n">posterior</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">estimator</span> <span class="k">if</span> <span class="n">posterior</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">posterior</span><span class="p">,</span>
+                    <span class="n">posterior</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">estimator</span><span class="p">,</span>
                     <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
                     <span class="n">samples</span><span class="o">=</span><span class="n">samples</span><span class="p">,</span>
                     <span class="n">parameter_grid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">param_grid</span><span class="p">,</span>
                     <span class="n">confidence_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">confidence_level</span><span class="p">,</span>
                     <span class="n">param_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">param_dim</span><span class="p">,</span>
-                    <span class="n">sample_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">data_sample_size</span>
+                    <span class="n">data_sample_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">data_sample_size</span><span class="p">,</span>
+                    <span class="n">num_p_levels</span><span class="o">=</span><span class="mi">1_000</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">region_type</span> <span class="o">==</span> <span class="s1">&#39;prediction&#39;</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="p">,</span> <span class="n">Waldo</span><span class="p">),</span> \
+                        <span class="s2">&quot;Test statistic is not an instance of `Waldo`. You must provide `indicators` and `parameters` to diagnose prediction sets.&quot;</span>
+                <span class="n">indicators</span> <span class="o">=</span> <span class="n">compute_indicators_prediction</span><span class="p">(</span>
+                    <span class="n">test_statistic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="p">,</span>
+                    <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
+                    <span class="n">samples</span><span class="o">=</span><span class="n">samples</span><span class="p">,</span>
+                    <span class="n">confidence_level</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">confidence_level</span><span class="p">,</span>
+                    <span class="n">param_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">param_dim</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">region_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sd">&quot;&quot;&quot;If the parameter regions you want to diagnose are not from LF2I, nor they are posterior credible regions or\n </span>
+<span class="sd">                    central (Gaussian approximation) prediction sets, then you must provide `indicators` and `parameters`&quot;&quot;&quot;</span>
                 <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">NotImplementedError</span>

@@ -2,14 +2,18 @@ from typing import Optional, Union, Dict, List, Tuple, Any
 
 import numpy as np
 import torch
-from sbi.inference.posteriors import DirectPosterior
 
 from lf2i.simulator._base import Simulator
 from lf2i.test_statistics._base import TestStatistic
 from lf2i.test_statistics.waldo import Waldo
 from lf2i.critical_values.quantile_regression import train_qr_algorithm
 from lf2i.confidence_regions.neyman_inversion import compute_confidence_regions
-from lf2i.diagnostics.diagnostics import coverage_diagnostics, compute_indicators_lf2i, compute_indicators_posterior
+from lf2i.diagnostics.diagnostics import (
+    coverage_diagnostics, 
+    compute_indicators_lf2i, 
+    compute_indicators_posterior, 
+    compute_indicators_prediction
+)
 
 
 class LF2I:
@@ -70,9 +74,9 @@ class LF2I:
         quantile_regressor_kwargs : Dict, optional
             Settings for the chosen quantile regressor, by default {}
         re_estimate_test_statistics : bool, optional
-            Whether to re-estimate the test statistics, if a previous call to `.infer()` was made, by default False.
+            Whether to re-estimate the test statistics if a previous call to `.infer()` was made, by default False.
         re_estimate_critical_values : bool, optional
-            Whether to re-estimate the critical values, if a previous call to `.infer()` was made, by default False.
+            Whether to re-estimate the critical values if a previous call to `.infer()` was made, by default False.
 
         Returns
         -------
@@ -80,13 +84,13 @@ class LF2I:
             The `i`-th element is a confidence region for the `i`-th sample in `x`.
         """
         if (quantile_regressor == 'gb') and (quantile_regressor_kwargs == {}):
-            quantile_regressor_kwargs = {'n_estimators': 500, 'max_depth': self.simulator.param_dim}  # deeper trees for higher-dimensional parameters
+            quantile_regressor_kwargs = {'n_estimators': 500, 'max_depth': 1}
 
         # estimate test statistics
         if (not self.test_statistic._check_is_trained()) or re_estimate_test_statistics:
             parameters_ts, samples_ts = self.simulator.simulate_for_test_statistic(b)
             self.test_statistic.estimate(parameters_ts, samples_ts)
-
+            
         # estimate critical values
         if (self.quantile_regressor is None) or re_estimate_critical_values:
             parameters_cv, samples_cv = self.simulator.simulate_for_critical_values(b_prime)
@@ -115,13 +119,12 @@ class LF2I:
     def diagnose(
         self,
         b_doubleprime: int,
-        region_type: str,
+        region_type: Union[str, None],
         proba_estimator: str = 'gam',
         proba_estimator_kwargs: Dict = {},
         new_parameters: Optional[np.ndarray] = None,
         indicators: Optional[np.ndarray] = None,
-        parameters: Optional[np.ndarray] = None,
-        posterior: Union[DirectPosterior, Any] = None
+        parameters: Optional[np.ndarray] = None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Independent diagnostics check for the empirical conditional coverage of the desired parameter regions.
 
@@ -129,8 +132,11 @@ class LF2I:
         ----------
         b_doubleprime : int
             Number of simulations to estimate the conditional coverage probability.
-        region_type : str
-            Whether the parameter regions to be checked are confidence regions from LF2I ('lf2i'), credible regions from a posterior distribution ('posterior') or TBD.
+        region_type : Union[str, None]
+            Whether the parameter regions to be checked are confidence regions from LF2I ('lf2i'), 
+            credible regions from a posterior distribution ('posterior') or central (Gaussian approximation) prediction intervals ('prediction').
+            If `posterior` or `prediction`, then `self.test_statistic` must be an instance of `Waldo`. If not, then must provide `indicators` and `parameters`.
+            If `None`, then must provide `indicators` and `parameters`.
         proba_estimator : str, optional
             Identifier for the probabilistic classifier to use to estimate conditional coverage probabilities, by default 'gam'
         proba_estimator_kwargs : Dict, optional
@@ -142,8 +148,6 @@ class LF2I:
             Pre-computed indicators (0-1) that mark whether the corresponding value in `parameters` is included or not in the target parameter region, by default None
         parameters : Optional[np.ndarray], optional
             Array of parameters for which the corresponding `indicators` have been pre-computed, by default None
-        posterior : Union[DirectPosterior, Any], optional
-            If `region_type == "posterior"`, this is the posterior estimator, by default None. Will be used to compute HPD credible regions and determine whether they include or not the corresponding simulated parameter.
 
         Returns
         -------
@@ -152,6 +156,8 @@ class LF2I:
 
         Raises
         ------
+        ValueError
+            If both `region_type is None` and `indicators is None` 
         NotImplementedError
             If `region_type not in ['lf2i', 'posterior']`
         """
@@ -167,14 +173,32 @@ class LF2I:
                     param_dim=self.simulator.param_dim
                 )
             elif region_type == 'posterior':
+                assert isinstance(self.test_statistic, Waldo), \
+                        "Test statistic is not an instance of `Waldo`. You must provide `indicators` and `parameters` to diagnose posteriors."
                 indicators = compute_indicators_posterior(
-                    posterior=self.test_statistic.estimator if posterior is None else posterior,
+                    posterior=self.test_statistic.estimator,
                     parameters=parameters,
                     samples=samples,
                     parameter_grid=self.simulator.param_grid,
                     confidence_level=self.confidence_level,
                     param_dim=self.simulator.param_dim,
-                    sample_size=self.simulator.data_sample_size
+                    data_sample_size=self.simulator.data_sample_size,
+                    num_p_levels=1_000
+                )
+            elif region_type == 'prediction':
+                assert isinstance(self.test_statistic, Waldo), \
+                        "Test statistic is not an instance of `Waldo`. You must provide `indicators` and `parameters` to diagnose prediction sets."
+                indicators = compute_indicators_prediction(
+                    test_statistic=self.test_statistic,
+                    parameters=parameters,
+                    samples=samples,
+                    confidence_level=self.confidence_level,
+                    param_dim=self.simulator.param_dim
+                )
+            elif region_type is None:
+                raise ValueError(
+                    """If the parameter regions you want to diagnose are not from LF2I, nor they are posterior credible regions or\n 
+                    central (Gaussian approximation) prediction sets, then you must provide `indicators` and `parameters`"""
                 )
             else:
                 raise NotImplementedError

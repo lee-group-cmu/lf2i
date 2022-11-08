@@ -1,13 +1,20 @@
 from typing import Any, Dict, Optional, Tuple
 import pathlib
+from tqdm import tqdm
 
 import rpy2.robjects as robj
 import rpy2.robjects.numpy2ri
 import numpy as np
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
 
-from lf2i.utils.lf2i_inputs import preprocess_indicators_lf2i, preprocess_indicators_posterior, preprocess_diagnostics
-from lf2i.utils.posterior import hpd_region
+from lf2i.test_statistics.waldo import Waldo
+from lf2i.utils.lf2i_inputs import (
+    preprocess_indicators_lf2i, 
+    preprocess_indicators_posterior, 
+    preprocess_indicators_prediction, 
+    preprocess_diagnostics
+)
+from lf2i.utils.other_methods import hpd_region, central_prediction_sets
 
 
 def coverage_diagnostics(
@@ -130,7 +137,7 @@ def compute_indicators_posterior(
     parameter_grid: np.ndarray,
     confidence_level: float,
     param_dim: int,
-    sample_size: int,
+    data_sample_size: int,
     num_p_levels: int = 100_000,
     tol: float = 0.01
 ) -> np.ndarray:
@@ -150,8 +157,8 @@ def compute_indicators_posterior(
         Confidence level of the credible regions to be constructed. Must be in (0, 1).
     param_dim : int
         Dimensionality of the parameter.
-    sample_size : int
-        Number of simulations generated from the same parameter value, for each sample in `samples`. 
+    data_sample_size : int
+        Number of samples generated from the same parameter value, for each sample in `samples`. 
         Each sample/element of `samples` is of size (n, d).
     num_p_levels : int, optional
         Number of level sets to consider to construct the high-posterior-density credible region, by default 100_000.
@@ -164,11 +171,11 @@ def compute_indicators_posterior(
         Array of zeros and ones that indicate whether the corresponding value in `parameters` is included or not in the credible region.
     """
     parameters, samples, parameter_grid = \
-        preprocess_indicators_posterior(parameters, samples, parameter_grid, param_dim, sample_size)
+        preprocess_indicators_posterior(parameters, samples, parameter_grid, param_dim, data_sample_size)
     
     indicators = np.zeros(shape=(parameters.shape[0], ))
-    for i in range(parameters.shape[0]):
-        _, credible_region, _ = hpd_region(
+    for i in tqdm(range(parameters.shape[0]), desc="Computing indicators for credible regions"):
+        _, credible_region = hpd_region(
             posterior=posterior,
             param_grid=np.concatenate((parameter_grid, parameters[i, :].reshape(1, param_dim))),
             x=samples[i, :, :],
@@ -179,6 +186,60 @@ def compute_indicators_posterior(
             # TODO: this is not safe. Better to return an array of bools and check if True
             indicators[i] = 1
     
+    return indicators
+
+
+def compute_indicators_prediction(
+    test_statistic: Waldo,
+    parameters: np.ndarray,
+    samples: np.ndarray,
+    confidence_level: float,
+    param_dim: int
+) -> np.ndarray:
+    """Construct an array of indicators which mark whether each value in `parameters` is included or not in the corresponding prediction set.
+    The (central) prediction set is computed using a gaussian approximation.
+
+    Parameters
+    ----------
+    test_statistic: Waldo
+        An instance of the Waldo test statistic object, where Waldo.estimator and Waldo.cond_variance_estimator 
+        have been trained and have a `predict(X=...)` method to estimate the conditional mean and conditional variance given `samples`.
+    parameters : np.ndarray
+        True (simulated) parameter values, for which inclusion in the corresponding prediction set is checked.
+    confidence_level : float
+        Confidence level of the credible regions to be constructed. Must be in (0, 1).
+    param_dim : int
+        Dimensionality of the parameter.
+
+    Returns
+    -------
+    np.ndarray
+        Array of zeros and ones that indicate whether the corresponding value in `parameters` is included or not in the prediction set.
+
+    Raises
+    ------
+    NotImplementedError
+        Only implemented for one-dimensional parameters.
+    """
+    parameters, samples = preprocess_indicators_prediction(parameters, samples, param_dim)
+    if param_dim == 1:
+        prediction_sets_bounds = central_prediction_sets(
+            conditional_mean_estimator=test_statistic.estimator,
+            conditional_variance_estimator=test_statistic.cond_variance_estimator,
+            samples=samples,
+            confidence_level=confidence_level,
+            param_dim=param_dim
+        )
+        indicators = np.zeros(shape=(parameters.shape[0], ))
+        indicators[
+            (
+                (parameters >= prediction_sets_bounds[:, 0].reshape(-1, 1)) & 
+                (parameters <= prediction_sets_bounds[:, 1].reshape(-1, 1))
+            ).reshape(-1, )
+        ] = 1 
+    else:
+        raise NotImplementedError
+
     return indicators
 
 

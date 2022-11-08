@@ -35,8 +35,9 @@ class GaussianMean(Simulator):
         Dimensionality of the data.
     data_sample_size : int
         Size `n` of each sample generated from a specific parameter.
-    gaussian_prior_kwargs : Optional[Dict[Union[float, torch.Tensor]]], optional
-        If `prior == gaussian`, must contain `loc` and `cov`. These can be scalars or tensors, as specified for `likelihood_cov`.
+    prior_kwargs : Optional[Dict[Union[float, torch.Tensor]]], optional
+        If `prior == 'gaussian'`, must contain `loc` and `cov`. These can be scalars or tensors, as specified for `likelihood_cov`.
+        If `prior == 'uniform'`, must contain 'low' and 'high'. Assumes that each dimension of the parameter has the same bounds. If None, 
     """
     
     def __init__(
@@ -48,7 +49,7 @@ class GaussianMean(Simulator):
         param_dim: int,
         data_dim: int,
         data_sample_size: int,
-        gaussian_prior_kwargs: Optional[Dict[str, Union[float, torch.Tensor]]] = None
+        prior_kwargs: Optional[Dict[str, Union[float, torch.Tensor]]] = None
     ):
         super().__init__(param_dim=param_dim, data_dim=data_dim, data_sample_size=data_sample_size) 
 
@@ -75,10 +76,17 @@ class GaussianMean(Simulator):
         
         self.likelihood = lambda loc: MultivariateNormal(loc=loc, covariance_matrix=torch.eye(n=param_dim)*likelihood_cov)
         if prior == 'gaussian': 
-            self.prior = MultivariateNormal(loc=torch.ones(size=(param_dim, ))*gaussian_prior_kwargs['loc'], 
-                                            covariance_matrix=torch.eye(n=param_dim)*gaussian_prior_kwargs['cov'])
+            self.prior = MultivariateNormal(loc=torch.ones(size=(param_dim, ))*prior_kwargs['loc'], 
+                                            covariance_matrix=torch.eye(n=param_dim)*prior_kwargs['cov'])
         elif prior == 'uniform':
-            self.prior = self.qr_prior
+            if prior_kwargs is None:
+                prior_kwargs = parameter_space_bounds
+            if param_dim == 1:
+                self.prior = Uniform(low=prior_kwargs['low']*torch.ones(1), high=prior_kwargs['high']*torch.ones(1))
+            else:
+                self.prior = MultipleIndependent(dists=[
+                    pdist.Uniform(low=prior_kwargs['low']*torch.ones(1), high=prior_kwargs['high']*torch.ones(1)) for _ in range(param_dim)
+                ])
         else: 
             raise NotImplementedError
             

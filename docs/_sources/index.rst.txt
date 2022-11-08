@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. mdinclude:: ../README.md
+.. mdinclude:: ./README_for_sphinx.md
 
 
 .. toctree::
@@ -30,5 +30,5 @@
    lf2i.plot
    lf2i.utils
 
-.. math:: ``
+.. math:: 
 

@@ -1,4 +1,5 @@
 from typing import Optional, Union, List, Dict, Any
+import warnings
 
 from tqdm import tqdm
 import numpy as np
@@ -81,7 +82,7 @@ class Waldo(TestStatistic):
     ) -> np.ndarray:
         # TODO: can we avoid some redundancy using np.tile only once?
         if parameter_grid.shape[-1] == 1:  # parameter is 1-dimensional
-            tile_parameters = np.tile(parameter_grid, reps=conditional_mean.shape[0]).reshape(conditional_mean.shape[0], parameter_grid.shape[0])
+            tile_parameters = np.tile(parameter_grid, reps=(conditional_mean.shape[0], 1)).reshape(conditional_mean.shape[0], parameter_grid.shape[0])
             return ( (conditional_mean - tile_parameters)**2 ) / conditional_var
         else:
             # conditional mean and var lists of arrays
@@ -168,12 +169,12 @@ class Waldo(TestStatistic):
         """
         # if `self.method == prediction`, assume both estimators accept same input types
         # TODO: check that inputs have correct shapes for each method. What if data_sample_size > 1?
-        parameters, samples = preprocess_waldo_estimation(parameters, samples, self.method, self.estimator)
-    
+        parameters, samples = preprocess_waldo_estimation(parameters, samples, self.method, self.estimator, self.param_dim)
         if self.method == 'prediction':
             self.estimator.fit(X=samples, y=parameters)
-            # TODO: valid only if param_dim == 1
-            conditional_var_response = (( parameters - self.estimator.predict(X=samples).reshape(-1, 1) )**2).reshape(-1, )
+            if self.param_dim > 1:
+                warnings.warn("Using 'prediction' with param_dim > 1 might have inconsistencies and has not been thoroughly checked yet")
+            conditional_var_response = (( parameters.reshape(-1, self.param_dim) - self.estimator.predict(X=samples).reshape(-1, self.param_dim) )**2).reshape(-1, )
             self.cond_variance_estimator.fit(X=samples, y=conditional_var_response)
             self._estimator_trained['conditional_mean'] = True
             self._estimator_trained['conditional_variance'] = True
@@ -209,7 +210,7 @@ class Waldo(TestStatistic):
         """
         assert self._check_is_trained(), "Not all needed estimators are trained. Check self._estimator_trained"
         # if `self.method == prediction`, assume both estimators accept same input types
-        parameters, samples = preprocess_waldo_evaluation(parameters, samples, self.method, self.estimator)
+        parameters, samples = preprocess_waldo_evaluation(parameters, samples, self.method, self.estimator, self.param_dim)
 
         if self.method == 'prediction':
             conditional_mean = self.estimator.predict(X=samples)

@@ -20,5 +20,4 @@ def compute_confidence_regions(
         which_parameters = test_statistic >= critical_values
     else:
         raise ValueError(f"Acceptance region must be either `left` or `right`, got {acceptance_region}")
-     
-    return [parameter_grid[which_parameters[idx, :], :] for idx in range(test_statistic.shape[0])]
+    return [parameter_grid[which_parameters[idx, :].reshape(-1, ), :] for idx in range(test_statistic.shape[0])]

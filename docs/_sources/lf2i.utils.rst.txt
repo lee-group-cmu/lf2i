@@ -23,7 +23,7 @@ lf2i.utils.miscellanea module
 lf2i.utils.posterior module
 ---------------------------
 
-.. automodule:: lf2i.utils.posterior
+.. automodule:: lf2i.utils.other_methods
    :members:
    :undoc-members:
    :show-inheritance:

@@ -7,7 +7,7 @@ Submodules
 lf2i.plot.confidence\_regions module
 ------------------------------------
 
-.. automodule:: lf2i.plot.confidence_regions
+.. automodule:: lf2i.plot.parameter_regions
    :members:
    :undoc-members:
    :show-inheritance:

@@ -156,8 +156,14 @@
   <p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/waldo/index_waldo_tutorials.html">WALDO</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html">CONFIDENCE SETS via PREDICTION ALGORITHMS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html">CONFIDENCE SETS via POSTERIOR ESTIMATORS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#simulate">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#confidence-set-by-leveraging-a-prediction-algorithm">CONFIDENCE SET by leveraging a PREDICTION ALGORITHM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#diagnostics">DIAGNOSTICS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#simulate">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#confidence-set-by-leveraging-a-posterior-estimator">CONFIDENCE SET by leveraging a POSTERIOR ESTIMATOR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#diagnostics">DIAGNOSTICS</a></li>
 </ul>
 </li>
 </ul>
@@ -242,8 +248,9 @@
 <span class="sd">        Dimensionality of the data.</span>
 <span class="sd">    data_sample_size : int</span>
 <span class="sd">        Size `n` of each sample generated from a specific parameter.</span>
-<span class="sd">    gaussian_prior_kwargs : Optional[Dict[Union[float, torch.Tensor]]], optional</span>
-<span class="sd">        If `prior == gaussian`, must contain `loc` and `cov`. These can be scalars or tensors, as specified for `likelihood_cov`.</span>
+<span class="sd">    prior_kwargs : Optional[Dict[Union[float, torch.Tensor]]], optional</span>
+<span class="sd">        If `prior == &#39;gaussian&#39;`, must contain `loc` and `cov`. These can be scalars or tensors, as specified for `likelihood_cov`.</span>
+<span class="sd">        If `prior == &#39;uniform&#39;`, must contain &#39;low&#39; and &#39;high&#39;. Assumes that each dimension of the parameter has the same bounds. If None, </span>
 <span class="sd">    &quot;&quot;&quot;</span>
     
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
@@ -255,7 +262,7 @@
         <span class="n">param_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
         <span class="n">data_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
         <span class="n">data_sample_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-        <span class="n">gaussian_prior_kwargs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">prior_kwargs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">param_dim</span><span class="o">=</span><span class="n">param_dim</span><span class="p">,</span> <span class="n">data_dim</span><span class="o">=</span><span class="n">data_dim</span><span class="p">,</span> <span class="n">data_sample_size</span><span class="o">=</span><span class="n">data_sample_size</span><span class="p">)</span> 
 
@@ -282,10 +289,17 @@
         
         <span class="bp">self</span><span class="o">.</span><span class="n">likelihood</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">loc</span><span class="p">:</span> <span class="n">MultivariateNormal</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="n">loc</span><span class="p">,</span> <span class="n">covariance_matrix</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">param_dim</span><span class="p">)</span><span class="o">*</span><span class="n">likelihood_cov</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">prior</span> <span class="o">==</span> <span class="s1">&#39;gaussian&#39;</span><span class="p">:</span> 
-            <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">MultivariateNormal</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">param_dim</span><span class="p">,</span> <span class="p">))</span><span class="o">*</span><span class="n">gaussian_prior_kwargs</span><span class="p">[</span><span class="s1">&#39;loc&#39;</span><span class="p">],</span> 
-                                            <span class="n">covariance_matrix</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">param_dim</span><span class="p">)</span><span class="o">*</span><span class="n">gaussian_prior_kwargs</span><span class="p">[</span><span class="s1">&#39;cov&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">MultivariateNormal</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">param_dim</span><span class="p">,</span> <span class="p">))</span><span class="o">*</span><span class="n">prior_kwargs</span><span class="p">[</span><span class="s1">&#39;loc&#39;</span><span class="p">],</span> 
+                                            <span class="n">covariance_matrix</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">param_dim</span><span class="p">)</span><span class="o">*</span><span class="n">prior_kwargs</span><span class="p">[</span><span class="s1">&#39;cov&#39;</span><span class="p">])</span>
         <span class="k">elif</span> <span class="n">prior</span> <span class="o">==</span> <span class="s1">&#39;uniform&#39;</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">qr_prior</span>
+            <span class="k">if</span> <span class="n">prior_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">prior_kwargs</span> <span class="o">=</span> <span class="n">parameter_space_bounds</span>
+            <span class="k">if</span> <span class="n">param_dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">Uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="n">prior_kwargs</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">high</span><span class="o">=</span><span class="n">prior_kwargs</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">MultipleIndependent</span><span class="p">(</span><span class="n">dists</span><span class="o">=</span><span class="p">[</span>
+                    <span class="n">pdist</span><span class="o">.</span><span class="n">Uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="n">prior_kwargs</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">high</span><span class="o">=</span><span class="n">prior_kwargs</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span><span class="o">*</span><span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">param_dim</span><span class="p">)</span>
+                <span class="p">])</span>
         <span class="k">else</span><span class="p">:</span> 
             <span class="k">raise</span> <span class="ne">NotImplementedError</span>
             

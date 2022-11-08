@@ -156,8 +156,14 @@
   <p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/waldo/index_waldo_tutorials.html">WALDO</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html">CONFIDENCE SETS via PREDICTION ALGORITHMS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html">CONFIDENCE SETS via POSTERIOR ESTIMATORS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#simulate">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#confidence-set-by-leveraging-a-prediction-algorithm">CONFIDENCE SET by leveraging a PREDICTION ALGORITHM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction_1Dgaussian_mean.html#diagnostics">DIAGNOSTICS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#simulate">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#confidence-set-by-leveraging-a-posterior-estimator">CONFIDENCE SET by leveraging a POSTERIOR ESTIMATOR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior_2Dgaussian_mean.html#diagnostics">DIAGNOSTICS</a></li>
 </ul>
 </li>
 </ul>
@@ -270,7 +276,7 @@
     <span class="k">elif</span> <span class="n">algorithm</span> <span class="o">==</span> <span class="s1">&#39;nn&#39;</span><span class="p">:</span>
         <span class="n">nn_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="n">arg</span><span class="p">:</span> <span class="n">algorithm_kwargs</span><span class="p">[</span><span class="n">arg</span><span class="p">]</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;hidden_activation&#39;</span><span class="p">,</span> <span class="s1">&#39;dropout_p&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">algorithm_kwargs</span><span class="p">}</span>
         <span class="n">quantile_nn</span> <span class="o">=</span> <span class="n">QuantileNN</span><span class="p">(</span>
-            <span class="n">n_quantiles</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">alpha</span><span class="p">),</span> 
+            <span class="n">n_quantiles</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">alpha</span><span class="p">)),</span> 
             <span class="n">input_d</span><span class="o">=</span><span class="n">parameters</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> 
             <span class="n">hidden_layer_shapes</span><span class="o">=</span><span class="n">algorithm_kwargs</span><span class="p">[</span><span class="s1">&#39;hidden_layer_shapes&#39;</span><span class="p">],</span> 
             <span class="o">**</span><span class="n">nn_kwargs</span>
@@ -278,7 +284,7 @@
         <span class="n">algorithm</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">(</span>
             <span class="n">model</span><span class="o">=</span><span class="n">quantile_nn</span><span class="p">,</span> 
             <span class="n">optimizer</span><span class="o">=</span><span class="k">lambda</span> <span class="n">params</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span> <span class="n">weight_decay</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">),</span> 
-            <span class="n">loss</span><span class="o">=</span><span class="n">QuantileLoss</span><span class="p">(</span><span class="n">quantiles</span><span class="o">=</span><span class="p">[</span><span class="n">alpha</span><span class="p">]),</span> 
+            <span class="n">loss</span><span class="o">=</span><span class="n">QuantileLoss</span><span class="p">(</span><span class="n">quantiles</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">alpha</span><span class="p">)),</span> 
             <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s1">&#39;cpu&#39;</span>
         <span class="p">)</span>
         <span class="n">learner_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="n">arg</span><span class="p">:</span> <span class="n">algorithm_kwargs</span><span class="p">[</span><span class="n">arg</span><span class="p">]</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;epochs&#39;</span><span class="p">,</span> <span class="s1">&#39;batch_size&#39;</span><span class="p">]}</span>

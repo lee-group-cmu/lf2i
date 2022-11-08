@@ -9,9 +9,6 @@ class TestStatistic(ABC):
 
     Parameters
     ----------
-    estimator : Union[str, Any]
-        Model used to estimate the building blocks of the test statistic. 
-        If `Any`, it is expected to be trained. If `str`, it will need to be trained by calling `self.estimate`.
     acceptance_region : str
         Whether the acceptance region for the corresponding test is defined to be on the right or on the left of the critical value. 
         Must be either `left` or `right`.

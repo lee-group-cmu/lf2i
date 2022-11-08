@@ -63,7 +63,7 @@ def train_qr_algorithm(
     elif algorithm == 'nn':
         nn_kwargs = {arg: algorithm_kwargs[arg] for arg in ['hidden_activation', 'dropout_p'] if arg in algorithm_kwargs}
         quantile_nn = QuantileNN(
-            n_quantiles=len(alpha), 
+            n_quantiles=len(list(alpha)), 
             input_d=parameters.shape[1], 
             hidden_layer_shapes=algorithm_kwargs['hidden_layer_shapes'], 
             **nn_kwargs
@@ -71,7 +71,7 @@ def train_qr_algorithm(
         algorithm = Learner(
             model=quantile_nn, 
             optimizer=lambda params: torch.optim.Adam(params=params, weight_decay=1e-6), 
-            loss=QuantileLoss(quantiles=[alpha]), 
+            loss=QuantileLoss(quantiles=list(alpha)), 
             device="cuda" if torch.cuda.is_available() else 'cpu'
         )
         learner_kwargs = {arg: algorithm_kwargs[arg] for arg in ['epochs', 'batch_size']}
