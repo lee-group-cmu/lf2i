@@ -28,7 +28,7 @@ Conditional coverage is guaranteed regardless of
 ### How is LF2I structured?
 `lf2i` is based on the equivalence of confidence sets and hypothesis tests. It leverages supervised machine learning methods to efficiently execute the Neyman construction of confidence sets. The `lf2i` framework has three separate modules for, respectively, estimating 
 1. test statistics,
-2. critical values for a level-$\alpha$ test, and
+2. critical values for a level$\text{-}\alpha$ test, and
 3. empirical conditional coverage,
 
 across the entire parameter space. See the figure below for a schematic diagram.\
