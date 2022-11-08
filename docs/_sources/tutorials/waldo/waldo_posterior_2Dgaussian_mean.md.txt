@@ -1,10 +1,12 @@
+# Confidence Sets via Posterior Estimators
+
 ## INTRO & SETTINGS
 
-The goal of this tutorial is to show the capabilities of `lf2i` and `Waldo` with a simple example: inferring the mean $\theta \in \mathbb{R}^{2}$ of a Gaussian model with fixed covariance, and a Gaussian prior distribution
+The goal of this tutorial is to show the capabilities of `lf2i` and `Waldo` with a simple example: inferring the mean :math:`\theta \in \mathbb{R}^{2}` of a Gaussian model with fixed covariance, and a Gaussian prior distribution
 
-$$\boldsymbol{\theta} \sim \mathcal{N}(\mathbb{0}, 0.1 \odot \mathbb{I}), \\ \text{ } \mathbf{X}|\boldsymbol{\theta} \sim \mathcal{N}(\boldsymbol{\theta}, 0.01 \odot \mathbb{I})$$
+.. math:`\boldsymbol{\theta} \sim \mathcal{N}(\mathbb{0}, 0.1 \odot \mathbb{I}), \\ \text{ } \mathbf{X}|\boldsymbol{\theta} \sim \mathcal{N}(\boldsymbol{\theta}, 0.01 \odot \mathbb{I})`
 
-In addition, we assume that we only observe one sample for each true $\boldsymbol{\theta}$, i.e., $n=1$. \
+In addition, we assume that we only observe one sample for each true :math:`\boldsymbol{\theta}`, i.e., :math:`n=1`. \
 For this tutorial, we leverage a posterior estimator (`NPE`) as the main underlying inferential model.
 
 
@@ -51,7 +53,7 @@ simulator = GaussianMean(
 
 #### Observations
 
-For simplicity, let's use the simulator to generate two “observed” samples from the true likelihood: one consistent with the prior ($\boldsymbol{\theta}^{\star} = [0, 0]$) and one not ($\boldsymbol{\theta}^{\star} = [-1.45, 1.45]$)
+For simplicity, let's use the simulator to generate two “observed” samples from the true likelihood: one consistent with the prior (:math:`\boldsymbol{\theta}^{\star} = [0, 0]`) and one not (:math:`\boldsymbol{\theta}^{\star} = [-1.45, 1.45]`)
 
 
 ```python
