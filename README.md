@@ -4,6 +4,7 @@
 [![GitHub](https://img.shields.io/github/license/lee-group-cmu/lf2i)](./LICENSE.txt)
 
 <!--- - [LF2I: Likelihood-Free Frequentist Inference](#lf2i-likelihood-free-frequentist-inference)---> 
+- [LF2I: Likelihood-Free Frequentist Inference](#lf2i-likelihood-free-frequentist-inference)
   - [Getting Started](#getting-started)
     - [What is LFI?](#what-is-lfi)
     - [What does LF2I do?](#what-does-lf2i-do)

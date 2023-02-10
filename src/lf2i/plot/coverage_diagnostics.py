@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union, List
 from warnings import simplefilter
 
 import numpy as np
@@ -17,7 +17,8 @@ def coverage_regions_plot(
     param_dim: int,
     save_fig_path: Optional[str] = None,
     figsize: Tuple = (10, 15),
-    ylims: Tuple = (0, 1)
+    ylims: Tuple = (0, 1),
+    params_labels: Optional[Union[Tuple[str], List[str]]] = None
 ) -> None:  
     if param_dim == 1:
         df_plot = pd.DataFrame({
@@ -35,7 +36,10 @@ def coverage_regions_plot(
         ax.axhline(y=confidence_level, color='black', linestyle="--", linewidth=3, 
                     label=f"Nominal coverage = {round(100 * confidence_level, 1)} %", zorder=10)
         
-        ax.set_xlabel(r"$\theta$", fontsize=45)
+        if params_labels is None:
+            ax.set_xlabel(r"$\theta$", fontsize=45)
+        else:
+            ax.set_xlabel(params_labels[0], fontsize=45)
         ax.set_ylabel("Coverage", fontsize=45)
         ax.set_ylim(*ylims)
         ax.legend()
@@ -51,8 +55,12 @@ def coverage_regions_plot(
         simplefilter(action="ignore", category=UserWarning)
         cbar.ax.yaxis.set_ticks(np.linspace(0, 100, num=11, dtype=int))
         cbar.ax.yaxis.set_ticklabels([str(label)+"%" for label in np.linspace(0, 100, num=11, dtype=int)])
-        ax.set_xlabel(r"$\theta^{{(1)}}$", fontsize=45)
-        ax.set_ylabel(r"$\theta^{{(2)}}$", fontsize=45, rotation=0, labelpad=40)
+        if params_labels is None:
+            ax.set_xlabel(r"$\theta^{{(1)}}$", fontsize=45)
+            ax.set_ylabel(r"$\theta^{{(2)}}$", fontsize=45, rotation=0, labelpad=40)
+        else:
+            ax.set_xlabel(params_labels[0], fontsize=45)
+            ax.set_ylabel(params_labels[1], fontsize=45, rotation=0, labelpad=40)
         plt.tick_params(axis='both', labelsize=20)
         
     elif param_dim == 3:

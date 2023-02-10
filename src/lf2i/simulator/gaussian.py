@@ -1,7 +1,8 @@
 from typing import Union, Optional, Dict, Tuple
 
+import numpy as np
 import torch
-from torch.distributions import MultivariateNormal, Uniform
+from torch.distributions import Distribution, MultivariateNormal, Uniform
 from pyro import distributions as pdist
 from sbi.utils import MultipleIndependent
 
@@ -37,7 +38,7 @@ class GaussianMean(Simulator):
         Size `n` of each sample generated from a specific parameter.
     prior_kwargs : Optional[Dict[Union[float, torch.Tensor]]], optional
         If `prior == 'gaussian'`, must contain `loc` and `cov`. These can be scalars or tensors, as specified for `likelihood_cov`.
-        If `prior == 'uniform'`, must contain 'low' and 'high'. Assumes that each dimension of the parameter has the same bounds. If None, 
+        If `prior == 'uniform'`, must contain 'low' and 'high'. Assumes that each dimension of the parameter has the same bounds. If None, `parameter_space_bounds` is used.
     """
     
     def __init__(
@@ -59,12 +60,8 @@ class GaussianMean(Simulator):
         else:
             self.param_grid = torch.cartesian_prod(
                 *[torch.linspace(start=parameter_space_bounds['low'], end=parameter_space_bounds['high'], steps=int(param_grid_size**(1/param_dim))+1) for _ in range(param_dim)]
-            ).numpy()
+            )
         self.param_grid_size = self.param_grid.shape[0]
-        
-        self.param_dim = param_dim
-        self.data_dim = data_dim
-        self.data_sample_size = data_sample_size
         
         # sampling parameters to estimate critical values via quantile regression
         if param_dim == 1:
@@ -99,7 +96,85 @@ class GaussianMean(Simulator):
     def simulate_for_critical_values(self, b_prime: int) -> Tuple[torch.Tensor, torch.Tensor]:
         params = self.qr_prior.sample(sample_shape=(b_prime, )).reshape(b_prime, self.param_dim)
         samples = self.likelihood(loc=params).sample(sample_shape=(self.data_sample_size, ))
-        return params, torch.transpose(samples, 0, 1)  # (b, data_sample_size, data_dim)
+        return params, torch.transpose(samples, 0, 1)  # (b_prime, data_sample_size, data_dim)
     
     def simulate_for_diagnostics(self, b_doubleprime: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        return self.simulate_for_critical_values(b_doubleprime)
+
+
+class GaussianMeanFirstCoord(Simulator):
+
+    def __init__(
+        self,
+        likelihood_cov: torch.Tensor, 
+        poi_prior: Distribution,
+        poi_bounds: Dict[str, float], 
+        poi_grid_size: int,
+        nuisance_prior: Distribution,
+        nuisance_bounds: int,
+        data_sample_size: int
+    ):
+        super().__init__(param_dim=1, data_dim=2, data_sample_size=data_sample_size)
+        self.nuisance_dim = 1
+
+        self.poi_bounds = poi_bounds
+        self.poi_grid = torch.linspace(start=poi_bounds['low'], end=poi_bounds['high'], steps=poi_grid_size)
+        self.poi_grid_size = poi_grid_size
+        
+        # sampling parameters to estimate critical values via quantile regression
+        self.poi_qr_prior = Uniform(low=poi_bounds['low']*torch.ones(1), high=poi_bounds['high']*torch.ones(1))
+        self.nuisance_qr_prior = Uniform(low=nuisance_bounds['low']*torch.ones(1), high=nuisance_bounds['high']*torch.ones(1))
+        
+        self.likelihood = lambda poi, nuisance: MultivariateNormal(loc=torch.hstack((poi, nuisance)), covariance_matrix=likelihood_cov)
+        self.poi_prior = poi_prior
+        self.nuisance_prior = nuisance_prior
+    
+    def simulate_for_test_statistic(
+        self, 
+        b: int,
+        estimation_method: str
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        if estimation_method == 'likelihood':
+            raise NotImplementedError
+        elif estimation_method == 'likelihood_bap': # best average power (Heinrich, 2022)
+            # sample nulls
+            poi_h0 = self.poi_prior.sample(sample_shape=(1, )).reshape(1, 1)
+            nuisance_h0 = self.nuisance_prior.sample(sample_shape=(1, )).reshape(1, 1)
+            samples_h0 = self.likelihood(poi=poi_h0, nuisance=nuisance_h0).sample(sample_shape=(b//2, ))
+            labels_h0 = torch.ones(b//2)
+
+            # sample alternatives
+            scale = self.nuisance_prior.sample(sample_shape=(1, )).item()  # lukas samples scale from nuisance range 
+            poi_h1_left, poi_h1_right = poi_h0-scale, poi_h0+scale
+            samples_h1_left = self.likelihood(poi=poi_h1_left, nuisance=nuisance_h0).sample(sample_shape=(b//4, ))
+            samples_h1_right = self.likelihood(poi=poi_h1_right, nuisance=nuisance_h0).sample(sample_shape=(b//4, ))
+            labels_h1 = torch.zeros((b//4)*2)
+            params_samples = torch.hstack((
+                torch.tile(poi_h0, dims=((b//2)+(b//4)*2, 1)),
+                torch.vstack((
+                    samples_h0.reshape(b//2, self.data_dim), 
+                    samples_h1_left.reshape(b//4, self.data_dim), 
+                    samples_h1_right.reshape(b//4, self.data_dim)
+                ))
+            ))
+
+            permuted_index = torch.from_numpy(np.random.choice(
+                a=range(params_samples.shape[0]), size=params_samples.shape[0], replace=False
+            ))
+            return params_samples[permuted_index, :], torch.concat((labels_h0, labels_h1))[permuted_index]
+        elif estimation_method in ['prediction', 'posterior']:
+            raise NotImplementedError
+        else:
+            raise ValueError(f"Only one of ['likelihood', 'likelihood_bap', 'prediction', 'posterior'] is supported, got {estimation_method}")
+    
+    def simulate_for_critical_values(
+        self, 
+        b_prime: int
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        poi = self.poi_prior.sample(sample_shape=(b_prime, )).reshape(-1, 1)
+        nuisance = self.nuisance_prior.sample(sample_shape=(b_prime, )).reshape(-1, 1)
+        samples = self.likelihood(poi=poi, nuisance=nuisance).sample(sample_shape=(self.data_sample_size, ))
+        return poi, nuisance, torch.transpose(samples, 0, 1)
+    
+    def simulate_for_diagnostics(self, b_doubleprime: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         return self.simulate_for_critical_values(b_doubleprime)

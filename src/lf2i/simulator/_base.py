@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import Tuple, Union
 
 import numpy as np
+import torch
 
 
 class Simulator(ABC):
@@ -32,7 +33,7 @@ class Simulator(ABC):
     def simulate_for_test_statistic(
         self, 
         b: int
-    ) -> Tuple[np.ndarray, ...]:
+    ) -> Tuple[Union[np.ndarray, torch.Tensor], ...]:
         """Simulate a training set used to estimate the test statistic.
 
         Parameters
@@ -42,7 +43,7 @@ class Simulator(ABC):
 
         Returns
         -------
-        Tuple[np.ndarray, ...]
+        Tuple[Union[np.ndarray, torch.Tensor], ...]
             Y, parameters, samples (depending on the specific needs of the test statistic).
         """
         pass
@@ -51,7 +52,7 @@ class Simulator(ABC):
     def simulate_for_critical_values(
         self,
         b_prime: int
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[Union[np.ndarray, torch.Tensor]]:
         """Simulate a training set used to estimate the critical values via quantile regression.
 
         Parameters
@@ -61,7 +62,7 @@ class Simulator(ABC):
 
         Returns
         -------
-        Tuple[np.ndarray, np.ndarray]
+        Tuple[Union[np.ndarray, torch.Tensor]]
             Parameters, samples.
         """
         pass
@@ -70,7 +71,7 @@ class Simulator(ABC):
     def simulate_for_diagnostics(
         self,
         b_doubleprime: int
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[Union[np.ndarray, torch.Tensor]]:
         """Simulate a training set used to estimate conditional coverage via the diagnostics branch.
 
         Parameters
@@ -80,7 +81,7 @@ class Simulator(ABC):
 
         Returns
         -------
-        Tuple[np.ndarray, np.ndarray]
+        Tuple[Union[np.ndarray, torch.Tensor]]
             Parameters, samples.
         """
         pass
