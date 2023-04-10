@@ -231,7 +231,7 @@ class Learner:
             )
             one_hot_clusters = torch.from_numpy(clustering_output.one_hot_clusters).to(self.device)
             # compute this only one time for less computations
-            centroids_matmul = torch.from_numpy(np.matmul(clustering_output.centroids.astype(np.double), clustering_output.centroids.T.astype(np.double)))
+            centroids_matmul = torch.from_numpy(np.matmul(clustering_output.centroids.astype(np.double), clustering_output.centroids.T.astype(np.double))).to(self.device)
             assert centroids_matmul.shape[0] == centroids_matmul.shape[1]
             print(f"Converged after {clustering_output.n_iter} iterations", flush=True)
 
