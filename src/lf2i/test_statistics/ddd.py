@@ -129,21 +129,22 @@ class DDD:
         centroids: torch.Tensor,
         one_hot_clusters: torch.Tensor
     ) -> torch.Tensor:
-        
+        # print(one_hot_clusters.shape, flush=True)
         ddd = torch.Tensor([0.])
         for j in range(len(self.poi_bins)-1):
-            
+            # print(f'partition {j}', flush=True)
             poi_partition_mask = ( (poi_input >= self.poi_bins[j]) & (poi_input < self.poi_bins[j+1]) ).reshape(-1, )
             y_pred_binned_1 = y_pred[poi_partition_mask]
             soft_assign_0 = torch.sum((1 - y_pred_binned_1).reshape(-1, 1) * one_hot_clusters[poi_partition_mask, :], axis=0) / torch.sum(1 - y_pred_binned_1)
             soft_assign_1 = torch.sum(y_pred_binned_1.reshape(-1, 1) * one_hot_clusters[poi_partition_mask, :], axis=0) / torch.sum(y_pred_binned_1)
             soft_assign_0, soft_assign_1 = soft_assign_0.reshape(1, one_hot_clusters.shape[1]), soft_assign_1.reshape(1, one_hot_clusters.shape[1])
-
+            # print(soft_assign_0.shape, soft_assign_1.shape, centroids.shape, flush=True)
             ddd_j = torch.matmul(
                 torch.matmul((soft_assign_0 - soft_assign_1), torch.matmul(centroids.double(), centroids.double().T)),
                 (soft_assign_0 - soft_assign_1).T
             )
             ddd += ddd_j.reshape(1, )
+            # print(ddd_j, flush=True)
         
         return ddd
 
