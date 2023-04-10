@@ -1,7 +1,7 @@
 from typing import Union, Dict, Any, List
 from abc import ABC, abstractmethod
 
-from lf2i.test_statistics._estimators import ESTIMATORS
+from lf2i.test_statistics.estimators import ESTIMATORS
 
 
 class TestStatistic(ABC):

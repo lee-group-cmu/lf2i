@@ -8,17 +8,13 @@ import torch
 def preprocess_quantile_regression(
     test_statistics: Union[np.ndarray, torch.Tensor],
     parameters: Union[np.ndarray, torch.Tensor],
-    prediction_grid: Union[np.ndarray, torch.Tensor],
     param_dim: int
 ) -> Tuple[Union[np.ndarray, torch.Tensor]]:
     if isinstance(test_statistics, torch.Tensor):
         test_statistics = test_statistics.numpy()
     if isinstance(parameters, torch.Tensor):
         parameters = parameters.numpy()
-    if isinstance(prediction_grid, torch.Tensor):
-        prediction_grid = prediction_grid.numpy()
-    return test_statistics.reshape(-1, ), parameters.reshape(-1, param_dim), prediction_grid.reshape(-1, param_dim)
-
+    return test_statistics.reshape(-1, ), parameters.reshape(-1, param_dim)
 
 def preprocess_neyman_inversion(
     test_statistic: np.ndarray,
@@ -70,7 +66,7 @@ def preprocess_indicators_posterior(
     if isinstance(parameter_grid, torch.Tensor):
         parameter_grid = parameter_grid.float().numpy()
     parameters = parameters.reshape(-1, param_dim)
-    return parameters, samples.reshape(parameters.shape[0], data_sample_size, param_dim), parameter_grid.reshape(-1, param_dim)
+    return parameters, samples.reshape(parameters.shape[0], data_sample_size, -1), parameter_grid.reshape(-1, param_dim)
 
 
 def preprocess_indicators_prediction(

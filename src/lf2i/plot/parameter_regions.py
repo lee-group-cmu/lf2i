@@ -1,7 +1,12 @@
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, Sequence
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import cm
+from matplotlib.colors import to_rgba
+from matplotlib.axes._axes import Axes
+import alphashape
+from descartes import PolygonPatch
 
 
 def plot_parameter_region(
@@ -9,16 +14,15 @@ def plot_parameter_region(
     param_dim: int,
     true_parameter: Optional[np.ndarray] = None,
     parameter_space_bounds: Optional[Dict[str, float]] = None,
-    figsize: Optional[Tuple[int, int]] = None,
     save_fig_path: Optional[str] = None,
     **kwargs
 ) -> None:
     """Dispatcher to plot parameter regions of different dimensionality.
     """
     if param_dim == 1:
-        plot_parameter_region_1D(parameter_region, true_parameter, parameter_space_bounds, figsize, **kwargs)
+        plot_parameter_region_1D(parameter_region, true_parameter, parameter_space_bounds, **kwargs)
     elif param_dim == 2:
-        plot_parameter_region_2D(parameter_region, true_parameter, parameter_space_bounds, figsize, **kwargs)
+        plot_parameter_region_2D(parameter_region=parameter_region, true_parameter=true_parameter, parameter_space_bounds=parameter_space_bounds, **kwargs)
     elif param_dim == 3:
         raise NotImplementedError
     else:
@@ -57,29 +61,111 @@ def plot_parameter_region_1D(
 def plot_parameter_region_2D(
     parameter_region: np.ndarray,
     true_parameter: Optional[np.ndarray] = None,
-    parameter_space_bounds: Optional[Dict[str, float]] = None,
+    parameter_space_bounds: Optional[Dict[str, Dict[str, float]]] = None,
+    labels: Optional[Sequence[str]] = None,
+    param_names: Optional[Sequence[str]] = None,
     figsize: Optional[Tuple[int, int]] = None,
-    plot_hull: bool = False,
-    color: Optional[str] = 'green'
+    alpha_shape: bool = False,
+    alpha: Optional[float] = None,
+    scatter: bool = True,
+    color: Optional[str] = 'green',
+    region_name: Optional[str] = "Parameter region",
+    custom_ax: Optional[Axes] = None
 ) -> None:
     """Plot 2-dimensional parameter regions as point clouds.
     """
-    _, ax = plt.subplots(1, 1, figsize=figsize if figsize is not None else (10, 10))
+    if custom_ax is None:
+        plt.figure(figsize=figsize if figsize is not None else (10, 10))
+        ax = plt.gca()
+    else:
+        ax = custom_ax
 
-    ax.scatter(x=parameter_region[:, 0], y=parameter_region[:, 1], s=3.5, c=color, zorder=1, label="Parameter region")
+    if scatter:
+        ax.scatter(x=parameter_region[:, 0], y=parameter_region[:, 1], s=3.5, c=color, zorder=1, label=region_name)
+    if alpha_shape:
+        alpha_shape = alphashape.alphashape(parameter_region, alpha=alpha)
+        patch = PolygonPatch(alpha_shape, fc=to_rgba(color, 0.2), ec=to_rgba(color, 1), lw=2, label=region_name)
+        ax.add_patch(patch)
     if true_parameter is not None:
         ax.scatter(x=true_parameter.reshape(-1,)[0], y=true_parameter.reshape(-1,)[1], alpha=1, c="red", marker="*", s=250, zorder=10)
-    if plot_hull:
-        pass
-
-    ax.set_xlabel(r"$\theta_{{(1)}}$", fontsize=45)
-    ax.set_ylabel(r"$\theta^{{(2)}}$", fontsize=45, rotation=0)
-    ax.tick_params(labelsize=30)
+    
     if parameter_space_bounds is not None:
-        ax.set_xlim(parameter_space_bounds['low'], parameter_space_bounds['high'])
-        ax.set_ylim(parameter_space_bounds['low'], parameter_space_bounds['high'])
-    legend = ax.legend(prop={'size': 25})
+        param_names = labels if param_names is None else param_names
+        ax.set_xlim(parameter_space_bounds[param_names[0]]['low'], parameter_space_bounds[param_names[0]]['high'])
+        ax.set_ylim(parameter_space_bounds[param_names[1]]['low'], parameter_space_bounds[param_names[1]]['high'])
+    if custom_ax is None:
+        labels = [r"$\theta_{{(1)}}$", r"$\theta^{{(2)}}$"] if labels is None else labels
+        ax.set_xlabel(labels[0], fontsize=45)
+        ax.set_ylabel(labels[1], fontsize=45)
+        ax.tick_params(labelsize=30)
+
+        legend = ax.legend(prop={'size': 25})
+        legend.legendHandles[0]._sizes = [40]
+        for axis in ['top', 'bottom', 'left', 'right']:
+            ax.spines[axis].set_linewidth(3)
+            ax.spines[axis].set_color('black')
+        plt.show()
+    else:
+        # to plot legend in main plot
+        return ax.get_legend_handles_labels()
+        
+
+def parameter_regions_pairplot(
+    *parameter_regions: np.ndarray,
+    true_parameter: np.ndarray,  # can plot multiple regions for the same true parameter, not different
+    parameter_space_bounds: Optional[Dict[str, Dict[str, float]]] = None,
+    labels: Optional[np.ndarray[str]] = None,
+    param_names: Optional[np.ndarray[str]] = None,
+    colors: Optional[Sequence[str]] = None,
+    region_names: Optional[Sequence[str]] = None,
+    alpha_shape: bool = False,
+    alpha: Optional[float] = None,
+    scatter: bool = True,
+    figsize: Optional[Sequence[int]] = (15, 15),
+    save_fig_path: Optional[str] = None
+) -> None:
+
+    rows = cols = parameter_regions[0].shape[1]  # param dim
+    fig, ax = plt.subplots(rows, cols, figsize=figsize)
+    colors = colors or cm.rainbow(np.linspace(0, 1, len(region_names)))
+    assert len(region_names) == len(colors) == len(parameter_regions)
+    
+    for row in range(rows):
+        for col in range(cols):
+            # plots
+            if col <= row:
+                ax[row, col].axis('off')
+            else:
+                for i, parameter_region in enumerate(parameter_regions):
+                    leg_handles, leg_labels = plot_parameter_region_2D(
+                        parameter_region=parameter_region[:, [col, row]],  # swap order to have 'row' parameter on y axis
+                        true_parameter=true_parameter[[col, row]],
+                        parameter_space_bounds={
+                            param: dict(zip(['low', 'high'], parameter_space_bounds[param])) 
+                            for param in param_names[[col, row]]
+                        },
+                        labels=None,
+                        param_names=param_names[[col, row]],
+                        color=colors[i],
+                        region_name=region_names[i],
+                        alpha_shape=alpha_shape,
+                        alpha=alpha,
+                        scatter=scatter,
+                        custom_ax=ax[row, col]
+                    )
+                
+                # labels
+                if col == row+1:
+                    ax[row, col].set_xlabel(r'$\theta_{}$'.format(col) if labels is None else labels[col], fontsize=20)
+                    ax[row, col].tick_params(axis='x', labelsize=12)
+                    ax[row, col].set_ylabel(r'$\theta_{}$'.format(row) if labels is None else labels[row], fontsize=20, labelpad=3)
+                    ax[row, col].tick_params(axis='y', labelsize=12)
+                else:
+                    ax[row, col].tick_params(labelleft=False, labelbottom=False)
+    
+    legend = fig.legend(leg_handles, leg_labels, bbox_to_anchor=(0.5, 0.5))
     legend.legendHandles[0]._sizes = [40]
-    for axis in ['top', 'bottom', 'left', 'right']:
-        ax.spines[axis].set_linewidth(3)
-        ax.spines[axis].set_color('black')
+    
+    if save_fig_path is not None:
+        plt.savefig(save_fig_path, bbox_inches='tight')
+    plt.show()

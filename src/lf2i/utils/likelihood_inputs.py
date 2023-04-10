@@ -34,10 +34,10 @@ def preprocess_odds_estimation(
     if (len(samples.shape) == 3) and (samples.shape[1] > 1):
         warnings.warn(
             f"""You provided a simulated set with single-sample size = {samples.shape[1]}.\n
-            This dimension will be flattened for estimation or evaluation. Is this the desired behaviour?"""
+            This dimension will be flattened for estimation. Is this the desired behaviour?"""
         )
     if isinstance(parameters, np.ndarray):
-        params_samples = np.vstack((
+        params_samples = np.hstack((
             parameters.reshape(-1, param_dim),
             samples.reshape(-1, samples.shape[-1])
         ))
@@ -85,7 +85,7 @@ def preprocess_odds_cv(
         np.repeat(parameters.reshape(-1, param_dim), repeats=data_sample_size, axis=0),
         samples.reshape(-1, samples.shape[-1])
     ))
-    if isinstance(estimator, torch.nn.Module):
+    if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
         return torch.from_numpy(params_samples).float()
     else:
         return params_samples

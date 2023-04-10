@@ -39,20 +39,20 @@ def hpd_region(
         Final confidence level, hpd credible region
     """
     # evaluate posterior over fine grid of values in support
-    posterior_probs = torch.exp(posterior.log_prob(theta=param_grid, x=x))
+    posterior_probs = torch.exp(posterior.log_prob(theta=param_grid, x=x).double()).double()
     posterior_probs /= torch.sum(posterior_probs)  # make sure they sum to 1
 
     # descend the level sets of the posterior (p_levels) and stop when the area above the level equals confidence level 
-    p_levels = np.linspace(0.99, 0, num_p_levels)  # thresholds to include or not parameters
+    p_levels = torch.linspace(0.99, 0, num_p_levels)  # thresholds to include or not parameters
     current_confidence_level = 1
     new_confidence_levels = []
     idx = 0
-    while np.abs(current_confidence_level - confidence_level) > tol:
+    while abs(current_confidence_level - confidence_level) > tol:
         if idx == num_p_levels:  # no more to examine
             break
         new_confidence_level = torch.sum(posterior_probs[posterior_probs >= p_levels[idx]])
         new_confidence_levels.append(new_confidence_level)
-        if np.abs(new_confidence_level - confidence_level) < np.abs(current_confidence_level - confidence_level):
+        if abs(new_confidence_level - confidence_level) < abs(current_confidence_level - confidence_level):
             current_confidence_level = new_confidence_level
         idx += 1
     # all params such that p(params|x) > p_level, where p_levels is the last chosen one

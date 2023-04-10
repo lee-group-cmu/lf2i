@@ -20,13 +20,13 @@ class QuantileLoss(torch.nn.Module):
         self, 
         quantiles: Union[Tuple, List, np.ndarray, torch.Tensor]
     ) -> None:
-        super.__init__()
+        super().__init__()
         self.quantiles = quantiles
 
     def forward(
         self, 
-        targets: torch.Tensor, 
-        predictions: torch.Tensor
+        predictions: torch.Tensor,
+        targets: torch.Tensor
     ) -> torch.Tensor:
         assert not targets.requires_grad
         assert predictions.size(0) == targets.size(0)
@@ -88,11 +88,10 @@ class QuantileNN(torch.nn.Module):
         # output
         self.model = torch.nn.Sequential(*self.model)
         self.final_layers = torch.nn.ModuleList(
-            [torch.nn.Linear(self.hidden_layer_shapes[-1], 1) for _ in range(len(self.n_quantiles))]
+            [torch.nn.Linear(self.hidden_layer_shapes[-1], 1) for _ in range(self.n_quantiles)]
         )
     
     def init_weights(self) -> None:
-        torch.manual_seed(self.seed)
         for m in chain(self.model, self.final_layers):
             if isinstance(m, torch.nn.Linear):
                 torch.nn.init.orthogonal_(m.weight)
@@ -155,7 +154,7 @@ class Learner:
                 ).float().to(self.device).requires_grad_(False)
                 
                 batch_predictions = self.model(batch_X)
-                batch_loss = self.loss(batch_predictions, batch_y)
+                batch_loss = self.loss(predictions=batch_predictions, targets=batch_y)
                 batch_loss.backward()
                 self.optimizer.step()
                 epoch_losses.append(batch_loss.cpu().detach().numpy())

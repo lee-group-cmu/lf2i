@@ -38,7 +38,7 @@ def preprocess_waldo_estimation(
     
     if (len(samples.shape) == 3) and (samples.shape[1] > 1):
         warnings.warn(f"You provided a simulated set with single-sample size = {samples.shape[1]}. This dimension will be flattened for estimation or evaluation. Is this the desired behaviour?")
-    if param_dim == 1:
+    if (param_dim == 1) and (method == 'prediction'):
         parameters = parameters.reshape(-1, )
     else:
         parameters = parameters.reshape(-1, param_dim)

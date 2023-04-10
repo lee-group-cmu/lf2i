@@ -11,7 +11,9 @@ AUTHOR = "Luca Masserano, Niccolò Dalmasso, David Zhao, Rafael Izbicki, Ann B. 
 REQUIRES_PYTHON = ">=3.9.0"
 
 REQUIRED = [
+    "alphashape",
     "click",
+    "descartes",  # TODO: careful! There was a bug due to an inconsistency with Shapely. See https://stackoverflow.com/questions/75287534/indexerror-descartes-polygonpatch-wtih-shapely
     "matplotlib>=3.6.0",
     "numpy",
     "rpy2>=3.5.4",
@@ -21,7 +23,7 @@ REQUIRED = [
     "seaborn>=0.12.1",
     "torch>=1.12.1",
     "tqdm",
-    "xgboost>=1.6.2"
+    "xgboost>=1.6.2",
 ]
 
 EXTRAS = {
