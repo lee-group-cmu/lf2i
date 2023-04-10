@@ -229,7 +229,7 @@ class Learner:
             clustering_output = self.ddd.optimal_partition(
                 diffusion_map=diff_map, stationary_distribution=stationary_dist,
             )
-            one_hot_clusters_gpu = torch.from_numpy(clustering_output.one_hot_clusters).to(self.device)
+            one_hot_clusters = torch.from_numpy(clustering_output.one_hot_clusters).to(self.device)
             # compute this only one time for less computations
             centroids_matmul = torch.from_numpy(np.matmul(clustering_output.centroids.astype(np.double), clustering_output.centroids.T.astype(np.double)))
             assert centroids_matmul.shape[0] == centroids_matmul.shape[1]
@@ -255,7 +255,7 @@ class Learner:
                         y_pred=batch_predictions,
                         poi_input=batch_X[:, :self.ddd.poi_dim],  # NOTE: assumes POIs come first
                         centroids_matmul=centroids_matmul,
-                        one_hot_clusters=clustering_output.one_hot_clusters[batch_shuffle_idx.to(self.device), :]
+                        one_hot_clusters=one_hot_clusters[batch_shuffle_idx.to(self.device), :]
                     )
                     batch_loss = batch_loss.reshape(1, ) + ddd_gamma*ddd_loss
                 batch_loss.backward()
