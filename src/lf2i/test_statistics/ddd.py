@@ -126,9 +126,11 @@ class DDD:
         self,
         y_pred: torch.Tensor,
         poi_input: torch.Tensor,
-        centroids: torch.Tensor,
+        centroids_matmul: torch.Tensor,
         one_hot_clusters: torch.Tensor
     ) -> torch.Tensor:
+        """centroids_matmul == np.matmul(centroids, centroids.T)
+        """
         # print(one_hot_clusters.shape, flush=True)
         ddd = torch.Tensor([0.])
         for j in range(len(self.poi_bins)-1):
@@ -140,7 +142,7 @@ class DDD:
             soft_assign_0, soft_assign_1 = soft_assign_0.reshape(1, one_hot_clusters.shape[1]), soft_assign_1.reshape(1, one_hot_clusters.shape[1])
             # print(soft_assign_0.shape, soft_assign_1.shape, centroids.shape, flush=True)
             ddd_j = torch.matmul(
-                torch.matmul((soft_assign_0 - soft_assign_1), torch.matmul(centroids.double(), centroids.double().T)),
+                torch.matmul((soft_assign_0 - soft_assign_1), centroids_matmul),
                 (soft_assign_0 - soft_assign_1).T
             )
             ddd += ddd_j.reshape(1, )
@@ -227,6 +229,10 @@ class Learner:
             clustering_output = self.ddd.optimal_partition(
                 diffusion_map=diff_map, stationary_distribution=stationary_dist,
             )
+            one_hot_clusters_gpu = torch.from_numpy(clustering_output.one_hot_clusters).to(self.device)
+            # compute this only one time for less computations
+            centroids_matmul = torch.from_numpy(np.matmul(clustering_output.centroids.astype(np.double), clustering_output.centroids.T.astype(np.double)))
+            assert centroids_matmul.shape[0] == centroids_matmul.shape[1]
             print(f"Converged after {clustering_output.n_iter} iterations", flush=True)
 
         self.model.train()
@@ -248,8 +254,8 @@ class Learner:
                     ddd_loss = self.ddd.compute_ddd(
                         y_pred=batch_predictions,
                         poi_input=batch_X[:, :self.ddd.poi_dim],  # NOTE: assumes POIs come first
-                        centroids=torch.from_numpy(clustering_output.centroids),
-                        one_hot_clusters=torch.from_numpy(clustering_output.one_hot_clusters)[batch_shuffle_idx, :]
+                        centroids_matmul=centroids_matmul,
+                        one_hot_clusters=clustering_output.one_hot_clusters[batch_shuffle_idx.to(self.device), :]
                     )
                     batch_loss = batch_loss.reshape(1, ) + ddd_gamma*ddd_loss
                 batch_loss.backward()
