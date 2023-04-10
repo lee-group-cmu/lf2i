@@ -127,12 +127,13 @@ class DDD:
         y_pred: torch.Tensor,
         poi_input: torch.Tensor,
         centroids_matmul: torch.Tensor,
-        one_hot_clusters: torch.Tensor
+        one_hot_clusters: torch.Tensor,
+        device: Any  # torch device, not string (I think)
     ) -> torch.Tensor:
         """centroids_matmul == np.matmul(centroids, centroids.T)
         """
         # print(one_hot_clusters.shape, flush=True)
-        ddd = torch.Tensor([0.])
+        ddd = torch.Tensor([0.]).to(device)
         for j in range(len(self.poi_bins)-1):
             # print(f'partition {j}', flush=True)
             poi_partition_mask = ( (poi_input >= self.poi_bins[j]) & (poi_input < self.poi_bins[j+1]) ).reshape(-1, )
@@ -255,7 +256,8 @@ class Learner:
                         y_pred=batch_predictions,
                         poi_input=batch_X[:, :self.ddd.poi_dim],  # NOTE: assumes POIs come first
                         centroids_matmul=centroids_matmul,
-                        one_hot_clusters=one_hot_clusters[batch_shuffle_idx.to(self.device), :]
+                        one_hot_clusters=one_hot_clusters[batch_shuffle_idx.to(self.device), :],
+                        device=self.device
                     )
                     batch_loss = batch_loss.reshape(1, ) + ddd_gamma*ddd_loss
                 batch_loss.backward()
