@@ -1,6 +1,7 @@
 from typing import Optional, Union, Callable, Dict, Tuple, Any, NamedTuple, Sequence
 from tqdm import tqdm
 import warnings
+import os
 
 import numpy as np
 import torch
@@ -44,6 +45,8 @@ class DDD:
             # how do we bin when poi_dim > 1
             # how do we check if poi is in bin when computing ddd
             raise NotImplementedError
+        
+        assert t == 1, "Check logic with eigenvalues and trans probs, especially in Nystrom method. Need to use P^t and its eigenvalues! Not P and its eigenvalues"
 
         self.poi_dim = poi_dim
         self.poi_bins = poi_bins
@@ -80,6 +83,8 @@ class DDD:
         if self.diffusion_map_type == 'power':
             # discard the imaginary part, if any. Complex data not supported in many frameworks (e.g., SciKit Learn)
             return np.real((eigenvals ** self.t).reshape(1, -1) * eigenvecs)
+        elif self.diffusion_map_type == 'average':
+            return np.real((eigenvals.reshape(1, -1) / (1-eigenvals.reshape(1, -1))) * eigenvecs)
         else:
             raise NotImplementedError
 
@@ -145,7 +150,7 @@ class DDD:
         else:
             centroids = diffusion_map[np.random.choice(a=np.arange(diffusion_map.shape[0]), size=self.k, replace=False), :]
             for it in tqdm(range(max_iter), desc='Computing optimal clustering ...'):
-                distances_from_centroids = sk_metrics.pairwise_distances(diffusion_map, centroids, metric='euclidean')
+                distances_from_centroids = sk_metrics.pairwise_distances(diffusion_map, centroids, metric='euclidean', n_jobs=os.cpu_count()-1)
                 cluster_assignments = np.argmin(distances_from_centroids, axis=1)
                 # i-th centroid is sum of the diffusion map assigned to i-th cluster, weighted by corresponding stationary distribution
                 new_centroids = np.array([
@@ -275,6 +280,14 @@ class Learner:
             self.ddd = None
         self.loss_trajectory = []
     
+    #def __getstate__(self):
+    #    # return state values to be pickled. Don't save self.ddd because unpicklable
+    #    return self.device, self.model, self.optimizer, self.loss, self.ddd_loss_trajectory, self.loss_trajectory
+    #
+    #def __setstate__(self, state):
+    #    # restore state from the unpickled state values
+    #    self.device, self.model, self.optimizer, self.loss, self.ddd_loss_trajectory, self.loss_trajectory = state
+    
     def fit(
         self,
         X: torch.Tensor, # NOTE: assumes order poi, nu, data
@@ -295,7 +308,10 @@ class Learner:
             
             if self.ddd.nystrom_subset_size:
                 estimated_diff_map = self.ddd.nystrom_approximation(diff_map_output=diff_map_output)
-                cluster_assignments = np.argmin(sk_metrics.pairwise_distances(estimated_diff_map, clustering_output.centroids, metric='euclidean'), axis=1)
+                print(f"Computing Nystrom cluster assignments ...", flush=True)
+                cluster_assignments = np.argmin(
+                    sk_metrics.pairwise_distances(estimated_diff_map, clustering_output.centroids, metric='euclidean', n_jobs=os.cpu_count()-1)
+                , axis=1)
                 one_hot_clusters = np.zeros(shape=(estimated_diff_map.shape[0], self.ddd.k), dtype=int)
                 one_hot_clusters[range(one_hot_clusters.shape[0]), cluster_assignments.astype(int)] = 1
 
@@ -304,7 +320,8 @@ class Learner:
             # compute this only one time for less computations
             centroids_matmul = torch.from_numpy(np.matmul(clustering_output.centroids, clustering_output.centroids.T)).to(self.device)
             assert centroids_matmul.shape[0] == centroids_matmul.shape[1]
-            
+        
+        print(f"Start training ...", flush=True)
         self.model.train()
         for _ in tqdm(range(epochs), desc="Training NN Classifier"):
             shuffle_idx = torch.from_numpy(np.random.choice(a=np.arange(X.shape[0]), size=X.shape[0], replace=False))
