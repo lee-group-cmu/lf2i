@@ -1,14 +1,24 @@
 from typing import Optional, Union, Callable, Dict, Tuple, Any, NamedTuple, Sequence
 from tqdm import tqdm
+import warnings
 
 import numpy as np
 import torch
+import jax.numpy as jnp
 import sklearn.metrics as sk_metrics
 
 
+class DiffusionMapOutput(NamedTuple):
+    stationary_distribution: np.ndarray
+    transition_probs: np.ndarray
+    eigenvalues: np.ndarray
+    eigenvectors: np.ndarray
+    diffusion_map: np.ndarray
+
+
 class ClusteringOutput(NamedTuple):
-    centroids: np.ndarray
-    one_hot_clusters: np.ndarray
+    centroids: np.ndarray  # k x n (if we retain all n eigenvectors)
+    one_hot_clusters: np.ndarray  # n x k, where n is number of samples
     n_iter: int
 
 
@@ -26,7 +36,8 @@ class DDD:
         kernel_kwargs: Dict[str, Any] = {},
         diffusion_map_type: str = 'power',
         std_method: str = 'z_score',
-        t: Optional[int] = None
+        t: Optional[int] = None,
+        nystrom_subset_size: Optional[int] = None
     ) -> None:
         
         if poi_dim > 1:
@@ -41,6 +52,7 @@ class DDD:
         self.t = t
         self.diffusion_map_type = diffusion_map_type
         self.std_method = std_method
+        self.nystrom_subset_size = nystrom_subset_size
         
         if kernel == 'rbf':
             self.kernel = lambda nuisances: sk_metrics.pairwise.rbf_kernel(X=nuisances, **kernel_kwargs)
@@ -59,76 +71,112 @@ class DDD:
             return (nuisances - np.mean(nuisances, axis=0).reshape(1, -1)) / np.std(nuisances, axis=0).reshape(1, -1)
         else:
             raise NotImplementedError
+    
+    def _eig_to_diff_map(
+        self,
+        eigenvals: np.ndarray,
+        eigenvecs: np.ndarray
+    ) -> np.ndarray:
+        if self.diffusion_map_type == 'power':
+            # discard the imaginary part, if any. Complex data not supported in many frameworks (e.g., SciKit Learn)
+            return np.real((eigenvals ** self.t).reshape(1, -1) * eigenvecs)
+        else:
+            raise NotImplementedError
 
     def diffusion_map(
         self,
-        nuisances: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """Return stationary distribution and diffusion map
-        """
-        nuisances = nuisances.reshape(-1, self.nuisance_dim)
-        edge_weights = self.kernel(nuisances=self.standardize(nuisances=nuisances, method=self.std_method))
-        node_weights = np.sum(edge_weights, axis=1).reshape(-1, 1)
-        transition_probs = edge_weights / node_weights
+        nuisances: np.ndarray  # assumes they are shuffled already
+    ) -> Tuple[np.ndarray]:
+        if (nuisances.shape[0] > 10_000) and (self.nystrom_subset_size is None):
+            warnings.warn(
+                message=f"Eigendecomposition might be computationally infeasible for n = {nuisances.shape[0]}. Consider using Nyström method.", 
+                category=UserWarning
+            )
+
+        subset_n = self.nystrom_subset_size or nuisances.shape[0]
+        edge_weights = self.kernel(nuisances=self.standardize(nuisances=nuisances.reshape(-1, self.nuisance_dim), method=self.std_method))
+        node_weights = np.sum(edge_weights[:subset_n, :subset_n], axis=1).reshape(-1, 1)  # needed only for subset if using Nystrom
+        transition_probs = edge_weights[:subset_n, :subset_n] / node_weights
         assert np.all(np.isclose(transition_probs.sum(axis=1), 1))  # row-stochastic matrix
         
         eigenvals, eigenvecs = np.linalg.eig(transition_probs)
         eigenvals, eigenvecs = np.sort(eigenvals), eigenvecs[:, np.argsort(eigenvals)]
-        if self.diffusion_map_type == 'power':
-            diff_map = (eigenvals ** self.t).reshape(1, -1) * eigenvecs
-        else:
-            raise NotImplementedError
-        return node_weights / node_weights.sum(), diff_map
+        diff_map = self._eig_to_diff_map(eigenvals=eigenvals, eigenvecs=eigenvecs)
+
+        return DiffusionMapOutput(
+            stationary_distribution=node_weights / node_weights.sum(),  # only for nystrom subset
+            transition_probs=edge_weights / np.sum(edge_weights, axis=1).reshape(-1, 1),  # for all nuisances
+            eigenvalues=eigenvals,
+            eigenvectors=eigenvecs,
+            diffusion_map=diff_map
+        )
+    
+    def nystrom_approximation(
+        self,
+        diff_map_output: DiffusionMapOutput
+    ) -> np.ndarray:
+        # NOTE: this implementation follows http://www.iro.umontreal.ca/~lisa/pointeurs/bengio_eigenfunctions_nc_2004.pdf
+        # TODO: check https://www.cs.cmu.edu/~muli/file/nystrom_icml10.pdf for a more efficient Nyström approximation method
+        # TODO: uniform sampling of column might not be “optimal”. There are smarter ways, see https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/37831.pdf
         
-    def optimal_partition(
+        nystrom_eigenvecs = np.sqrt(self.nystrom_subset_size) * np.matmul(
+            # NOTE: assumes first self.nystrom_subset_size rows in nuisances were used for eigendecomposition
+            diff_map_output.transition_probs[:, :self.nystrom_subset_size],  # n x self.nystrom_subset_size
+            diff_map_output.eigenvectors  # self.nystrom_subset_size x self.nystrom_subset_size (if we retain all eigenvectors)
+        ) / diff_map_output.eigenvalues.reshape(1, -1)
+        assert nystrom_eigenvecs.shape == (diff_map_output.transition_probs.shape[0], diff_map_output.eigenvectors.shape[1])
+        nystrom_eigenvals = diff_map_output.eigenvalues / self.nystrom_subset_size
+        return self._eig_to_diff_map(eigenvals=nystrom_eigenvals, eigenvecs=nystrom_eigenvecs)
+        
+    def diffusion_k_means(
         self,
         diffusion_map: np.ndarray,
         stationary_distribution: np.ndarray,
-        max_iter: int = 300,
+        max_iter: int = 300,  # max_iter and tol taken from sklearn Kmeans settings
         tol: float = 1e-4
     ) -> ClusteringOutput:  
         if self.k == diffusion_map.shape[0]:
             # if k == n, no clustering
             return ClusteringOutput(
                 centroids=diffusion_map,
-                one_hot_clusters=np.eye(self.k),
+                one_hot_clusters=np.eye(self.k),  # TODO: make this sparse
                 n_iter=0
             )
-        
-        centroids = diffusion_map[np.random.choice(a=np.arange(diffusion_map.shape[0]), size=self.k, replace=False), :]
-        for it in range(max_iter):
-            distances_from_centroids = sk_metrics.pairwise_distances(diffusion_map, centroids, metric='euclidean')
-            cluster_assignments = np.argmin(distances_from_centroids, axis=1)
-            # i-th centroid is sum of the diffusion map assigned to i-th cluster, weighted by corresponding stationary distribution
-            new_centroids = np.array([
-                np.matmul(
-                    diffusion_map[cluster_assignments == c, :].T, stationary_distribution[cluster_assignments == c]
-                ) / stationary_distribution[cluster_assignments == c].sum() 
-                for c in range(self.k)
-            ])
-            assert new_centroids.shape == (self.k, diffusion_map.shape[1]), f'{new_centroids.shape}'
-            if np.all(np.linalg.norm(new_centroids - centroids, axis=1) < tol):
-                # if converged before reaching max_iter, stop
-                break
-            centroids = new_centroids
+        else:
+            centroids = diffusion_map[np.random.choice(a=np.arange(diffusion_map.shape[0]), size=self.k, replace=False), :]
+            for it in tqdm(range(max_iter), desc='Computing optimal clustering ...'):
+                distances_from_centroids = sk_metrics.pairwise_distances(diffusion_map, centroids, metric='euclidean')
+                cluster_assignments = np.argmin(distances_from_centroids, axis=1)
+                # i-th centroid is sum of the diffusion map assigned to i-th cluster, weighted by corresponding stationary distribution
+                new_centroids = np.array([
+                    np.matmul(
+                        diffusion_map[cluster_assignments == c, :].T, stationary_distribution[cluster_assignments == c]
+                    ) / stationary_distribution[cluster_assignments == c].sum() 
+                    for c in range(self.k)
+                ])
+                assert new_centroids.shape == (self.k, diffusion_map.shape[1]), f'{new_centroids.shape}'
+                if np.all(np.linalg.norm(new_centroids - centroids, axis=1) < tol):
+                    # if converged before reaching max_iter, stop
+                    break
+                centroids = new_centroids
 
-        # one-hot encoding of cluster assignments
-        one_hot_clusters = np.zeros(shape=(diffusion_map.shape[0], self.k), dtype=int)
-        one_hot_clusters[range(one_hot_clusters.shape[0]), cluster_assignments.astype(int)] = 1
-        
-        return ClusteringOutput(
-            centroids=np.real(new_centroids),  # discard the imaginary part
-            one_hot_clusters=one_hot_clusters,
-            n_iter=it
-        )
+            # one-hot encoding of cluster assignments
+            one_hot_clusters = np.zeros(shape=(diffusion_map.shape[0], self.k), dtype=int)
+            one_hot_clusters[range(one_hot_clusters.shape[0]), cluster_assignments.astype(int)] = 1
+            
+            return ClusteringOutput(
+                centroids=new_centroids,
+                one_hot_clusters=one_hot_clusters,  # TODO: make this sparse
+                n_iter=it
+            )
     
-    def compute_ddd(
+    def torch_ddd_regularizer(
         self,
         y_pred: torch.Tensor,
         poi_input: torch.Tensor,
         centroids_matmul: torch.Tensor,
         one_hot_clusters: torch.Tensor,
-        device: Any  # torch device, not string (I think)
+        device: Union[str, Any]
     ) -> torch.Tensor:
         """centroids_matmul == np.matmul(centroids, centroids.T)
         """
@@ -150,6 +198,20 @@ class DDD:
             # print(ddd_j, flush=True)
         
         return ddd
+
+    def xgb_ddd_objective(
+        loss: Union[str, Callable[[np.ndarray, np.ndarray], float]],
+        y_true: np.ndarray,
+        y_pred: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        if loss == 'logistic':
+            pass
+        loss_fun = lambda y_pred: loss(y_true=y_true, y_pred=y_pred)
+
+        grad = None
+        hess = None
+
+        return grad, hess
 
 
 class NNClassifier(torch.nn.Module):
@@ -215,29 +277,36 @@ class Learner:
     
     def fit(
         self,
-        X: torch.Tensor, 
-        y: torch.Tensor,
+        X: torch.Tensor, # NOTE: assumes order poi, nu, data
+        y: torch.Tensor, # NOTE: labels 1/0
         epochs: int, 
         batch_size: int,
         ddd_gamma: Optional[float] = None
     ) -> None:
         
+        # TODO: move this to dedicated on_torch_training_start method in DDD
         if self.ddd is not None:
             print("Constructing diffusion map ...", flush=True)
             # NOTE: assumes POIs come first, nuisances second, and then data
-            stationary_dist, diff_map = self.ddd.diffusion_map(nuisances=X[:, self.ddd.poi_dim:self.ddd.poi_dim+self.ddd.nuisance_dim].numpy())
+            diff_map_output = self.ddd.diffusion_map(nuisances=X[:, self.ddd.poi_dim:self.ddd.poi_dim+self.ddd.nuisance_dim].numpy())
             print("Computing optimal partition ...", flush=True)
-            clustering_output = self.ddd.optimal_partition(
-                diffusion_map=diff_map, stationary_distribution=stationary_dist,
-            )
-            one_hot_clusters = torch.from_numpy(clustering_output.one_hot_clusters).to(self.device)
-            # compute this only one time for less computations
-            centroids_matmul = torch.from_numpy(np.matmul(clustering_output.centroids.astype(np.double), clustering_output.centroids.T.astype(np.double))).to(self.device)
-            assert centroids_matmul.shape[0] == centroids_matmul.shape[1]
+            clustering_output = self.ddd.diffusion_k_means(diffusion_map=diff_map_output.diffusion_map, stationary_distribution=diff_map_output.stationary_distribution)
             print(f"Converged after {clustering_output.n_iter} iterations", flush=True)
+            
+            if self.ddd.nystrom_subset_size:
+                estimated_diff_map = self.ddd.nystrom_approximation(diff_map_output=diff_map_output)
+                cluster_assignments = np.argmin(sk_metrics.pairwise_distances(estimated_diff_map, clustering_output.centroids, metric='euclidean'), axis=1)
+                one_hot_clusters = np.zeros(shape=(estimated_diff_map.shape[0], self.ddd.k), dtype=int)
+                one_hot_clusters[range(one_hot_clusters.shape[0]), cluster_assignments.astype(int)] = 1
 
+            one_hot_clusters = one_hot_clusters if self.ddd.nystrom_subset_size else clustering_output.one_hot_clusters
+            one_hot_clusters = torch.from_numpy(one_hot_clusters).to(self.device)
+            # compute this only one time for less computations
+            centroids_matmul = torch.from_numpy(np.matmul(clustering_output.centroids, clustering_output.centroids.T)).to(self.device)
+            assert centroids_matmul.shape[0] == centroids_matmul.shape[1]
+            
         self.model.train()
-        for _ in tqdm(range(epochs), desc="Training NNClassifier"):
+        for _ in tqdm(range(epochs), desc="Training NN Classifier"):
             shuffle_idx = torch.from_numpy(np.random.choice(a=np.arange(X.shape[0]), size=X.shape[0], replace=False))
             epoch_joint_losses = []
             if self.ddd is not None:
@@ -252,9 +321,9 @@ class Learner:
                 batch_predictions = self.model(batch_X)
                 batch_loss = self.loss(batch_predictions, batch_y)
                 if self.ddd is not None:
-                    ddd_loss = self.ddd.compute_ddd(
+                    ddd_loss = self.ddd.torch_ddd_regularizer(
                         y_pred=batch_predictions,
-                        poi_input=batch_X[:, :self.ddd.poi_dim],  # NOTE: assumes POIs come first
+                        poi_input=batch_X[:, :self.ddd.poi_dim],
                         centroids_matmul=centroids_matmul,
                         one_hot_clusters=one_hot_clusters[batch_shuffle_idx.to(self.device), :],
                         device=self.device
