@@ -38,7 +38,8 @@ class DDD:
         diffusion_map_type: str = 'power',
         std_method: str = 'z_score',
         t: Optional[int] = None,
-        nystrom_subset_size: Optional[int] = None
+        nystrom_subset_size: Optional[int] = None,
+        n_jobs: Optional[int] = None
     ) -> None:
         
         if poi_dim > 1:
@@ -56,6 +57,7 @@ class DDD:
         self.diffusion_map_type = diffusion_map_type
         self.std_method = std_method
         self.nystrom_subset_size = nystrom_subset_size
+        self.n_jobs = n_jobs
         
         if kernel == 'rbf':
             self.kernel = lambda nuisances: sk_metrics.pairwise.rbf_kernel(X=nuisances, **kernel_kwargs)
@@ -150,7 +152,7 @@ class DDD:
         else:
             centroids = diffusion_map[np.random.choice(a=np.arange(diffusion_map.shape[0]), size=self.k, replace=False), :]
             for it in tqdm(range(max_iter), desc='Computing optimal clustering ...'):
-                distances_from_centroids = sk_metrics.pairwise_distances(diffusion_map, centroids, metric='euclidean', n_jobs=os.cpu_count()-1)
+                distances_from_centroids = sk_metrics.pairwise_distances(diffusion_map, centroids, metric='euclidean', n_jobs=self.n_jobs)
                 cluster_assignments = np.argmin(distances_from_centroids, axis=1)
                 # i-th centroid is sum of the diffusion map assigned to i-th cluster, weighted by corresponding stationary distribution
                 new_centroids = np.array([
@@ -308,15 +310,7 @@ class Learner:
             
             if self.ddd.nystrom_subset_size:
                 estimated_diff_map = self.ddd.nystrom_approximation(diff_map_output=diff_map_output)
-                print(f"Computing Nystrom cluster assignments ...", flush=True)
-                cluster_assignments = np.argmin(
-                    sk_metrics.pairwise_distances(estimated_diff_map, clustering_output.centroids, metric='euclidean', n_jobs=os.cpu_count()-1)
-                , axis=1)
-                one_hot_clusters = np.zeros(shape=(estimated_diff_map.shape[0], self.ddd.k), dtype=int)
-                one_hot_clusters[range(one_hot_clusters.shape[0]), cluster_assignments.astype(int)] = 1
 
-            one_hot_clusters = one_hot_clusters if self.ddd.nystrom_subset_size else clustering_output.one_hot_clusters
-            one_hot_clusters = torch.from_numpy(one_hot_clusters).to(self.device)
             # compute this only one time for less computations
             centroids_matmul = torch.from_numpy(np.matmul(clustering_output.centroids, clustering_output.centroids.T)).to(self.device)
             assert centroids_matmul.shape[0] == centroids_matmul.shape[1]
@@ -338,11 +332,20 @@ class Learner:
                 batch_predictions = self.model(batch_X)
                 batch_loss = self.loss(batch_predictions, batch_y)
                 if self.ddd is not None:
+                    if self.ddd.nystrom_subset_size:
+                        cluster_assignments = np.argmin(
+                            sk_metrics.pairwise_distances(estimated_diff_map[batch_shuffle_idx, :], clustering_output.centroids, metric='euclidean', n_jobs=self.ddd.n_jobs)
+                        , axis=1)
+                        one_hot_clusters = np.zeros(shape=(estimated_diff_map[batch_shuffle_idx, :].shape[0], self.ddd.k), dtype=int)
+                        one_hot_clusters[range(one_hot_clusters.shape[0]), cluster_assignments.astype(int)] = 1
+                    one_hot_clusters = one_hot_clusters if self.ddd.nystrom_subset_size else clustering_output.one_hot_clusters
+                    one_hot_clusters = torch.from_numpy(one_hot_clusters).to(self.device)
+                    
                     ddd_loss = self.ddd.torch_ddd_regularizer(
                         y_pred=batch_predictions,
                         poi_input=batch_X[:, :self.ddd.poi_dim],
                         centroids_matmul=centroids_matmul,
-                        one_hot_clusters=one_hot_clusters[batch_shuffle_idx.to(self.device), :],
+                        one_hot_clusters=one_hot_clusters,
                         device=self.device
                     )
                     batch_loss = batch_loss.reshape(1, ) + ddd_gamma*ddd_loss
