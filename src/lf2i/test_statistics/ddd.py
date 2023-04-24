@@ -1,7 +1,6 @@
 from typing import Optional, Union, Callable, Dict, Tuple, Any, NamedTuple, Sequence
 from tqdm import tqdm
 import warnings
-import os
 
 import numpy as np
 from scipy.spatial.distance import cdist as scipy_cdist
@@ -37,7 +36,7 @@ class DDD:
         kernel: Union[str, Callable],
         kernel_kwargs: Dict[str, Any] = {},
         diffusion_map_type: str = 'power',
-        std_method: str = 'z_score',
+        std_method: Union[str, None] = 'z_score',
         t: Optional[int] = None,
         nystrom_subset_size: Optional[int] = None
     ) -> None:
@@ -66,11 +65,13 @@ class DDD:
             raise NotImplementedError
     
     @staticmethod
-    def standardize(
+    def normalize(
         nuisances: np.ndarray,
         method: str
     ) -> np.ndarray:
-        if method == 'z_score':
+        if method is None:
+            return nuisances
+        elif method == 'z_score':
             # standardize each nuisance parameter (by column)
             return (nuisances - np.mean(nuisances, axis=0).reshape(1, -1)) / np.std(nuisances, axis=0).reshape(1, -1)
         else:
@@ -100,18 +101,17 @@ class DDD:
             )
 
         subset_n = self.nystrom_subset_size or nuisances.shape[0]
-        edge_weights = self.kernel(nuisances=self.standardize(nuisances=nuisances.reshape(-1, self.nuisance_dim), method=self.std_method))
+        edge_weights = self.kernel(nuisances=self.normalize(nuisances=nuisances.reshape(-1, self.nuisance_dim), method=self.std_method))
         node_weights = np.sum(edge_weights[:subset_n, :subset_n], axis=1).reshape(-1, 1)  # needed only for subset if using Nystrom
         transition_probs = edge_weights[:subset_n, :subset_n] / node_weights
         assert np.all(np.isclose(transition_probs.sum(axis=1), 1))  # row-stochastic matrix
         
         eigenvals, eigenvecs = np.linalg.eig(transition_probs)
-        eigenvals, eigenvecs = np.sort(eigenvals), eigenvecs[:, np.argsort(eigenvals)]
         diff_map = self._eig_to_diff_map(eigenvals=eigenvals, eigenvecs=eigenvecs)
 
         return DiffusionMapOutput(
             stationary_distribution=node_weights / node_weights.sum(),  # only for nystrom subset
-            transition_probs=edge_weights / np.sum(edge_weights, axis=1).reshape(-1, 1),  # for all nuisances
+            transition_probs=edge_weights[:, :subset_n] / np.sum(edge_weights[:, :subset_n], axis=1).reshape(-1, 1),  # for all nuisances (n x subset_n)
             eigenvalues=eigenvals,
             eigenvectors=eigenvecs,
             diffusion_map=diff_map
@@ -127,7 +127,7 @@ class DDD:
         
         nystrom_eigenvecs = np.sqrt(self.nystrom_subset_size) * np.matmul(
             # NOTE: assumes first self.nystrom_subset_size rows in nuisances were used for eigendecomposition
-            diff_map_output.transition_probs[:, :self.nystrom_subset_size],  # n x self.nystrom_subset_size
+            diff_map_output.transition_probs,  # n x self.nystrom_subset_size
             diff_map_output.eigenvectors  # self.nystrom_subset_size x self.nystrom_subset_size (if we retain all eigenvectors)
         ) / diff_map_output.eigenvalues.reshape(1, -1)
         assert nystrom_eigenvecs.shape == (diff_map_output.transition_probs.shape[0], diff_map_output.eigenvectors.shape[1])
@@ -151,8 +151,7 @@ class DDD:
         else:
             centroids = diffusion_map[np.random.choice(a=np.arange(diffusion_map.shape[0]), size=self.k, replace=False), :]
             for it in tqdm(range(max_iter), desc='Computing optimal clustering ...'):
-                distances_from_centroids = scipy_cdist(diffusion_map, centroids, metric='euclidean')
-                cluster_assignments = np.argmin(distances_from_centroids, axis=1)
+                cluster_assignments = np.argmin(scipy_cdist(diffusion_map, centroids, metric='euclidean'), axis=1)
                 # i-th centroid is sum of the diffusion map assigned to i-th cluster, weighted by corresponding stationary distribution
                 new_centroids = np.array([
                     np.matmul(
@@ -305,6 +304,7 @@ class Learner:
                 estimated_diff_map = self.ddd.nystrom_approximation(diff_map_output=diff_map_output)
                 print(f"Computing Nystrom cluster assignments ...", flush=True)
                 cluster_assignments = np.argmin(scipy_cdist(estimated_diff_map, clustering_output.centroids, metric='euclidean'), axis=1)
+                print(np.unique(cluster_assignments), flush=True)
                 one_hot_clusters = np.zeros(shape=(estimated_diff_map.shape[0], self.ddd.k), dtype=int)
                 one_hot_clusters[range(one_hot_clusters.shape[0]), cluster_assignments.astype(int)] = 1
 
@@ -339,6 +339,7 @@ class Learner:
                         device=self.device
                     )
                     batch_loss = batch_loss.reshape(1, ) + ddd_gamma*ddd_loss
+                    print(batch_loss, ddd_loss, flush=True)
                 batch_loss.backward()
                 self.optimizer.step()
                 epoch_joint_losses.append(batch_loss.cpu().detach().numpy())

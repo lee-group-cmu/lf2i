@@ -77,14 +77,14 @@ class BFF(TestStatistic):
                 return np.array([
                     integrate.nquad(
                         func=lambda *nuisance: odds(self.estimator.predict_proba(
-                            X=np.hstack((np.repeat(np.array([*parameters[i, :self.poi_dim], *nuisance]).reshape(-1, self.param_dim), repeats=self.data_sample_size, axis=0), samples[i, :, :]))
-                        ).astype(np.double)),
+                            X=torch.from_numpy(np.hstack((np.repeat(np.array([*parameters[i, :self.poi_dim], *nuisance]).reshape(-1, self.param_dim), repeats=self.data_sample_size, axis=0), samples[i, :, :]))).float()
+                        ).numpy().astype(np.double)),  # TODO: this has to be a numpy array or a torch Tensor depending on the estimator
                         ranges=param_space_bounds[-self.nuisance_dim:] 
                     )[0] / 
                     integrate.nquad(
                         func=lambda *params: odds(self.estimator.predict_proba(
-                            X=np.hstack((np.repeat(np.array([*params]).reshape(-1, self.param_dim), repeats=self.data_sample_size, axis=0), samples[i, :, :]))
-                        ).astype(np.double)),
+                            X=torch.from_numpy(np.hstack((np.repeat(np.array([*params]).reshape(-1, self.param_dim), repeats=self.data_sample_size, axis=0), samples[i, :, :]))).float()
+                        ).numpy().astype(np.double)),
                         ranges=param_space_bounds
                     )[0]
                     for i in tqdm(range(samples.shape[0]))    
