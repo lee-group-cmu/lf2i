@@ -1,6 +1,6 @@
 # Part of this code was adapted from https://colab.research.google.com/drive/1nXOlrmVHqCHiixqiMF6H8LSciz583_W2
 
-from typing import Union, List, Tuple
+from typing import Sequence
 from tqdm import tqdm
 
 from itertools import chain
@@ -13,12 +13,12 @@ class QuantileLoss(torch.nn.Module):
 
     Parameters
     ----------
-    quantiles : Union[Tuple, List, np.ndarray, torch.Tensor]
+    quantiles : Sequence[float]
         Target quantiles. Values must be in the range `(0, 1)`.
     """
     def __init__(
         self, 
-        quantiles: Union[Tuple, List, np.ndarray, torch.Tensor]
+        quantiles: Sequence[float]
     ) -> None:
         super().__init__()
         self.quantiles = quantiles
@@ -48,7 +48,7 @@ class QuantileNN(torch.nn.Module):
         Number of target quantiles.
     input_d : int
         Dimensionality of the input. 
-    hidden_layer_shapes : Union[Tuple, List]
+    hidden_layer_shapes : Sequence[int]
         The i-th element represents the number of neurons in the i-th hidden layer.
     dropout_p : float, optional
         Probability for the dropout layers, by default 0.0
@@ -57,7 +57,7 @@ class QuantileNN(torch.nn.Module):
         self,
         n_quantiles: int,
         input_d: int,
-        hidden_layer_shapes: Union[Tuple, List],
+        hidden_layer_shapes: Sequence[int],
         hidden_activation: torch.nn.Module = torch.nn.ReLU(),
         dropout_p: float = 0.0,
     ) -> None:

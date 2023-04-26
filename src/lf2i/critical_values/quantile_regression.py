@@ -1,4 +1,4 @@
-from typing import Union, Callable, Dict, Tuple, Any, List
+from typing import Union, Callable, Dict, Any, Sequence
 import os
 
 import numpy as np
@@ -15,9 +15,9 @@ def train_qr_algorithm(
     test_statistics: np.ndarray,
     parameters: np.ndarray,
     algorithm: Union[str, Callable],
-    alpha: Union[float, List[float], Tuple[float]],
+    alpha: Union[float, Sequence[float]],
     param_dim: int,
-    algorithm_kwargs: Union[Dict, str] = {}
+    algorithm_kwargs: Dict = {}
 ) -> Any:
     """Dispatcher to train different quantile regressors.
 
@@ -30,7 +30,7 @@ def train_qr_algorithm(
     algorithm : Union[str, Any]
         Either 'gb' for Gradient Boosted Trees, 'nn' for Neural Networks, or a custom algorithm (Any).
         The latter must have `fit` and `predict` methods.
-    alpha : float  # TODO: update this to include sequences
+    alpha : Union[float, Sequence[float]]  # TODO: update this to include sequences (only with monotonic NNs, otherwise quantile crossings)
         The alpha quantile of the test statistic will be estimated. 
         E.g., for 90% confidence intervals, it should be 0.1. Must be in the range `(0, 1)`.
     param_dim: int
@@ -38,7 +38,7 @@ def train_qr_algorithm(
     algorithm_kwargs : Union[Dict, str], optional
         Keywork arguments for the desired algorithm, by default {}.
         If algorithm == 'nn', then 'hidden_layer_shapes', 'epochs' and 'batch_size' must be present.
-        If algorithm == 'gb', pass 'cv' to do a randomized search over `max_depth` and `n_estimators` via 5-fold cross validation.
+        If algorithm == 'gb', pass {'cv': hp_dist} to do a randomized search over the hyperparameters in hp_dist (Dict) via 5-fold cross validation.
 
     Returns
     -------
@@ -53,16 +53,13 @@ def train_qr_algorithm(
     test_statistics, parameters = preprocess_quantile_regression(test_statistics, parameters, param_dim)
 
     if algorithm == "gb":
-        if algorithm_kwargs == 'cv':
+        if 'cv' in algorithm_kwargs:
             algorithm = RandomizedSearchCV(
                 estimator=GradientBoostingRegressor(
                     loss='quantile', 
                     alpha=alpha
                 ),
-                param_distributions={
-                    'max_depth': [1, 3, 5, 7, 10, 15],
-                    'n_estimators': [100, 300, 500, 1000]
-                },
+                param_distributions=algorithm_kwargs['cv'],
                 n_iter=20,  # default
                 scoring=make_scorer(mean_pinball_loss, alpha=alpha, greater_is_better=False),
                 n_jobs=os.cpu_count()-2,

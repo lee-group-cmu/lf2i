@@ -1,4 +1,5 @@
 from typing import Optional, Union, Dict, List, Tuple, Any
+import warnings
 
 import numpy as np
 import torch
@@ -43,7 +44,6 @@ class LF2I:
         self.simulator = simulator
         self.test_statistic = test_statistic
         self.quantile_regressor = None
-        self.critical_values = None
         self.diagnostics_estimator = None
         self.confidence_level = confidence_level
 
@@ -84,35 +84,34 @@ class LF2I:
             The `i`-th element is a confidence region for the `i`-th sample in `x`.
         """
         if (quantile_regressor == 'gb') and (quantile_regressor_kwargs == {}):
-            quantile_regressor_kwargs = {'n_estimators': 500, 'max_depth': 1}
+            quantile_regressor_kwargs = 'cv'  # random search over max depth and number of estimators via 5-fold CV
 
         # estimate test statistics
         if (not self.test_statistic._check_is_trained()) or re_estimate_test_statistics:
-            parameters_ts, samples_ts = self.simulator.simulate_for_test_statistic(b)
+            parameters_ts, samples_ts = self.simulator.simulate_for_test_statistic(B=b, estimation_method=self.test_statistic.estimation_method)
             self.test_statistic.estimate(parameters_ts, samples_ts)
             
         # estimate critical values
         if (self.quantile_regressor is None) or re_estimate_critical_values:
-            parameters_cv, samples_cv = self.simulator.simulate_for_critical_values(b_prime)
+            parameters_cv, samples_cv = self.simulator.simulate_for_critical_values(B_prime=b_prime)
             test_statistics_cv = self.test_statistic.evaluate(parameters_cv, samples_cv, mode='critical_values')
-            self.quantile_regressor, self.critical_values = train_qr_algorithm(  # TODO: decouple training from prediction
+            self.quantile_regressor = train_qr_algorithm(
                 test_statistics=test_statistics_cv,
                 parameters=parameters_cv,
                 algorithm=quantile_regressor,
                 algorithm_kwargs=quantile_regressor_kwargs,
-                prediction_grid=self.simulator.param_grid,
-                alpha=self.confidence_level,  # TODO: is this correct for any test statistics? For ACORE, e.g., I think it should be 1-self.confidence_level
-                param_dim=self.simulator.param_dim
+                alpha=self.confidence_level if self.test_statistic.acceptance_region == 'left' else 1-self.confidence_level,
+                param_dim=parameters_cv.shape[1]
             )
 
         # construct confidence_regions
-        test_statistics_x = self.test_statistic.evaluate(self.simulator.param_grid, x, mode='confidence_sets')
+        test_statistics_x = self.test_statistic.evaluate(self.simulator.poi_grid, x, mode='confidence_sets')
         confidence_regions = compute_confidence_regions(
             test_statistic=test_statistics_x,
-            critical_values=self.critical_values,
-            parameter_grid=self.simulator.param_grid,
+            critical_values=self.quantile_regressor.predict(X=self.simulator.poi_grid),
+            parameter_grid=self.simulator.poi_grid,
             acceptance_region=self.test_statistic.acceptance_region,
-            param_dim=self.simulator.param_dim
+            poi_dim=self.simulator.poi_dim
         )
         return confidence_regions
 
@@ -170,18 +169,18 @@ class LF2I:
                     critical_values=self.quantile_regressor.predict(X=parameters),
                     parameters=parameters,
                     acceptance_region=self.test_statistic.acceptance_region,
-                    param_dim=self.simulator.param_dim
+                    param_dim=parameters.shape[1]
                 )
             elif region_type == 'posterior':
                 assert isinstance(self.test_statistic, Waldo), \
                         "Test statistic is not an instance of `Waldo`. You must provide `indicators` and `parameters` to diagnose posteriors."
                 indicators = compute_indicators_posterior(
                     posterior=self.test_statistic.estimator,
-                    parameters=parameters,
+                    parameters=parameters,  # TODO: what if we want to do diagnostics against both POIs and nuisances?
                     samples=samples,
-                    parameter_grid=self.simulator.param_grid,
+                    parameter_grid=self.simulator.poi_grid,
                     confidence_level=self.confidence_level,
-                    param_dim=self.simulator.param_dim,
+                    param_dim=self.simulator.poi_grid,
                     data_sample_size=self.simulator.data_sample_size,
                     num_p_levels=1_000
                 )
@@ -190,10 +189,10 @@ class LF2I:
                         "Test statistic is not an instance of `Waldo`. You must provide `indicators` and `parameters` to diagnose prediction sets."
                 indicators = compute_indicators_prediction(
                     test_statistic=self.test_statistic,
-                    parameters=parameters,
+                    parameters=parameters,  # TODO: what if we want to do diagnostics against both POIs and nuisances?
                     samples=samples,
                     confidence_level=self.confidence_level,
-                    param_dim=self.simulator.param_dim
+                    param_dim=self.simulator.poi_grid
                 )
             elif region_type is None:
                 raise ValueError(
@@ -232,7 +231,7 @@ class WALDO(LF2I):
         
         If `Any` and `method == "prediction"`, must have `.fit(X=..., y=...)` and `predict(X=...)` methods. 
         If `method == "posterior"`, we currently support posterior estimators from the SBI package (https://github.com/mackelab/sbi).
-    method : str
+    estimation_method : str
         Whether the underlying estimator is a prediction algorithm ("prediction") or a posterior estimator ("posterior").
     confidence_level : float
         Desired confidence level.
@@ -252,7 +251,7 @@ class WALDO(LF2I):
         self,
         simulator: Simulator,
         estimator: Union[str, Any],
-        method: str,
+        estimation_method: str,
         confidence_level: float,
         num_posterior_samples: Optional[int] = None,
         conditional_variance_estimator: Optional[Union[str, Any]] = None,
@@ -261,10 +260,13 @@ class WALDO(LF2I):
     ) -> None:
 
         self.simulator = simulator
+        if self.simulator.data_sample_size > 1:
+            warnings.warn("Waldo for n > 1 can be ill-defined. Prediction algorithms or posterior models do not usually handle pairs (theta, (x1, ..., xn)). Are you using permutation-invariant embeddings?")
+
         self.test_statistic = Waldo(
             estimator=estimator,
-            param_dim=self.simulator.param_dim,
-            method=method,
+            poi_dim=self.simulator.poi_dim,
+            estimation_method=estimation_method,
             num_posterior_samples=num_posterior_samples,
             cond_variance_estimator=conditional_variance_estimator,
             estimator_kwargs=estimator_kwargs,

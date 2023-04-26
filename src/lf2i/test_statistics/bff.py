@@ -17,7 +17,7 @@ class BFF(TestStatistic):
         data_sample_size: int,
         estimator_kwargs: Dict = {}
     ) -> None:
-        super().__init__(acceptance_region='right')
+        super().__init__(acceptance_region='right', estimation_method='likelihood')
 
         self.hp_test_type = hp_test_type
         self.param_dim = param_dim

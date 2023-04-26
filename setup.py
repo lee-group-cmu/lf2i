@@ -13,7 +13,7 @@ REQUIRES_PYTHON = ">=3.9.0"
 REQUIRED = [
     "alphashape",
     "click",
-    "descartes",  # TODO: careful! There was a bug due to an inconsistency with Shapely. See https://stackoverflow.com/questions/75287534/indexerror-descartes-polygonpatch-wtih-shapely
+    "descartes",
     "matplotlib>=3.6.0",
     "numpy",
     "rpy2>=3.5.4",

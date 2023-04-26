@@ -5,7 +5,7 @@ fit_gam <- function(indicators, parameters, d) {
   data <- data.frame(indicators, parameters)
   colnames(data) <- c("indicator", paste0("theta", 0:(d - 1)))
 
-  if (d <= 5) {
+  if (d <= 5) {  # joint tensor feasibility tested only for d<=5
     # unique tensor
     string_formula <- paste0(
       "indicator ~ s(",

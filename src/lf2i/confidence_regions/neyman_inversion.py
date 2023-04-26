@@ -9,10 +9,10 @@ def compute_confidence_regions(
     critical_values: np.ndarray,
     parameter_grid: np.ndarray,
     acceptance_region: str,
-    param_dim: int
+    poi_dim: int
 ) -> List[np.ndarray]:
     test_statistic, critical_values, parameter_grid = \
-        preprocess_neyman_inversion(test_statistic, critical_values, parameter_grid, param_dim)
+        preprocess_neyman_inversion(test_statistic, critical_values, parameter_grid, poi_dim)
 
     if acceptance_region == 'left':
         which_parameters = test_statistic <= critical_values

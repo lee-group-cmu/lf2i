@@ -20,17 +20,17 @@ class GaussianMean(Simulator):
     likelihood_cov : Union[float, torch.Tensor]
         Covariance structure of the likelihood. 
         If `float` or `Tensor` with only one value, it is interpreted as the (equal) variance for each component. 
-        If `Tensor` with `param_dim` values, the i-th one is the variance of the i-th component.
+        If `Tensor` with `poi_dim` values, the i-th one is the variance of the i-th component.
     prior : str
         Either `gaussian` or `uniform`.
-    parameter_space_bounds : Dict[str, float]
-        Bounds of the parameter space. Used to construct the parameter grid, which contains the evaluation points for the confidence regions.
+    poi_space_bounds : Dict[str, float]
+        Bounds of the space of parameters of interest. Used to construct the parameter grid, which contains the evaluation points for the confidence regions.
         Must contain `low` and `high`. Assumes that each dimension of the parameter has the same bounds.
-    param_grid_size : int
+    poi_grid_size : int
         Number of points in the parameter grid. 
-        If `(param_grid_size)**(1/param_dim)` is not an integer, the closest larger number is chosen. 
-        E.g., if `param_grid_size == 1000` and `param_dim == 2`, then the grid will have `32 x 32 = 1024` points.
-    param_dim : int
+        If `(poi_grid_size)**(1/poi_dim)` is not an integer, the closest larger number is chosen. 
+        E.g., if `poi_grid_size == 1000` and `poi_dim == 2`, then the grid will have `32 x 32 = 1024` points.
+    poi_dim : int
         Dimensionality of the parameter of interest.
     data_dim : int
         Dimensionality of the data.
@@ -45,56 +45,56 @@ class GaussianMean(Simulator):
         self,
         likelihood_cov: Union[float, torch.Tensor], 
         prior: str,
-        parameter_space_bounds: Dict[str, float], 
-        param_grid_size: int,
-        param_dim: int,
+        poi_space_bounds: Dict[str, float], 
+        poi_grid_size: int,
+        poi_dim: int,
         data_dim: int,
         data_sample_size: int,
         prior_kwargs: Optional[Dict[str, Union[float, torch.Tensor]]] = None
     ):
-        super().__init__(param_dim=param_dim, data_dim=data_dim, data_sample_size=data_sample_size) 
+        super().__init__(poi_dim=poi_dim, data_dim=data_dim, data_sample_size=data_sample_size) 
 
-        self.parameter_space_bounds = parameter_space_bounds
-        if param_dim == 1:
-            self.param_grid = torch.linspace(start=parameter_space_bounds['low'], end=parameter_space_bounds['high'], steps=param_grid_size)
+        self.poi_space_bounds = poi_space_bounds
+        if poi_dim == 1:
+            self.poi_grid = torch.linspace(start=poi_space_bounds['low'], end=poi_space_bounds['high'], steps=poi_grid_size)
         else:
-            self.param_grid = torch.cartesian_prod(
-                *[torch.linspace(start=parameter_space_bounds['low'], end=parameter_space_bounds['high'], steps=int(param_grid_size**(1/param_dim))+1) for _ in range(param_dim)]
+            self.poi_grid = torch.cartesian_prod(
+                *[torch.linspace(start=poi_space_bounds['low'], end=poi_space_bounds['high'], steps=int(poi_grid_size**(1/poi_dim))+1) for _ in range(poi_dim)]
             )
-        self.param_grid_size = self.param_grid.shape[0]
+        self.poi_grid_size = self.poi_grid.shape[0]
         
         # sampling parameters to estimate critical values via quantile regression
-        if param_dim == 1:
-            self.qr_prior = Uniform(low=parameter_space_bounds['low']*torch.ones(1), high=parameter_space_bounds['high']*torch.ones(1))
+        if poi_dim == 1:
+            self.qr_prior = Uniform(low=poi_space_bounds['low']*torch.ones(1), high=poi_space_bounds['high']*torch.ones(1))
         else:
             self.qr_prior = MultipleIndependent(dists=[
-                pdist.Uniform(low=parameter_space_bounds['low']*torch.ones(1), high=parameter_space_bounds['high']*torch.ones(1)) for _ in range(param_dim)
+                pdist.Uniform(low=poi_space_bounds['low']*torch.ones(1), high=poi_space_bounds['high']*torch.ones(1)) for _ in range(poi_dim)
             ])
         
-        self.likelihood = lambda loc: MultivariateNormal(loc=loc, covariance_matrix=torch.eye(n=param_dim)*likelihood_cov)
+        self.likelihood = lambda loc: MultivariateNormal(loc=loc, covariance_matrix=torch.eye(n=poi_dim)*likelihood_cov)
         if prior == 'gaussian': 
-            self.prior = MultivariateNormal(loc=torch.ones(size=(param_dim, ))*prior_kwargs['loc'], 
-                                            covariance_matrix=torch.eye(n=param_dim)*prior_kwargs['cov'])
+            self.prior = MultivariateNormal(loc=torch.ones(size=(poi_dim, ))*prior_kwargs['loc'], 
+                                            covariance_matrix=torch.eye(n=poi_dim)*prior_kwargs['cov'])
         elif prior == 'uniform':
             if prior_kwargs is None:
-                prior_kwargs = parameter_space_bounds
-            if param_dim == 1:
+                prior_kwargs = poi_space_bounds
+            if poi_dim == 1:
                 self.prior = Uniform(low=prior_kwargs['low']*torch.ones(1), high=prior_kwargs['high']*torch.ones(1))
             else:
                 self.prior = MultipleIndependent(dists=[
-                    pdist.Uniform(low=prior_kwargs['low']*torch.ones(1), high=prior_kwargs['high']*torch.ones(1)) for _ in range(param_dim)
+                    pdist.Uniform(low=prior_kwargs['low']*torch.ones(1), high=prior_kwargs['high']*torch.ones(1)) for _ in range(poi_dim)
                 ])
         else: 
             raise NotImplementedError
             
     def simulate_for_test_statistic(self, b: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        params = self.prior.sample(sample_shape=(b, )).reshape(b, self.param_dim)
+        params = self.prior.sample(sample_shape=(b, )).reshape(b, self.poi_dim)
         # shape is interpreted as 'draw `shape` samples for each d-dim element of params'
         samples = self.likelihood(loc=params).sample(sample_shape=(self.data_sample_size, ))
         return params, torch.transpose(samples, 0, 1)  # (b, data_sample_size, data_dim)
     
     def simulate_for_critical_values(self, b_prime: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        params = self.qr_prior.sample(sample_shape=(b_prime, )).reshape(b_prime, self.param_dim)
+        params = self.qr_prior.sample(sample_shape=(b_prime, )).reshape(b_prime, self.poi_dim)
         samples = self.likelihood(loc=params).sample(sample_shape=(self.data_sample_size, ))
         return params, torch.transpose(samples, 0, 1)  # (b_prime, data_sample_size, data_dim)
     
@@ -114,8 +114,7 @@ class GaussianMeanFirstCoord(Simulator):
         nuisance_bounds: int,
         data_sample_size: int
     ):
-        super().__init__(param_dim=1, data_dim=2, data_sample_size=data_sample_size)
-        self.nuisance_dim = 1
+        super().__init__(poi_dim=1, data_dim=2, data_sample_size=data_sample_size, nuisance_dim=1)
 
         self.poi_bounds = poi_bounds
         self.poi_grid = torch.linspace(start=poi_bounds['low'], end=poi_bounds['high'], steps=poi_grid_size)

@@ -192,7 +192,7 @@ def coverage_pairplot(
     save_fig_path: Optional[str] = None,
     **kwargs
 ) -> None:
-    assert plot_type in ['proba_marginal', 'proba_partial_dependence', 'coverage_regions_marginal']
+    assert plot_type in ['proba_partial_dependence_mean', 'proba_partial_dependence_min', 'coverage_regions_marginal']
     
     rows = cols = parameters.shape[1]  # param dim
     fig, ax = plt.subplots(rows, cols, figsize=figsize)
@@ -203,7 +203,7 @@ def coverage_pairplot(
             if col <= row:
                 ax[row, col].axis('off')
             else:
-                if plot_type == 'proba_marginal':
+                if plot_type == 'proba_partial_dependence_mean':
                     heatmap = coverage_probability_plot(
                         parameters=parameters[:, [col, row]],  # swap order to have 'row' parameter on y axis
                         coverage_probability=probabilities[f'{row}{col}']['mean_proba'],  # dictionary
@@ -213,7 +213,7 @@ def coverage_pairplot(
                         custom_ax=ax[row, col],
                         **kwargs
                     )
-                elif plot_type == 'proba_partial_dependence':
+                elif plot_type == 'proba_partial_dependence_min':
                     if (diagnostics_estimator) and isinstance(diagnostics_estimator, ListVector):  # rpy2 ListVector; support only gam for now. TODO: other prob clfs
                         # for partial dependence plots
                         assert aggregate_fun is not None
@@ -248,6 +248,7 @@ def coverage_pairplot(
                     else:
                         raise NotImplementedError
                 elif plot_type == 'coverage_regions_marginal':
+                    raise NotImplementedError  # TODO: need to double check
                     coverage_regions_plot(
                         parameters=parameters[:, [col, row]],  # swap order to have 'row' parameter on y axis
                         confidence_level=confidence_level,

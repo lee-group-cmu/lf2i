@@ -153,15 +153,15 @@ class Inferno3DMixture(Simulator):
         priors: Dict[str, Distribution],
         poi_bounds: Dict[str, float],
         poi_grid_size: int,
-        nuisance_param_dim: int,
+        nuisance_dim: int,
         data_sample_size: int,
         nuisance_bounds: Optional[Dict[str, Dict[str, float]]] = None,
         fixed_params: Dict[str, Union[float, torch.Tensor]] = {}
     ) -> None:
-        super().__init__(param_dim=1, data_dim=3, data_sample_size=data_sample_size)
+        super().__init__(poi_dim=1, data_dim=3, data_sample_size=data_sample_size, nuisance_dim=nuisance_dim)
 
         # check every poi or (actual) nuisance has a prior and is not fixed; set fixed params
-        assert len(priors.keys()) == (self.param_dim+nuisance_param_dim), \
+        assert len(priors.keys()) == (self.poi_dim+self.nuisance_dim), \
             "Need to specify a prior distribution for each parameter of interest and nuisance parameter"
         assert len(priors.keys() & fixed_params.keys()) == 0, \
             "Parameters of interest and nuisance parameters are sampled through priors and cannot have fixed values. Remove them from `fixed_params`"
@@ -171,7 +171,6 @@ class Inferno3DMixture(Simulator):
         # check that all nuisances are either given a prior or are fixed
         assert self._nuisance_names & (priors.keys() | fixed_params.keys()) == self._nuisance_names, \
             "Nuisance parameters must either be given a prior or be fixed (in `fixed_params`)."
-        self.nuisance_param_dim = nuisance_param_dim
 
         self.poi_bounds = poi_bounds
         self.nuisance_bounds = nuisance_bounds
@@ -179,7 +178,7 @@ class Inferno3DMixture(Simulator):
         self.poi_grid_size = poi_grid_size
 
         self.poi_prior = priors.pop('s')
-        self.nuisance_priors = priors if nuisance_param_dim > 0 else {}
+        self.nuisance_priors = priors if self.nuisance_dim > 0 else {}
         self.qr_poi_prior = Uniform(low=poi_bounds['low']*torch.ones(1), high=poi_bounds['high']*torch.ones(1))
         self.qr_nuisance_priors = {
             nuisance: Uniform(low=nuisance_bounds[nuisance]['low']*torch.ones(1), high=nuisance_bounds[nuisance]['high']*torch.ones(1)) 
@@ -337,7 +336,7 @@ class Inferno3DMixture(Simulator):
         self, 
         b_prime: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        poi = self.qr_poi_prior.sample(sample_shape=(b_prime, )).reshape(b_prime, self.param_dim)
+        poi = self.qr_poi_prior.sample(sample_shape=(b_prime, )).reshape(b_prime, self.poi_dim)
         nuisance = {
             nuisance: prior.sample(sample_shape=(b_prime, 1)).reshape(b_prime, 1)
             for nuisance, prior in self.qr_nuisance_priors.items()

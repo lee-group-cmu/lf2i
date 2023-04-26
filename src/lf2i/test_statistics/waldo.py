@@ -20,9 +20,9 @@ class Waldo(TestStatistic):
 
         If `str`, will use one of the predefined estimators. 
         If `Any`, a trained estimator is expected. Needs to implement `estimator.predict(X=...)` ("prediction"), or `estimator.sample(sample_shape=..., x=...)` ("posterior").
-    param_dim : int
-        Dimensionality of the parameters of interest
-    method : str
+    poi_dim : int
+        Dimensionality (number) of the parameters of interest
+    estimation_method : str
         Whether the estimator is a prediction algorithm ("prediction") or a posterior estimator ("posterior").
     num_posterior_samples : Optional[int], optional
         Number of posterior samples to draw to approximate conditional mean and variance if `method == posterior`, by default None
@@ -37,27 +37,26 @@ class Waldo(TestStatistic):
     def __init__(
         self, 
         estimator: Union[str, Any],
-        param_dim: int,
-        method: str,
+        poi_dim: int,
+        estimation_method: str,
         num_posterior_samples: Optional[int] = None,
         cond_variance_estimator: Optional[Union[str, Any]] = None,
         estimator_kwargs: Dict = {},
         cond_variance_estimator_kwargs: Dict = {}
     ) -> None:
-        super().__init__(acceptance_region='left')
+        super().__init__(acceptance_region='left', estimation_method=estimation_method)
 
-        self.method = method
-        self.param_dim = param_dim
-        if method == 'prediction':
+        self.poi_dim = poi_dim
+        if estimation_method == 'prediction':
             self.estimator = self._choose_estimator(estimator, estimator_kwargs, 'conditional_mean')
             assert cond_variance_estimator is not None, "Need to specify a model to estimate the conditional variance"
             self.cond_variance_estimator = self._choose_estimator(cond_variance_estimator, cond_variance_estimator_kwargs, 'conditional_variance')
-        elif method == 'posterior':
+        elif estimation_method == 'posterior':
             self.estimator = self._choose_estimator(estimator, estimator_kwargs, 'posterior')
             assert num_posterior_samples is not None, "Need to specify how many samples to draw from the posterior to approximate conditional mean and variance"
             self.num_posterior_samples = num_posterior_samples
         else:
-            raise ValueError(f"Waldo estimation is supported only using `prediction` algorithms or `posterior` estimators, got {method}")
+            raise ValueError(f"Waldo estimation is supported only using `prediction` algorithms or `posterior` estimators, got {estimation_method}")
     
     @staticmethod
     def _compute_for_critical_values(
@@ -142,7 +141,7 @@ class Waldo(TestStatistic):
         # TODO: if for loops are used, then we'd better switch to generators (especially for confidence sets)
 
         parameters, conditional_mean, conditional_var = \
-            preprocess_waldo_computation(parameters, conditional_mean, conditional_var, self.param_dim)
+            preprocess_waldo_computation(parameters, conditional_mean, conditional_var, self.poi_dim)
 
         if mode == 'critical_values':
             return self._compute_for_critical_values(parameters, conditional_mean, conditional_var)        
@@ -168,13 +167,12 @@ class Waldo(TestStatistic):
             Simulated samples to be used for training.
         """
         # if `self.method == prediction`, assume both estimators accept same input types
-        # TODO: check that inputs have correct shapes for each method. What if data_sample_size > 1?
-        parameters, samples = preprocess_waldo_estimation(parameters, samples, self.method, self.estimator, self.param_dim)
+        parameters, samples = preprocess_waldo_estimation(parameters, samples, self.method, self.estimator, self.poi_dim)
         if self.method == 'prediction':
             self.estimator.fit(X=samples, y=parameters)
-            if self.param_dim > 1:
-                warnings.warn("Using 'prediction' with param_dim > 1 might have inconsistencies and has not been thoroughly checked yet")
-            conditional_var_response = (( parameters.reshape(-1, self.param_dim) - self.estimator.predict(X=samples).reshape(-1, self.param_dim) )**2).reshape(-1, )
+            if self.poi_dim > 1:
+                warnings.warn("Using 'prediction' with poi_dim > 1 might have inconsistencies and has not been thoroughly checked yet")
+            conditional_var_response = (( parameters.reshape(-1, self.poi_dim) - self.estimator.predict(X=samples).reshape(-1, self.poi_dim) )**2).reshape(-1, )
             self.cond_variance_estimator.fit(X=samples, y=conditional_var_response)
             self._estimator_trained['conditional_mean'] = True
             self._estimator_trained['conditional_variance'] = True
@@ -210,7 +208,7 @@ class Waldo(TestStatistic):
         """
         assert self._check_is_trained(), "Not all needed estimators are trained. Check self._estimator_trained"
         # if `self.method == prediction`, assume both estimators accept same input types
-        parameters, samples = preprocess_waldo_evaluation(parameters, samples, self.method, self.estimator, self.param_dim)
+        parameters, samples = preprocess_waldo_evaluation(parameters, samples, self.method, self.estimator, self.poi_dim)
 
         if self.method == 'prediction':
             conditional_mean = self.estimator.predict(X=samples)
@@ -220,6 +218,6 @@ class Waldo(TestStatistic):
             conditional_var = []
             for idx in tqdm(range(samples.shape[0]), desc='Approximating conditional mean and covariance'):  # axis 0 indexes different simulations/observations
                 posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).numpy()
-                conditional_mean.append(np.mean(posterior_samples, axis=0).reshape(1, self.param_dim))
+                conditional_mean.append(np.mean(posterior_samples, axis=0).reshape(1, self.poi_dim))
                 conditional_var.append(np.cov(posterior_samples.T))  # need samples.shape = (data_d, num_samples)
         return self._compute(parameters, conditional_mean, conditional_var, mode)

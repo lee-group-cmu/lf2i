@@ -6,7 +6,8 @@ from matplotlib.pyplot import cm
 from matplotlib.colors import to_rgba
 from matplotlib.axes._axes import Axes
 import alphashape
-from descartes import PolygonPatch
+
+from lf2i.utils.miscellanea import PolygonPatchFixed
 
 
 def plot_parameter_region(
@@ -84,7 +85,7 @@ def plot_parameter_region_2D(
         ax.scatter(x=parameter_region[:, 0], y=parameter_region[:, 1], s=3.5, c=color, zorder=1, label=region_name)
     if alpha_shape:
         alpha_shape = alphashape.alphashape(parameter_region, alpha=alpha)
-        patch = PolygonPatch(alpha_shape, fc=to_rgba(color, 0.2), ec=to_rgba(color, 1), lw=2, label=region_name)
+        patch = PolygonPatchFixed(alpha_shape, fc=to_rgba(color, 0.2), ec=to_rgba(color, 1), lw=2, label=region_name)
         ax.add_patch(patch)
     if true_parameter is not None:
         ax.scatter(x=true_parameter.reshape(-1,)[0], y=true_parameter.reshape(-1,)[1], alpha=1, c="red", marker="*", s=250, zorder=10)
