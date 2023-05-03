@@ -49,17 +49,18 @@ def preprocess_odds_estimation(
     return labels.reshape(-1, ), params_samples
 
 
-def preprocess_odds_cv(
+def preprocess_for_odds_cv(
     parameters: Union[np.ndarray, torch.Tensor],
     samples: Union[np.ndarray, torch.Tensor],
     param_dim: int,
     data_sample_size: int,
+    data_dim: int,
     estimator: Any
-) -> np.ndarray:
+) -> Tuple[Union[np.ndarray, torch.Tensor]]:
     """Flatten samples along `data_sample_size` dimension and stack them with corresponding repeated parameters column-wise.
-    If `parameters` or `samples` are of type `torch.Tensor`, they are converted to `np.ndarray`.
-
     This is done to simultaneously estimate odds at all samples, given the corresponding parameters.
+    
+    Inputs are converted to correct format depending on estimator type.
 
     Parameters
     ----------
@@ -68,75 +69,106 @@ def preprocess_odds_cv(
     samples : Union[np.ndarray, torch.Tensor]
         Array of samples. Assumed to have shape `(n_samples, data_sample_size, data_dim)`.
     param_dim : int
-        Dimensionality of the parameter.
+        Dimensionality of the parameter space.
     data_sample_size : int
-        Dimensionality of a sample from a specific parameter.
+        Number of samples from a specific parameter.
+    data_dim: int
+        Dimensionality of each single sample.
 
     Returns
     -------
-    np.ndarray
-        Array containing both parameters and samples, with shape `(n_samples*data_sample_size, param_dim+data_dim)`.
+    Tuple[Union[np.ndarray, torch.Tensor]]
+        Parameters, samples, and stacked parameters and samples. The stacked vector is flattened along dim 1, with output shape `(n_samples*data_sample_size, param_dim+data_dim)`.
     """
-    if isinstance(parameters, np.ndarray):
-        parameters = torch.from_numpy(parameters)
-    if isinstance(samples, np.ndarray):
-        samples = torch.from_numpy(samples)
-    params_samples = np.hstack((
-        np.repeat(parameters.reshape(-1, param_dim), repeats=data_sample_size, axis=0),
-        samples.reshape(-1, samples.shape[-1])
-    ))
+    # TODO: this is not general, i.e. assumes our torch “construction” with a Learner that has a model attribute
     if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
-        return torch.from_numpy(params_samples).float()
+        if isinstance(parameters, np.ndarray):
+            parameters = torch.from_numpy(parameters)
+        if isinstance(samples, np.ndarray):
+            samples = torch.from_numpy(samples)
+        params_samples = torch.hstack((
+            torch.repeat_interleave(parameters.reshape(-1, param_dim), repeats=data_sample_size, dim=0),
+            samples.reshape(-1, data_dim)
+        ))
     else:
-        return params_samples
+        if isinstance(parameters, torch.Tensor):
+            parameters = parameters.numpy()
+        if isinstance(samples, torch.Tensor):
+            samples = samples.numpy()
+        params_samples = np.hstack((
+            np.repeat(parameters.reshape(-1, param_dim), repeats=data_sample_size, axis=0),
+            samples.reshape(-1, data_dim)
+        ))
+
+    return parameters, samples, params_samples
 
 
-def preprocess_odds_cs(
-    parameters: Union[np.ndarray, torch.Tensor],
+def preprocess_for_odds_cs(
+    parameter_grid: Union[np.ndarray, torch.Tensor],
     samples: Union[np.ndarray, torch.Tensor],
-    param_dim: int,
+    poi_dim: int,
     data_sample_size: int,
+    data_dim: int,
     estimator: Any
-) -> np.ndarray:
-    """Tile samples along `data_sample_size` dimension for `parameters.shape[0]` times and flatten them, 
-    then stack column-wise with parameters repeated `data_sample_size` times and tiled `n_samples` times.
-
+) -> Tuple[Union[np.ndarray, torch.Tensor]]:
+    """Repeat and tile both parameters in grid and samples to achieve the following data structure:
+        param_grid_0, samples_0_0
+        param_grid_0, samples_0_1
+        param_grid_1, samples_0_0
+        param_grid_1, samples_0_1
+        ...
+        param_grid_0, samples_1_0
+        param_grid_0, samples_1_1
+        param_grid_1, samples_1_0
+        param_grid_1, samples_1_1
+        ...
+    
     This is done to simultaneously estimated odds across all parameters *for each* sample.
  
     Parameters
     ----------
-    parameters : Union[np.ndarray, torch.Tensor]
+    parameter_grid : Union[np.ndarray, torch.Tensor]
         Array of parameters over which odds have to be evaluated *for each* sample.
     samples : Union[np.ndarray, torch.Tensor]
-        Array of samples. Assumed to have shape `(n_samples, data_sample_size, data_dim)`.
-    param_dim : int
-        Dimensionality of the parameter.
+        Array of samples. Should have shape `(n_samples, data_sample_size, data_dim)`.
+    poi_dim : int
+        Dimensionality of the space of parameters of interest.
     data_sample_size : int
-        Dimensionality of a sample from a specific parameter.
+        Number of samples from a specific parameter.
+    data_dim: int
+        Dimensionality of each single sample.
 
     Returns
     -------
     np.ndarray
-        Array containing both parameters and samples ready for evaluation, with shape `(n_samples*data_sample_size*n_parameters, param_dim+data_dim)`.
-    """
-    if len(samples.shape) < 3:
-        warnings.warn(
-            f"""Samples shape is {samples.shape}. Dimension 0 is treated as the data sample size 
-            (i.e., all Xs from a specific parameter).\nTo suppress this warning, pass samples with shape (n_samples, data_sample_size, data_dim)"""
-        )
-        samples = samples.reshape(1, -1, -1)
-    if isinstance(parameters, np.ndarray):
-        parameters = torch.from_numpy(parameters)
-    if isinstance(samples, np.ndarray):
-        samples = torch.from_numpy(samples)
-    params_samples = np.hstack((
-        np.tile(
-            np.repeat(parameters.reshape(-1, param_dim), repeats=data_sample_size, axis=0), 
-            reps=(samples.shape[0])
-        ),
-        np.tile(samples, reps=(1, parameters.reshape(-1, param_dim).shape[0], 1)).reshape(-1, samples.shape[-1])
-    ))
-    if isinstance(estimator, torch.nn.Module):
-        return torch.from_numpy(params_samples).float()
+        Parameter grid, samples, and stacked parameter grid and samples. The stacked vector has output shape `(param_grid_size*n_samples*data_sample_size, param_dim+data_dim)`.
+    """    
+    
+    samples = samples.reshape(-1, data_sample_size, data_dim)
+    # TODO: this is not general, i.e. assumes our torch “construction” with a Learner that has a model attribute
+    if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
+        if isinstance(parameter_grid, np.ndarray):
+            parameter_grid = torch.from_numpy(parameter_grid)
+        if isinstance(samples, np.ndarray):
+            samples = torch.from_numpy(samples)
+        params_samples = torch.hstack((
+            torch.tile(
+                torch.repeat_interleave(parameter_grid.reshape(-1, poi_dim), repeats=data_sample_size, dim=0), 
+                dims=(samples.shape[0], 1)
+            ),
+            torch.tile(samples, dims=(1, parameter_grid.reshape(-1, poi_dim).shape[0], 1)).reshape(-1, data_dim)
+        ))
     else:
-        return params_samples
+        if isinstance(parameter_grid, torch.Tensor):
+            parameter_grid = parameter_grid.numpy()
+        if isinstance(samples, torch.Tensor):
+            samples = samples.numpy()
+        params_samples = np.hstack((
+            np.tile(
+                np.repeat(parameter_grid.reshape(-1, poi_dim), repeats=data_sample_size, axis=0), 
+                reps=(samples.shape[0], 1)
+            ),
+            np.tile(samples, reps=(1, parameter_grid.reshape(-1, poi_dim).shape[0], 1)).reshape(-1, data_dim)
+        ))
+        
+    return parameter_grid, samples, params_samples

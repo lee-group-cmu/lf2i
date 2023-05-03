@@ -15,8 +15,8 @@ class Waldo(TestStatistic):
     Parameters
     ----------
     estimator : Union[str, Any]
-        If `method == prediction`, then this is the conditional mean estimator.
-        If `method == posterior`, then this is the posterior estimator. Currently compatible with posterior objects from SBI package (https://github.com/mackelab/sbi)
+        If `estimation_method == prediction`, then this is the conditional mean estimator.
+        If `estimation_method == posterior`, then this is the posterior estimator. Currently compatible with posterior objects from SBI package (https://github.com/mackelab/sbi)
 
         If `str`, will use one of the predefined estimators. 
         If `Any`, a trained estimator is expected. Needs to implement `estimator.predict(X=...)` ("prediction"), or `estimator.sample(sample_shape=..., x=...)` ("posterior").
@@ -25,9 +25,9 @@ class Waldo(TestStatistic):
     estimation_method : str
         Whether the estimator is a prediction algorithm ("prediction") or a posterior estimator ("posterior").
     num_posterior_samples : Optional[int], optional
-        Number of posterior samples to draw to approximate conditional mean and variance if `method == posterior`, by default None
+        Number of posterior samples to draw to approximate conditional mean and variance if `estimation_method == posterior`, by default None
     cond_variance_estimator : Optional[Union[str, Any]], optional
-        If `method == prediction`, then this is the conditional variance estimator, by default None
+        If `estimation_method == prediction`, then this is the conditional variance estimator, by default None
     estimator_kwargs: Dict
         Hyperparameters and settings for the conditional mean estimator, by default {}.
     cond_variance_estimator_kwargs: Dict
@@ -134,7 +134,7 @@ class Waldo(TestStatistic):
         ValueError
             If `mode` is not among the pre-specified values.
         """
-        # TODO: unify computations regardless of self.method (prediction or posterior)
+        # TODO: unify computations regardless of self.estimation_method (prediction or posterior)
         # TODO: unify computations regardless of mode?
         # TODO: vectorize computations when d>1
         # TODO: write unit tests for all corner cases
@@ -166,8 +166,8 @@ class Waldo(TestStatistic):
         samples : Union[np.ndarray, torch.Tensor]
             Simulated samples to be used for training.
         """
-        # if `self.method == prediction`, assume both estimators accept same input types
-        parameters, samples = preprocess_waldo_estimation(parameters, samples, self.method, self.estimator, self.poi_dim)
+        # if `self.estimation_method == prediction`, assume both estimators accept same input types
+        parameters, samples = preprocess_waldo_estimation(parameters, samples, self.estimation_method, self.estimator, self.poi_dim)
         if self.method == 'prediction':
             self.estimator.fit(X=samples, y=parameters)
             if self.poi_dim > 1:
@@ -207,10 +207,10 @@ class Waldo(TestStatistic):
             Waldo test statistics evaluated over parameters and samples.
         """
         assert self._check_is_trained(), "Not all needed estimators are trained. Check self._estimator_trained"
-        # if `self.method == prediction`, assume both estimators accept same input types
-        parameters, samples = preprocess_waldo_evaluation(parameters, samples, self.method, self.estimator, self.poi_dim)
+        # if `self.estimation_method == prediction`, assume both estimators accept same input types
+        parameters, samples = preprocess_waldo_evaluation(parameters, samples, self.estimation_method, self.estimator, self.poi_dim)
 
-        if self.method == 'prediction':
+        if self.estimation_method == 'prediction':
             conditional_mean = self.estimator.predict(X=samples)
             conditional_var = self.cond_variance_estimator.predict(X=samples)
         else:
