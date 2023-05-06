@@ -5,7 +5,6 @@ import warnings
 import numpy as np
 from scipy.spatial.distance import cdist as scipy_cdist
 import torch
-import jax.numpy as jnp
 import sklearn.metrics as sk_metrics
 
 
@@ -69,11 +68,13 @@ class DDD:
         nuisances: np.ndarray,
         method: str
     ) -> np.ndarray:
+        # apply normalizations to each nuisance parameter (by column)
         if method is None:
             return nuisances
         elif method == 'z_score':
-            # standardize each nuisance parameter (by column)
             return (nuisances - np.mean(nuisances, axis=0).reshape(1, -1)) / np.std(nuisances, axis=0).reshape(1, -1)
+        elif method == 'min_max':
+            return (nuisances - np.min(nuisances, axis=0).reshape(1, -1)) / (np.max(nuisances, axis=0) - np.min(nuisances, axis=0)).reshape(1, -1)
         else:
             raise NotImplementedError
     
@@ -102,19 +103,17 @@ class DDD:
 
         subset_n = self.nystrom_subset_size or nuisances.shape[0]
         edge_weights = self.kernel(nuisances=self.normalize(nuisances=nuisances.reshape(-1, self.nuisance_dim), method=self.std_method))
-        node_weights = np.sum(edge_weights[:subset_n, :subset_n], axis=1).reshape(-1, 1)  # needed only for subset if using Nystrom
+        node_weights = np.sum(edge_weights[:subset_n, :subset_n], axis=1).reshape(-1, 1).astype(np.float64)  # needed only for subset if using Nystrom
         transition_probs = edge_weights[:subset_n, :subset_n] / node_weights
         assert np.all(np.isclose(transition_probs.sum(axis=1), 1))  # row-stochastic matrix
         
         eigenvals, eigenvecs = np.linalg.eig(transition_probs)
-        diff_map = self._eig_to_diff_map(eigenvals=eigenvals, eigenvecs=eigenvecs)
-
         return DiffusionMapOutput(
             stationary_distribution=node_weights / node_weights.sum(),  # only for nystrom subset
             transition_probs=edge_weights[:, :subset_n] / np.sum(edge_weights[:, :subset_n], axis=1).reshape(-1, 1),  # for all nuisances (n x subset_n)
             eigenvalues=eigenvals,
             eigenvectors=eigenvecs,
-            diffusion_map=diff_map
+            diffusion_map=self._eig_to_diff_map(eigenvals=eigenvals, eigenvecs=eigenvecs)
         )
     
     def nystrom_approximation(
@@ -125,14 +124,13 @@ class DDD:
         # TODO: check https://www.cs.cmu.edu/~muli/file/nystrom_icml10.pdf for a more efficient Nyström approximation method
         # TODO: uniform sampling of column might not be “optimal”. There are smarter ways, see https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/37831.pdf
         
-        nystrom_eigenvecs = np.sqrt(self.nystrom_subset_size) * np.matmul(
+        nystrom_eigenvecs = np.matmul(
             # NOTE: assumes first self.nystrom_subset_size rows in nuisances were used for eigendecomposition
             diff_map_output.transition_probs,  # n x self.nystrom_subset_size
             diff_map_output.eigenvectors  # self.nystrom_subset_size x self.nystrom_subset_size (if we retain all eigenvectors)
         ) / diff_map_output.eigenvalues.reshape(1, -1)
         assert nystrom_eigenvecs.shape == (diff_map_output.transition_probs.shape[0], diff_map_output.eigenvectors.shape[1])
-        nystrom_eigenvals = diff_map_output.eigenvalues / self.nystrom_subset_size
-        return self._eig_to_diff_map(eigenvals=nystrom_eigenvals, eigenvecs=nystrom_eigenvecs)
+        return self._eig_to_diff_map(eigenvals=diff_map_output.eigenvalues, eigenvecs=nystrom_eigenvecs)
         
     def diffusion_k_means(
         self,
@@ -159,14 +157,15 @@ class DDD:
                     ) / stationary_distribution[cluster_assignments == c].sum() 
                     for c in range(self.k)
                 ]).reshape(self.k, diffusion_map.shape[1])
-                if np.all(np.linalg.norm(new_centroids - centroids, axis=1) < tol):
+                converg_dist = np.linalg.norm(new_centroids - centroids, axis=1)
+                if np.all(converg_dist < tol):
                     # if converged before reaching max_iter, stop
                     break
                 centroids = new_centroids
 
             # one-hot encoding of cluster assignments
-            one_hot_clusters = np.zeros(shape=(diffusion_map.shape[0], self.k), dtype=int)
-            one_hot_clusters[range(one_hot_clusters.shape[0]), cluster_assignments.astype(int)] = 1
+            one_hot_clusters = np.zeros(shape=(diffusion_map.shape[0], self.k))
+            one_hot_clusters[range(one_hot_clusters.shape[0]), cluster_assignments.astype(int)] = 1.0
             
             return ClusteringOutput(
                 centroids=new_centroids,
@@ -304,14 +303,13 @@ class Learner:
                 estimated_diff_map = self.ddd.nystrom_approximation(diff_map_output=diff_map_output)
                 print(f"Computing Nystrom cluster assignments ...", flush=True)
                 cluster_assignments = np.argmin(scipy_cdist(estimated_diff_map, clustering_output.centroids, metric='euclidean'), axis=1)
-                print(np.unique(cluster_assignments), flush=True)
-                one_hot_clusters = np.zeros(shape=(estimated_diff_map.shape[0], self.ddd.k), dtype=int)
-                one_hot_clusters[range(one_hot_clusters.shape[0]), cluster_assignments.astype(int)] = 1
+                one_hot_clusters = np.zeros(shape=(estimated_diff_map.shape[0], self.ddd.k))
+                one_hot_clusters[range(one_hot_clusters.shape[0]), cluster_assignments.astype(int)] = 1.0
 
             one_hot_clusters = one_hot_clusters if self.ddd.nystrom_subset_size else clustering_output.one_hot_clusters
             one_hot_clusters = torch.from_numpy(one_hot_clusters).to(self.device)
 
-            centroids_matmul = torch.from_numpy(np.matmul(clustering_output.centroids, clustering_output.centroids.T)).to(self.device)
+            centroids_matmul = torch.from_numpy(np.matmul(clustering_output.centroids, clustering_output.centroids.T)).double().to(self.device)
             assert centroids_matmul.shape[0] == centroids_matmul.shape[1]
         
         print(f"Start training ...", flush=True)
@@ -339,7 +337,7 @@ class Learner:
                         device=self.device
                     )
                     batch_loss = batch_loss.reshape(1, ) + ddd_gamma*ddd_loss
-                    print(batch_loss, ddd_loss, flush=True)
+                    #print(batch_loss, ddd_loss, flush=True)
                 batch_loss.backward()
                 self.optimizer.step()
                 epoch_joint_losses.append(batch_loss.cpu().detach().numpy())
