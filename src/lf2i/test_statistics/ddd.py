@@ -257,7 +257,7 @@ class Learner:
         self,
         model: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
-        loss: torch.nn.Module = torch.nn.BCEWithLogitsLoss,
+        loss: torch.nn.Module = torch.nn.BCEWithLogitsLoss(),
         ddd: bool = False,
         device: str = "cpu",
         **kwargs
