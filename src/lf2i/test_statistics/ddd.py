@@ -234,17 +234,17 @@ class NNClassifier(torch.nn.Module):
         self.model = [
             torch.nn.Linear(self.input_d, self.hidden_layer_shapes[0]), 
             self.hidden_activation, 
-            #torch.nn.Dropout(p=self.dropout_p)
+            torch.nn.Dropout(p=self.dropout_p)
         ]
         # hidden 
         for i in range(0, len(self.hidden_layer_shapes)-1):
             self.model += [
                 torch.nn.Linear(self.hidden_layer_shapes[i], self.hidden_layer_shapes[i+1]), 
                 self.hidden_activation, 
-                #torch.nn.Dropout(p=self.dropout_p)
+                torch.nn.Dropout(p=self.dropout_p)
             ]
         # output
-        self.model += [torch.nn.Linear(self.hidden_layer_shapes[-1], 1), torch.nn.Sigmoid()]
+        self.model += [torch.nn.Linear(self.hidden_layer_shapes[-1], 1)]
         self.model = torch.nn.Sequential(*self.model)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -257,7 +257,7 @@ class Learner:
         self,
         model: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
-        loss: torch.nn.Module,
+        loss: torch.nn.Module = torch.nn.BCEWithLogitsLoss,
         ddd: bool = False,
         device: str = "cpu",
         **kwargs
@@ -300,8 +300,8 @@ class Learner:
             print(f"Converged after {clustering_output.n_iter} iterations", flush=True)
             
             if self.ddd.nystrom_subset_size:
+                print(f"Estimating eigenvectors via Nystrom extension ...", flush=True)
                 estimated_diff_map = self.ddd.nystrom_approximation(diff_map_output=diff_map_output)
-                print(f"Computing Nystrom cluster assignments ...", flush=True)
                 cluster_assignments = np.argmin(scipy_cdist(estimated_diff_map, clustering_output.centroids, metric='euclidean'), axis=1)
                 one_hot_clusters = np.zeros(shape=(estimated_diff_map.shape[0], self.ddd.k))
                 one_hot_clusters[range(one_hot_clusters.shape[0]), cluster_assignments.astype(int)] = 1.0
@@ -312,7 +312,6 @@ class Learner:
             centroids_matmul = torch.from_numpy(np.matmul(clustering_output.centroids, clustering_output.centroids.T)).double().to(self.device)
             assert centroids_matmul.shape[0] == centroids_matmul.shape[1]
         
-        print(f"Start training ...", flush=True)
         self.model.train()
         for _ in tqdm(range(epochs), desc="Training NN Classifier"):
             shuffle_idx = torch.from_numpy(np.random.choice(a=np.arange(X.shape[0]), size=X.shape[0], replace=False))
@@ -322,7 +321,7 @@ class Learner:
             for idx in range(0, X.shape[0], batch_size):
                 self.optimizer.zero_grad()
                 
-                batch_shuffle_idx = shuffle_idx[idx: min(idx + batch_size, y.shape[0])]
+                batch_shuffle_idx = shuffle_idx[idx: min(idx + batch_size, y.shape[0])].to(self.device)
                 batch_X = X[shuffle_idx, :][idx: min(idx + batch_size, X.shape[0]), :].float().to(self.device).requires_grad_(False)
                 batch_y = y[shuffle_idx][idx: min(idx + batch_size, y.shape[0])].reshape(-1, 1).float().to(self.device).requires_grad_(False)
                 
@@ -333,7 +332,7 @@ class Learner:
                         y_pred=batch_predictions,
                         poi_input=batch_X[:, :self.ddd.poi_dim],
                         centroids_matmul=centroids_matmul,
-                        one_hot_clusters=one_hot_clusters[batch_shuffle_idx.to(self.device), :],
+                        one_hot_clusters=one_hot_clusters[batch_shuffle_idx, :],
                         device=self.device
                     )
                     batch_loss = batch_loss.reshape(1, ) + ddd_gamma*ddd_loss
