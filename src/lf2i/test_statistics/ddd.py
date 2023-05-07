@@ -244,7 +244,7 @@ class NNClassifier(torch.nn.Module):
                 torch.nn.Dropout(p=self.dropout_p)
             ]
         # output
-        self.model += [torch.nn.Linear(self.hidden_layer_shapes[-1], 1)]
+        self.model += [torch.nn.Linear(self.hidden_layer_shapes[-1], 1), torch.nn.Sigmoid()]
         self.model = torch.nn.Sequential(*self.model)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -257,7 +257,7 @@ class Learner:
         self,
         model: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
-        loss: torch.nn.Module = torch.nn.BCEWithLogitsLoss(),
+        loss: torch.nn.Module = torch.nn.BCELoss(),
         ddd: bool = False,
         device: str = "cpu",
         **kwargs
