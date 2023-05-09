@@ -1,6 +1,7 @@
 from typing import Optional, Union, Callable, Dict, Tuple, Any, NamedTuple, Sequence
 from tqdm import tqdm
 import warnings
+from functools import partial
 
 import numpy as np
 from scipy.spatial.distance import cdist as scipy_cdist
@@ -242,6 +243,7 @@ class DDD:
             ddd += ddd_j
         return ddd
     
+    # @partial(jax.jit, static_argnums=(0, )) TODO: jnp where gives problems (probably because size of masked array is different for every j, every time (not static))
     def xgb_objective(
         self,
         y_true: np.ndarray,
@@ -252,7 +254,7 @@ class DDD:
         one_hot_clusters: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
         
-        y_pred_prob = np.exp(y_pred_raw)/(1+np.exp(y_pred_raw))
+        y_pred_prob = jnp.exp(y_pred_raw)/(1+jnp.exp(y_pred_raw))
         grad = y_pred_prob - y_true
         hess = y_pred_prob * (1 - y_pred_prob)
 
@@ -262,7 +264,7 @@ class DDD:
             centroids_matmul=centroids_matmul, 
             one_hot_clusters=one_hot_clusters
         )
-        print(y_pred_prob.min(), y_pred_prob.max(), ddd(y_pred_prob=y_pred_prob), flush=True)
+        print(ddd(y_pred_prob=y_pred_prob), flush=True)
         ddd_grad = jax.grad(ddd)(y_pred_prob).reshape(-1, )
         ddd_hess = jax.jvp(fun=jax.grad(ddd), primals=(y_pred_prob, ), tangents=(jnp.ones_like(y_pred_prob), ))[1].reshape(-1, )
         return grad+ddd_gamma*ddd_grad, hess+ddd_gamma*ddd_hess
