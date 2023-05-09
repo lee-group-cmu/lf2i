@@ -5,6 +5,8 @@ import warnings
 import numpy as np
 from scipy.spatial.distance import cdist as scipy_cdist
 import torch
+import jax
+import jax.numpy as jnp
 import sklearn.metrics as sk_metrics
 
 
@@ -173,7 +175,28 @@ class DDD:
                 n_iter=it
             )
     
-    def torch_ddd_regularizer(
+    def fit(
+        self,
+        nuisances: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        print("Constructing diffusion map ...", flush=True)
+        diff_map_output = self.diffusion_map(nuisances=nuisances)
+        print("Computing optimal partition ...", flush=True)
+        clustering_output = self.diffusion_k_means(diffusion_map=diff_map_output.diffusion_map, stationary_distribution=diff_map_output.stationary_distribution)
+        print(f"Converged after {clustering_output.n_iter} iterations", flush=True)
+        
+        if self.nystrom_subset_size:
+            print(f"Estimating eigenvectors via Nystrom extension ...", flush=True)
+            estimated_diff_map = self.nystrom_approximation(diff_map_output=diff_map_output)
+            cluster_assignments = np.argmin(scipy_cdist(estimated_diff_map, clustering_output.centroids, metric='euclidean'), axis=1)
+            one_hot_clusters = np.zeros(shape=(estimated_diff_map.shape[0], self.k))
+            one_hot_clusters[range(one_hot_clusters.shape[0]), cluster_assignments.astype(int)] = 1.0
+
+        one_hot_clusters = one_hot_clusters if self.nystrom_subset_size else clustering_output.one_hot_clusters
+        centroids_matmul = np.matmul(clustering_output.centroids, clustering_output.centroids.T)
+        return centroids_matmul, one_hot_clusters
+    
+    def torch_regularizer(
         self,
         y_pred: torch.Tensor,
         poi_input: torch.Tensor,
@@ -196,20 +219,53 @@ class DDD:
             )
             ddd += ddd_j.reshape(1, )
         return ddd
-
-    def xgb_ddd_objective(
-        loss: Union[str, Callable[[np.ndarray, np.ndarray], float]],
+    
+    def xgb_regularizer(
+        self,
+        y_pred_prob: np.ndarray,
+        poi_input: np.ndarray,
+        centroids_matmul: np.ndarray,
+        one_hot_clusters: np.ndarray
+    ) -> float:
+        ddd = 0.0
+        for j in range(len(self.poi_bins)-1):
+            # need jnp.where since boolean indexing is not yet supported in jax
+            poi_partition_mask = jnp.where((poi_input >= self.poi_bins[j]) & (poi_input < self.poi_bins[j+1]))[0].reshape(-1, )
+            y_pred_binned_1 = y_pred_prob[poi_partition_mask]
+            soft_assign_0 = jnp.sum(-jnp.log(1 - y_pred_binned_1).reshape(-1, 1) * one_hot_clusters[poi_partition_mask, :], axis=0) / jnp.sum(-jnp.log(1 - y_pred_binned_1))
+            soft_assign_1 = jnp.sum(-jnp.log(y_pred_binned_1).reshape(-1, 1) * one_hot_clusters[poi_partition_mask, :], axis=0) / jnp.sum(-jnp.log(y_pred_binned_1))
+            soft_assign_0, soft_assign_1 = soft_assign_0.reshape(1, one_hot_clusters.shape[1]), soft_assign_1.reshape(1, one_hot_clusters.shape[1])
+            ddd_j = jnp.matmul(
+                jnp.matmul((soft_assign_0 - soft_assign_1), centroids_matmul),
+                (soft_assign_0 - soft_assign_1).T
+            ).reshape(-1, )[0]
+            ddd += ddd_j
+        return ddd
+    
+    def xgb_objective(
+        self,
         y_true: np.ndarray,
-        y_pred: np.ndarray
+        y_pred_raw: np.ndarray,
+        ddd_gamma: float,
+        poi_input: np.ndarray,
+        centroids_matmul: np.ndarray,
+        one_hot_clusters: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
-        if loss == 'logistic':
-            pass
-        loss_fun = lambda y_pred: loss(y_true=y_true, y_pred=y_pred)
+        
+        y_pred_prob = np.exp(y_pred_raw)/(1+np.exp(y_pred_raw))
+        grad = y_pred_prob - y_true
+        hess = y_pred_prob * (1 - y_pred_prob)
 
-        grad = None
-        hess = None
-
-        return grad, hess
+        ddd = lambda y_pred_prob: self.xgb_regularizer(
+            y_pred_prob=y_pred_prob, 
+            poi_input=poi_input, 
+            centroids_matmul=centroids_matmul, 
+            one_hot_clusters=one_hot_clusters
+        )
+        print(y_pred_prob.min(), y_pred_prob.max(), ddd(y_pred_prob=y_pred_prob), flush=True)
+        ddd_grad = jax.grad(ddd)(y_pred_prob).reshape(-1, )
+        ddd_hess = jax.jvp(fun=jax.grad(ddd), primals=(y_pred_prob, ), tangents=(jnp.ones_like(y_pred_prob), ))[1].reshape(-1, )
+        return grad+ddd_gamma*ddd_grad, hess+ddd_gamma*ddd_hess
 
 
 class NNClassifier(torch.nn.Module):
@@ -290,27 +346,11 @@ class Learner:
         ddd_gamma: Optional[float] = None
     ) -> None:
         
-        # TODO: move this to dedicated on_torch_training_start method in DDD
         if self.ddd is not None:
-            print("Constructing diffusion map ...", flush=True)
             # NOTE: assumes POIs come first, nuisances second, and then data
-            diff_map_output = self.ddd.diffusion_map(nuisances=X[:, self.ddd.poi_dim:self.ddd.poi_dim+self.ddd.nuisance_dim].numpy())
-            print("Computing optimal partition ...", flush=True)
-            clustering_output = self.ddd.diffusion_k_means(diffusion_map=diff_map_output.diffusion_map, stationary_distribution=diff_map_output.stationary_distribution)
-            print(f"Converged after {clustering_output.n_iter} iterations", flush=True)
-            
-            if self.ddd.nystrom_subset_size:
-                print(f"Estimating eigenvectors via Nystrom extension ...", flush=True)
-                estimated_diff_map = self.ddd.nystrom_approximation(diff_map_output=diff_map_output)
-                cluster_assignments = np.argmin(scipy_cdist(estimated_diff_map, clustering_output.centroids, metric='euclidean'), axis=1)
-                one_hot_clusters = np.zeros(shape=(estimated_diff_map.shape[0], self.ddd.k))
-                one_hot_clusters[range(one_hot_clusters.shape[0]), cluster_assignments.astype(int)] = 1.0
-
-            one_hot_clusters = one_hot_clusters if self.ddd.nystrom_subset_size else clustering_output.one_hot_clusters
+            centroids_matmul, one_hot_clusters = self.ddd.fit(nuisances=X[:, self.ddd.poi_dim:self.ddd.poi_dim+self.ddd.nuisance_dim].numpy())
+            centroids_matmul = torch.from_numpy(centroids_matmul).double().to(self.device)
             one_hot_clusters = torch.from_numpy(one_hot_clusters).to(self.device)
-
-            centroids_matmul = torch.from_numpy(np.matmul(clustering_output.centroids, clustering_output.centroids.T)).double().to(self.device)
-            assert centroids_matmul.shape[0] == centroids_matmul.shape[1]
         
         self.model.train()
         for _ in tqdm(range(epochs), desc="Training NN Classifier"):
@@ -328,7 +368,7 @@ class Learner:
                 batch_predictions = self.model(batch_X)
                 batch_loss = self.loss(batch_predictions, batch_y)
                 if self.ddd is not None:
-                    ddd_loss = self.ddd.torch_ddd_regularizer(
+                    ddd_loss = self.ddd.torch_regularizer(
                         y_pred=batch_predictions,
                         poi_input=batch_X[:, :self.ddd.poi_dim],
                         centroids_matmul=centroids_matmul,
