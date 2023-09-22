@@ -1,12 +1,14 @@
-from typing import Union, Any, Dict, List
+from typing import Union, Any, Dict, List, Optional
 from tqdm import tqdm
+from joblib import Parallel, delayed
 
 import numpy as np
 from scipy import integrate
 import torch
+from sbi.simulators.simutils import tqdm_joblib
 
 from lf2i.test_statistics._base import TestStatistic
-from lf2i.utils.likelihood_inputs import preprocess_odds_estimation, preprocess_for_odds_cv, preprocess_for_odds_cs
+from lf2i.utils.likelihood_inputs import preprocess_odds_estimation, preprocess_for_odds_cv, preprocess_for_odds_cs, preprocess_odds_integration
 
 
 class BFF(TestStatistic):
@@ -14,22 +16,22 @@ class BFF(TestStatistic):
     def __init__(
         self,
         estimator: Union[str, Any],
-        task: str,  # either 'inference' or 'anomaly_detection'
         poi_dim: int,
         nuisance_dim: int,
         data_sample_size: int,
         data_dim: int,
-        estimator_kwargs: Dict = {}
+        estimator_kwargs: Dict = {},
+        n_jobs: int = 1
     ) -> None:
         super().__init__(acceptance_region='right', estimation_method='likelihood')
 
-        self.task = task
         self.poi_dim = poi_dim
         self.nuisance_dim = nuisance_dim
         self.param_dim = poi_dim + nuisance_dim
         self.data_sample_size = data_sample_size
         self.data_dim = data_dim
         self.estimator = self._choose_estimator(estimator, estimator_kwargs, 'odds')
+        self.n_jobs = n_jobs
 
     def estimate(
         self,
@@ -41,13 +43,29 @@ class BFF(TestStatistic):
         self.estimator.fit(X=params_samples, y=labels)
         self._estimator_trained['odds'] = True
 
+    def evaluate(
+        self,
+        parameters: Union[np.ndarray, torch.Tensor],
+        samples:  Union[np.ndarray, torch.Tensor],
+        mode: str,
+        param_space_bounds: Optional[List[List[float]]] = None
+    ) -> np.ndarray:
+        if mode == 'critical_values':
+            return self._compute_for_critical_values(parameters, samples, param_space_bounds)
+        elif mode == 'confidence_sets':
+            return self._compute_for_confidence_sets(parameters, samples)
+        elif mode == 'diagnostics':
+            return self._compute_for_diagnostics(parameters, samples, param_space_bounds)
+        else:
+            raise ValueError(f"Only `critical_values`, `confidence_sets`, and `diagnostics` are supported, got {mode}")
+
     def _odds(
         self,
-        probabilities: Union[np.ndarray, torch.Tensor]
+        probs: Union[np.ndarray, torch.Tensor]
     ) -> np.ndarray:
-        if isinstance(probabilities, torch.Tensor):
-            probabilities = probabilities.cpu().detach().numpy()
-        return np.prod((probabilities[:, 1] / probabilities[:, 0]).reshape(-1, self.data_sample_size), axis=1)
+        if isinstance(probs, torch.Tensor):
+            probs = probs.cpu().detach().numpy()
+        return np.prod((probs[:, 1] / probs[:, 0]).reshape(-1, self.data_sample_size), axis=1)
 
     def _integrate_odds(
         self,
@@ -57,10 +75,7 @@ class BFF(TestStatistic):
     ) -> float:
         return integrate.nquad(
             func=lambda *params: self._odds(self.estimator.predict_proba(
-                X=np.hstack((
-                    np.repeat(np.array([*fixed_poi, *params]).reshape(-1, self.param_dim), repeats=self.data_sample_size), 
-                    samples
-                ))
+                X=preprocess_odds_integration(self.estimator, fixed_poi, params, samples, self.param_dim, self.data_sample_size)
             )),
             ranges=integration_bounds
         )[0]  # return only the result of the integration
@@ -69,37 +84,36 @@ class BFF(TestStatistic):
         self,
         parameters: Union[np.ndarray, torch.Tensor],
         samples: Union[np.ndarray, torch.Tensor],
-        param_space_bounds: List[List[float]]
+        param_space_bounds: Optional[List[List[float]]] = None
     ) -> np.ndarray:
-        
         # TODO: 
-        # 1) DONE --> restructure to avoid redundancies, if possible; 
-        # 2) fix usage of param_space_bounds, allow integration over any prior;
-        # 3) check if better to do computations with log (see last appendix in lf2i paper)
-        # 4) optimize (minimize calls to predict_proba, vectorize, numba, parallelize); 
-        # 5) check and fix consistency of types for arrays-estimators
+        # 1) fix usage of param_space_bounds, allow integration over any prior;
+        # 2) check if better to do computations with log (see last appendix in lf2i paper)
+        # 3) optimize (minimize calls to predict_proba, vectorize, numba, parallelize); 
+        # 4) check and fix consistency of types for arrays-estimators
+        # NOTE: this only considers simple null hypothesis with respect to the POI, which is what we need for confidence sets
         parameters, samples, params_samples = preprocess_for_odds_cv(parameters, samples, self.param_dim, self.data_sample_size, self.data_dim, self.estimator)
-        if self.task == 'inference':
-            if self.nuisance_dim == 0:
-                if self.data_sample_size == 1:
-                    # TODO: technically we also need G to be the marginal of F_\theta, and proportion of Y=1 to be 0.5
-                    # in this case BFF denominator == 1 and numerator is only odds. 
-                    return self._odds(self.estimator.predict_proba(X=params_samples))
-                else:
-                    numerator = self._odds(self.estimator.predict_proba(X=params_samples))
-                    denominator = np.array([
-                        self._integrate_odds(samples=samples[i, :, :], fixed_poi=np.empty(0), integration_bounds=param_space_bounds[:self.poi_dim]) 
-                        for i in tqdm(range(samples.shape[0]))
-                    ])
-                    return numerator / denominator
+        if self.nuisance_dim == 0:
+            if self.data_sample_size == 1:
+                # TODO: technically we also need G to be the marginal of F_\theta, and proportion of Y=1 to be 0.5
+                # in this case BFF denominator == 1 and numerator is only odds. 
+                return self._odds(self.estimator.predict_proba(X=params_samples))
             else:
-                return np.array([
+                numerator = self._odds(self.estimator.predict_proba(X=params_samples))
+                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)} points...", total=len(it))) as _:
+                    denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
+                        self._integrate_odds(samples=samples[i, :, :], fixed_poi=np.empty(0), integration_bounds=param_space_bounds[:self.poi_dim]) 
+                        ) for i in it
+                    ))
+                return numerator / denominator
+        else:
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)} points...", total=len(it))) as _:
+                bff = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
                     self._integrate_odds(samples=samples[i, :, :], fixed_poi=parameters[i, :self.poi_dim], integration_bounds=param_space_bounds[-self.nuisance_dim:]) / 
                     self._integrate_odds(samples=samples[i, :, :], fixed_poi=np.empty(0), integration_bounds=param_space_bounds)
-                    for i in tqdm(range(samples.shape[0]))
-                ])
-        elif self.task == 'anomaly_detection':
-            raise NotImplementedError
+                    ) for i in it
+                ))
+            return bff
     
     def _compute_for_confidence_sets(
         self, 
@@ -108,7 +122,7 @@ class BFF(TestStatistic):
         param_space_bounds: List[List[float]]
     ) -> np.ndarray:
         # TODO: can we call _compute_for_critical_values instead of rewriting much similar code?
-
+        # TODO: double-check this
         parameter_grid, samples, param_grid_samples = preprocess_for_odds_cs(parameter_grid, samples, self.poi_dim, self.data_sample_size, self.data_dim, self.estimator)
         if self.nuisance_dim == 0:
             if self.data_sample_size == 1:
@@ -139,19 +153,3 @@ class BFF(TestStatistic):
         param_space_bounds: List[List[float]]
     ) -> np.ndarray:
         return self._compute_for_critical_values(parameters, samples, param_space_bounds)
-
-    def evaluate(
-        self,
-        parameters: Union[np.ndarray, torch.Tensor],
-        samples:  Union[np.ndarray, torch.Tensor],
-        mode: str,
-        param_space_bounds: List[List[float]]
-    ) -> np.ndarray:
-        if mode == 'critical_values':
-            return self._compute_for_critical_values(parameters, samples, param_space_bounds)
-        elif mode == 'confidence_sets':
-            return self._compute_for_confidence_sets(parameters, samples)
-        elif mode == 'diagnostics':
-            return self._compute_for_diagnostics(parameters, samples, param_space_bounds)
-        else:
-            raise ValueError(f"Only `critical_values`, `confidence_sets`, and `diagnostics` are supported, got {mode}")

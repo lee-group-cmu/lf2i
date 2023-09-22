@@ -1,4 +1,4 @@
-from typing import Union, Tuple, Any
+from typing import Union, Tuple, Any, List
 import warnings
 
 import numpy as np
@@ -14,7 +14,8 @@ def preprocess_odds_estimation(
     param_dim: int,
     estimator: Any
 ) -> Tuple[Union[np.ndarray, torch.Tensor]]:
-    if isinstance(estimator, torch.nn.Module):
+    # TODO: this is not general, i.e. assumes our torch “construction” with a Learner that has a model attribute
+    if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
         # PyTorch models
         if isinstance(labels, np.ndarray):
             labels = torch.from_numpy(labels)
@@ -111,7 +112,7 @@ def preprocess_for_odds_cs(
     data_dim: int,
     estimator: Any
 ) -> Tuple[Union[np.ndarray, torch.Tensor]]:
-    """Repeat and tile both parameters in grid and samples to achieve the following data structure:
+    """Repeat and tile both parameter_grid and samples to achieve the following data structure:
         param_grid_0, samples_0_0
         param_grid_0, samples_0_1
         param_grid_1, samples_0_0
@@ -172,3 +173,24 @@ def preprocess_for_odds_cs(
         ))
         
     return parameter_grid, samples, params_samples
+
+
+def preprocess_odds_integration(
+    estimator: Any,
+    fixed_poi: Union[np.ndarray, torch.Tensor],
+    integ_params: List[float],
+    samples: Union[np.ndarray, torch.Tensor],
+    param_dim: int,
+    data_sample_size: int
+) -> Union[np.ndarray, torch.Tensor]:
+    if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
+        estimator_inputs = torch.hstack((
+            torch.repeat_interleave(torch.cat((fixed_poi, torch.Tensor(integ_params))).reshape(1, param_dim), repeats=data_sample_size),
+            samples
+        ))
+    else:
+        estimator_inputs = np.hstack((
+            np.repeat(np.concatenate(fixed_poi, np.array(integ_params)).reshape(1, param_dim), repeats=data_sample_size), 
+            samples
+        ))
+    return estimator_inputs

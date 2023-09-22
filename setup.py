@@ -24,6 +24,7 @@ REQUIRED = [
     "torch>=1.12.1",
     "tqdm",
     "xgboost>=1.6.2",
+    "joblib"
 ]
 
 EXTRAS = {
