@@ -1,6 +1,7 @@
-from typing import Union, Tuple
+from typing import Union, Tuple, Any, Sequence, Iterator
 import warnings
 
+import itertools
 import numpy as np
 import torch
 
@@ -55,18 +56,18 @@ def preprocess_indicators_lf2i(
 
 
 def preprocess_indicators_posterior(
-    parameters: Union[np.ndarray, torch.Tensor],
-    samples: Union[np.ndarray, torch.Tensor],
-    parameter_grid: Union[np.ndarray, torch.Tensor],
+    parameters: torch.Tensor,
+    samples: torch.Tensor,
+    parameter_grid: torch.Tensor,
     param_dim: int,
     data_sample_size: int,
-) -> Tuple[np.ndarray, Union[np.ndarray, torch.Tensor], np.ndarray]:
-    if isinstance(parameters, torch.Tensor):
-        parameters = parameters.float().numpy()
-    if isinstance(parameter_grid, torch.Tensor):
-        parameter_grid = parameter_grid.float().numpy()
-    parameters = parameters.reshape(-1, param_dim)
-    return parameters, samples.reshape(parameters.shape[0], data_sample_size, -1), parameter_grid.reshape(-1, param_dim)
+    posterior: Union[Any, Sequence[Any]]
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Iterator[Any]]:
+    if isinstance(posterior, Sequence):
+        posterior = iter(posterior)
+    else:
+        posterior = itertools.cycle([posterior])
+    return parameters.reshape(-1, param_dim), samples.reshape(parameters.shape[0], data_sample_size, -1), parameter_grid.reshape(-1, param_dim), posterior
 
 
 def preprocess_indicators_prediction(

@@ -1,11 +1,13 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union, Sequence
 import pathlib
 from tqdm import tqdm
 
 import rpy2.robjects as robj
 import rpy2.robjects.numpy2ri
 import numpy as np
+import torch
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
+from sbi.utils.kde import KDEWrapper
 
 from lf2i.test_statistics.waldo import Waldo
 from lf2i.utils.lf2i_inputs import (
@@ -131,27 +133,29 @@ def compute_indicators_lf2i(
 
 
 def compute_indicators_posterior(
-    posterior: NeuralPosterior,
-    parameters: np.ndarray,
-    samples: np.ndarray,
-    parameter_grid: np.ndarray,
+    posterior: Union[NeuralPosterior, KDEWrapper, Sequence[Union[NeuralPosterior, KDEWrapper]]],
+    parameters: torch.Tensor,
+    samples: torch.Tensor,
+    parameter_grid: torch.Tensor,
     confidence_level: float,
     param_dim: int,
     data_sample_size: int,
     num_p_levels: int = 100_000,
-    tol: float = 0.01
-) -> np.ndarray:
+    tol: float = 0.01,
+    return_credible_regions: bool = False
+) -> Union[np.ndarray, Tuple[np.ndarray, Sequence[torch.Tensor]]]:
     """Construct an array of indicators which mark whether each value in `parameters` is included or not in the corresponding posterior credible region.
 
     Parameters
     ----------
-    posterior : NeuralPosterior
-        Estimated posterior distribution. Must have `log_prob(theta=..., x=...)` method. 
-    parameters : np.ndarray
+    posterior : Union[NeuralPosterior, KDEWrapper, Sequence[Union[NeuralPosterior, KDEWrapper]]],
+        Estimated posterior distribution. If `Sequence` of posteriors, we assume i-th posterior is estimated given i-th element of `samples`.
+        Must have `log_prob()` method. 
+    parameters : torch.Tensor,
         True (simulated) parameter values, for which inclusion in the corresponding credible region is checked.
-    samples : np.ndarray
+    samples : torch.Tensor,
         Array of d-dimensional samples, each generated from the corresponding value in `parameters`.
-    parameter_grid : np.ndarray
+    parameter_grid : torch.Tensor,
         Parameter space over which `posterior` is defined. This is used to construct the credible region. 
     confidence_level : float
         Confidence level of the credible regions to be constructed. Must be in (0, 1).
@@ -164,20 +168,24 @@ def compute_indicators_posterior(
         Number of level sets to consider to construct the high-posterior-density credible region, by default 100_000.
     tol : float, optional
         Tolerance for the coverage probability of the credible region, used as stopping criterion to construct it, by default 0.01.
+    return_credible_regions: bool, optional
+        Whet
 
     Returns
     -------
-    np.ndarray
+    Union[np.ndarray, Tuple[np.ndarray, Sequence[torch.Tensor]]]
         Array of zeros and ones that indicate whether the corresponding value in `parameters` is included or not in the credible region.
+        If `return_credible_regions`, then return a tuple whose second element is a sequence of credible regions (one for each parameter/sample).
     """
-    parameters, samples, parameter_grid = \
-        preprocess_indicators_posterior(parameters, samples, parameter_grid, param_dim, data_sample_size)
+    parameters, samples, parameter_grid, posterior = \
+        preprocess_indicators_posterior(parameters, samples, parameter_grid, param_dim, data_sample_size, posterior)
     
-    indicators = np.zeros(shape=(parameters.shape[0], ))
+    indicators = torch.zeros(size=(parameters.shape[0], ))
+    credible_regions = []
     for i in tqdm(range(parameters.shape[0]), desc="Computing indicators for credible regions"):
         _, credible_region = hpd_region(
-            posterior=posterior,
-            param_grid=np.concatenate((parameter_grid, parameters[i, :].reshape(1, param_dim))),
+            posterior=next(posterior),
+            param_grid=torch.cat((parameter_grid, parameters[i, :].reshape(1, param_dim))),
             x=samples[i, :, :],
             confidence_level=confidence_level,
             num_p_levels=num_p_levels, tol=tol
@@ -185,8 +193,12 @@ def compute_indicators_posterior(
         if parameters[i, :] in credible_region:
             # TODO: this is not safe. Better to return an array of bools and check if True
             indicators[i] = 1
+        credible_regions.append(credible_region)
     
-    return indicators
+    if return_credible_regions:
+        return indicators.numpy(), credible_regions
+    else:
+        return indicators.numpy()
 
 
 def compute_indicators_prediction(
