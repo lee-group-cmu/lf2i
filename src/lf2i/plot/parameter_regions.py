@@ -7,7 +7,7 @@ from matplotlib.colors import to_rgba
 from matplotlib.axes._axes import Axes
 import alphashape
 
-from lf2i.utils.miscellanea import PolygonPatchFixed
+from lf2i.plot.miscellanea import PolygonPatchFixed
 
 
 def plot_parameter_region(
