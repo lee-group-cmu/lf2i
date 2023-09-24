@@ -143,7 +143,7 @@ def compute_indicators_posterior(
     num_p_levels: int = 100_000,
     tol: float = 0.01,
     return_credible_regions: bool = False
-) -> Union[np.ndarray, Tuple[np.ndarray, Sequence[torch.Tensor]]]:
+) -> Union[np.ndarray, Tuple[np.ndarray, Sequence[np.ndarray]]]:
     """Construct an array of indicators which mark whether each value in `parameters` is included or not in the corresponding posterior credible region.
 
     Parameters
@@ -169,11 +169,11 @@ def compute_indicators_posterior(
     tol : float, optional
         Tolerance for the coverage probability of the credible region, used as stopping criterion to construct it, by default 0.01.
     return_credible_regions: bool, optional
-        Whet
+        Whether to return the credible regions computed along the way or not.
 
     Returns
     -------
-    Union[np.ndarray, Tuple[np.ndarray, Sequence[torch.Tensor]]]
+    Union[np.ndarray, Tuple[np.ndarray, Sequence[np.ndarray]]]
         Array of zeros and ones that indicate whether the corresponding value in `parameters` is included or not in the credible region.
         If `return_credible_regions`, then return a tuple whose second element is a sequence of credible regions (one for each parameter/sample).
     """
@@ -193,7 +193,7 @@ def compute_indicators_posterior(
         if parameters[i, :] in credible_region:
             # TODO: this is not safe. Better to return an array of bools and check if True
             indicators[i] = 1
-        credible_regions.append(credible_region)
+        credible_regions.append(credible_region.numpy())
     
     if return_credible_regions:
         return indicators.numpy(), credible_regions
