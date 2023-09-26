@@ -1,11 +1,20 @@
-from typing import Union, Any, Dict, Optional, List
+from typing import Union, Any, Dict, Optional, List, Tuple
+from joblib import Parallel, delayed
+from tqdm import tqdm
 
 import numpy as np
 import torch
 from scipy.optimize import minimize
+from sbi.simulators.simutils import tqdm_joblib
 
 from lf2i.test_statistics._base import TestStatistic
-from lf2i.utils.likelihood_inputs import preprocess_odds_estimation, preprocess_for_odds_cv
+from lf2i.utils.likelihood_inputs import (
+    preprocess_odds_estimation, 
+    preprocess_for_odds_cv, 
+    preprocess_odds_maximization, 
+    preprocess_for_odds_cs
+)
+from lf2i.utils.miscellanea import to_np_if_torch
 
 
 class ACORE(TestStatistic):
@@ -46,45 +55,84 @@ class ACORE(TestStatistic):
         parameters: Union[np.ndarray, torch.Tensor],
         samples:  Union[np.ndarray, torch.Tensor],
         mode: str,
-        param_space_bounds: Optional[List[List[float]]] = None,
-        hybrid: bool = False
+        param_space_bounds: Optional[List[Tuple[float]]] = None
     ) -> np.ndarray:
         if mode == 'critical_values':
-            return self._compute_for_critical_values(parameters, samples, param_space_bounds, hybrid)
+            return self._compute_for_critical_values(parameters, samples, param_space_bounds)
         elif mode == 'confidence_sets':
-            return self._compute_for_confidence_sets(parameters, samples, hybrid)
+            return self._compute_for_confidence_sets(parameters, samples)
         elif mode == 'diagnostics':
-            return self._compute_for_diagnostics(parameters, samples, param_space_bounds, hybrid)
+            return self._compute_for_diagnostics(parameters, samples, param_space_bounds)
         else:
             raise ValueError(f"Only `critical_values`, `confidence_sets`, and `diagnostics` are supported, got {mode}")
     
-    def _odds_ratio(
+    def compute_profiled_nuisances(
         self,
-        probs_theta0: Union[np.ndarray, torch.Tensor],
-        probs_theta1: Union[np.ndarray, torch.Tensor]
+        parameters: Union[np.ndarray, torch.Tensor],
+        samples: Union[np.ndarray, torch.Tensor, None],
+        param_space_bounds: Optional[List[Tuple[float]]]
     ) -> np.ndarray:
-        pass
+        parameters, samples, _ = preprocess_for_odds_cv(parameters, samples, self.param_dim, self.data_sample_size, self.data_dim, self.estimator)
+        with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing (approximate) nuisance MLE for {len(it)} points...", total=len(it))) as _:
+            nu_hat = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
+                self._maximize_log_odds(samples=samples[i, :, :], fixed_poi=parameters[i, :self.poi_dim], optimization_bounds=param_space_bounds[-self.nuisance_dim:])
+                ) for i in it
+            ))
+        return nu_hat
+    
+    def _log_odds(
+        self,
+        probs: Union[np.ndarray, torch.Tensor]
+    ) -> np.ndarray:
+        probs = to_np_if_torch(probs)
+        return np.sum(np.log((probs[:, 1] / probs[:, 0])).reshape(-1, self.data_sample_size), axis=1)
 
-    def _optimize_log_odds_ratio(
+    def _maximize_log_odds(
         self,
-        probs_theta0: Union[np.ndarray, torch.Tensor]
-    ) -> np.ndarray:
-        pass
+        samples: Union[np.ndarray, torch.Tensor],
+        fixed_poi: Union[np.ndarray, torch.Tensor],  # needed only if maximizing solely over nuisances; otherwise empty array
+        optimization_bounds: List[Tuple[float]],
+        argmax: bool = False
+    ) -> float:
+        # max f(x) = - min -f(x)
+        result = -1 * minimize(
+            fun=lambda *params: -1 * self._log_odds(self.estimator.predict_proba(
+                X=preprocess_odds_maximization(self.estimator, fixed_poi, params, samples, self.param_dim, self.data_sample_size)
+            )),
+            x0=np.array([np.mean(bounds) for bounds in optimization_bounds]),  # use mid-point as initial guess
+            method='Nelder-Mead',
+            bounds=optimization_bounds
+        )
+        assert result.success
+        if argmax:
+            return result.x
+        else:
+            return result.fun
 
     def _compute_for_critical_values(
         self,
         parameters: Union[np.ndarray, torch.Tensor],
         samples: Union[np.ndarray, torch.Tensor, None],
-        param_space_bounds: Optional[List[List[float]]] = None,
-        hybrid: bool = False,
-        simulator: Optional[Any] = None
-    ) -> None:
+        param_space_bounds: Optional[List[Tuple[float]]]
+    ) -> Union[np.ndarray, Tuple[np.ndarray]]:
         # NOTE: this only considers simple null hypothesis with respect to the POI, which is what we need for confidence sets
         parameters, samples, params_samples = preprocess_for_odds_cv(parameters, samples, self.param_dim, self.data_sample_size, self.data_dim, self.estimator)
         if self.nuisance_dim == 0:
-            return self._optimize_log_odds_ratio(self.estimator.predict_proba(X=params_samples))
+            numerator = self._log_odds(self.estimator.predict_proba(X=params_samples))
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it))) as _:
+                denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
+                    self._maximize_log_odds(samples=samples[i, :, :], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds[:self.poi_dim]) 
+                    ) for i in it
+                ))
+            return numerator / denominator
         else:
-            raise NotImplementedError
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it))) as _:
+                acore = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
+                    self._maximize_log_odds(samples=samples[i, :, :], fixed_poi=parameters[i, :self.poi_dim], optimization_bounds=param_space_bounds[-self.nuisance_dim:]) / 
+                    self._maximize_log_odds(samples=samples[i, :, :], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
+                    ) for i in it
+                ))
+            return acore
     
     def _compute_for_confidence_sets(
         self, 
@@ -92,7 +140,31 @@ class ACORE(TestStatistic):
         samples: Union[np.ndarray, torch.Tensor],
         param_space_bounds: List[List[float]]
     ) -> np.ndarray:
-        pass
+        parameter_grid, samples, param_grid_samples = preprocess_for_odds_cs(parameter_grid, samples, self.poi_dim, self.data_sample_size, self.data_dim, self.estimator)
+        if self.nuisance_dim == 0:
+            # log_odds already aggregates wrt data_sample_size
+            numerator = self._log_odds(self.estimator.predict_proba(X=param_grid_samples)).reshape(samples.shape[0], parameter_grid.shape[0])
+            # denominator is the same regardless of parameter grid value
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it))) as _:
+                denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
+                    self._maximize_log_odds(sample=samples[i, :, :], fixed_poi=np.empty(0), optimization_bounds=param_space_bounds[:self.poi_dim]) 
+                    ) for i in it
+                )).reshape(-1, 1)
+            return numerator / denominator  # automatic broadcasting along dimension 1
+        else:
+            def param_grid_loop(sample: Union[np.ndarray, torch.Tensor], denominator: float) -> np.ndarray:
+                numerator = np.empty(shape=(parameter_grid.shape[0], ))
+                for j in range(parameter_grid.shape[0]):
+                    numerator[j] = self._maximize_log_odds(sample=sample, fixed_poi=parameter_grid[j, :], optimization_bounds=param_space_bounds[-self.nuisance_dim:])
+                return numerator / denominator
+            
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)}x{out.shape[1]} points...", total=len(it))) as _:
+                out = np.vstack(Parallel(n_jobs=self.n_jobs)(delayed(param_grid_loop(
+                    sample=samples[i, :, :], 
+                    denominator=self._maximize_log_odds(sample=samples[i, :, :], fixed_poi=np.empty(0), optimization_bounds=param_space_bounds)
+                    ).reshape(1, -1)) for i in it
+                ))
+            return out
 
     def _compute_for_diagnostics(
         self,
