@@ -107,7 +107,7 @@ class BFF(TestStatistic):
                 numerator = self._odds(self.estimator.predict_proba(X=params_samples))
                 with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)} points...", total=len(it))) as _:
                     denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
-                        self._integrate_odds(sample=samples[i, :, :], fixed_poi=torch.empty(0), integration_bounds=param_space_bounds[:self.poi_dim]) 
+                        lambda idx: self._integrate_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), integration_bounds=param_space_bounds[:self.poi_dim]) 
                         )(i) for i in it
                     ))
                 return numerator / denominator
@@ -139,7 +139,7 @@ class BFF(TestStatistic):
                 # denominator is the same regardless of parameter grid value
                 with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)} points...", total=len(it))) as _:
                     denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
-                        self._integrate_odds(sample=samples[i, :, :], fixed_poi=torch.empty(0), integration_bounds=param_space_bounds[:self.poi_dim]) 
+                        lambda idx: self._integrate_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), integration_bounds=param_space_bounds[:self.poi_dim]) 
                         )(i) for i in it
                     )).reshape(-1, 1)
                 return numerator / denominator  # automatic broadcasting along dimension 1
@@ -150,10 +150,10 @@ class BFF(TestStatistic):
                     numerator[j] = self._integrate_odds(sample=sample, fixed_poi=parameter_grid[j, :], integration_bounds=param_space_bounds[-self.nuisance_dim:])
                 return numerator / denominator
             
-            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)}x{out.shape[1]} points...", total=len(it))) as _:
-                out = np.vstack(Parallel(n_jobs=self.n_jobs)(delayed(param_grid_loop(
-                    sample=samples[i, :, :], 
-                    denominator=self._integrate_odds(sample=samples[i, :, :], fixed_poi=torch.empty(0), integration_bounds=param_space_bounds)
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it))) as _:
+                out = np.vstack(Parallel(n_jobs=self.n_jobs)(delayed(lambda idx: param_grid_loop(
+                    sample=samples[idx, :, :], 
+                    denominator=self._integrate_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), integration_bounds=param_space_bounds)
                     ).reshape(1, -1))(i) for i in it
                 ))
             return out
