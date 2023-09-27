@@ -201,10 +201,19 @@ def preprocess_odds_integration(
 def preprocess_odds_maximization(
     estimator: Any,
     fixed_poi: Union[np.ndarray, torch.Tensor],
-    opt_params: List[float],
+    opt_params: Tuple[np.ndarray],
     sample: Union[np.ndarray, torch.Tensor],
     param_dim: int,
     data_sample_size: int
 ) -> Union[np.ndarray, torch.Tensor]:
-    # can use the same
-    return preprocess_odds_integration(estimator, fixed_poi, opt_params, sample, param_dim, data_sample_size)
+    if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
+        estimator_inputs = torch.hstack((
+            torch.repeat_interleave(torch.cat((fixed_poi, torch.from_numpy(np.concatenate(opt_params)))).reshape(1, param_dim), repeats=data_sample_size),
+            sample
+        ))
+    else:
+        estimator_inputs = np.hstack((
+            np.repeat(np.concatenate(to_np_if_torch(fixed_poi), np.concatenate(opt_params)).reshape(1, param_dim), repeats=data_sample_size), 
+            sample
+        ))
+    return estimator_inputs
