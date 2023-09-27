@@ -187,12 +187,12 @@ def preprocess_odds_integration(
 ) -> Union[np.ndarray, torch.Tensor]:
     if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
         estimator_inputs = torch.hstack((
-            torch.repeat_interleave(torch.cat((fixed_poi, torch.Tensor(integ_params))).reshape(1, param_dim), repeats=data_sample_size),
+            torch.repeat_interleave(torch.cat((fixed_poi, torch.Tensor(integ_params))).reshape(1, param_dim), repeats=data_sample_size).reshape(-1, param_dim), 
             sample
         ))
     else:
         estimator_inputs = np.hstack((
-            np.repeat(np.concatenate(to_np_if_torch(fixed_poi), np.array(integ_params)).reshape(1, param_dim), repeats=data_sample_size), 
+            np.repeat(np.concatenate((to_np_if_torch(fixed_poi), np.array(integ_params))).reshape(1, param_dim), repeats=data_sample_size), 
             sample
         ))
     return estimator_inputs
@@ -213,7 +213,7 @@ def preprocess_odds_maximization(
         ))
     else:
         estimator_inputs = np.hstack((
-            np.repeat(np.concatenate(to_np_if_torch(fixed_poi), np.concatenate(opt_params)).reshape(1, param_dim), repeats=data_sample_size), 
+            np.repeat(np.concatenate((to_np_if_torch(fixed_poi), np.concatenate(opt_params))).reshape(1, param_dim), repeats=data_sample_size).reshape(-1, param_dim), 
             sample
         ))
     return estimator_inputs
