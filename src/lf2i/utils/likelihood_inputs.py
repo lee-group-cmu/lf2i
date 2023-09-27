@@ -147,7 +147,8 @@ def preprocess_for_odds_cs(
         Parameter grid, samples, and stacked parameter grid and samples. The stacked vector has output shape `(param_grid_size*n_samples*data_sample_size, param_dim+data_dim)`.
     """    
     
-    samples = samples.reshape(-1, data_sample_size, data_dim)
+    parameter_grid = parameter_grid.reshape(-1, poi_dim)
+    samples = samples.reshape(-1, data_sample_size, data_dim)   
     # TODO: this is not general, i.e. assumes our torch “construction” with a Learner that has a model attribute
     if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
         if isinstance(parameter_grid, np.ndarray):
@@ -156,10 +157,10 @@ def preprocess_for_odds_cs(
             samples = torch.from_numpy(samples)
         params_samples = torch.hstack((
             torch.tile(
-                torch.repeat_interleave(parameter_grid.reshape(-1, poi_dim), repeats=data_sample_size, dim=0), 
+                torch.repeat_interleave(parameter_grid, repeats=data_sample_size, dim=0), 
                 dims=(samples.shape[0], 1)
             ),
-            torch.tile(samples, dims=(1, parameter_grid.reshape(-1, poi_dim).shape[0], 1)).reshape(-1, data_dim)
+            torch.tile(samples, dims=(1, parameter_grid.shape[0], 1)).reshape(-1, data_dim)
         ))
     else:
         if isinstance(parameter_grid, torch.Tensor):
@@ -168,10 +169,10 @@ def preprocess_for_odds_cs(
             samples = samples.numpy()
         params_samples = np.hstack((
             np.tile(
-                np.repeat(parameter_grid.reshape(-1, poi_dim), repeats=data_sample_size, axis=0), 
+                np.repeat(parameter_grid, repeats=data_sample_size, axis=0), 
                 reps=(samples.shape[0], 1)
             ),
-            np.tile(samples, reps=(1, parameter_grid.reshape(-1, poi_dim).shape[0], 1)).reshape(-1, data_dim)
+            np.tile(samples, reps=(1, parameter_grid.shape[0], 1)).reshape(-1, data_dim)
         ))
         
     return parameter_grid, samples, params_samples
