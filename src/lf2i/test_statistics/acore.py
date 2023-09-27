@@ -93,7 +93,7 @@ class ACORE(TestStatistic):
 
     def _maximize_log_odds(
         self,
-        samples: Union[np.ndarray, torch.Tensor],
+        sample: Union[np.ndarray, torch.Tensor],
         fixed_poi: Union[np.ndarray, torch.Tensor],  # needed only if maximizing solely over nuisances; otherwise empty array
         optimization_bounds: List[Tuple[float]],
         argmax: bool = False
@@ -101,7 +101,7 @@ class ACORE(TestStatistic):
         # max f(x) = - min -f(x)
         result = minimize(
             fun=lambda *params: -1 * self._log_odds(self.estimator.predict_proba(
-                X=preprocess_odds_maximization(self.estimator, fixed_poi, params, samples, self.param_dim, self.data_sample_size)
+                X=preprocess_odds_maximization(self.estimator, fixed_poi, params, sample, self.param_dim, self.data_sample_size)
             )),
             x0=np.array([np.mean(bounds) for bounds in optimization_bounds]),  # use mid-point as initial guess
             method='Nelder-Mead',
@@ -125,14 +125,14 @@ class ACORE(TestStatistic):
             numerator = self._log_odds(self.estimator.predict_proba(X=params_samples))
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it))) as _:
                 denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
-                    lambda idx: self._maximize_log_odds(samples=samples[idx, :, :], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds[:self.poi_dim]) 
+                    lambda idx: self._maximize_log_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds[:self.poi_dim]) 
                     )(i) for i in it
                 ))
             return numerator / denominator
         else:
             def do_one(idx: int) -> float:
-                num = self._maximize_log_odds(samples=samples[idx, :, :], fixed_poi=parameters[idx, :self.poi_dim], optimization_bounds=param_space_bounds[-self.nuisance_dim:])
-                den = self._maximize_log_odds(samples=samples[idx, :, :], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
+                num = self._maximize_log_odds(sample=samples[idx, :, :], fixed_poi=parameters[idx, :self.poi_dim], optimization_bounds=param_space_bounds[-self.nuisance_dim:])
+                den = self._maximize_log_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
                 return num / den
 
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it))) as _:
