@@ -71,7 +71,7 @@ def coverage_probability_plot(
                 y_positions = np.linspace(start=yedges[0], stop=yedges[-1], num=len(y_bins)-1, endpoint=False)
                 for y_index, y in enumerate(y_positions):
                     for x_index, x in enumerate(x_positions):
-                        label = heatmap_values.T[:, ::-1][y_index, x_index]
+                        label = heatmap_values.T[::-1, :][y_index, x_index]
                         text_x = x + jump_x
                         text_y = y + jump_y
                         ax.text(text_x, text_y, f'{label:.1f}', color='black', ha='center', va='center')
