@@ -34,11 +34,6 @@ class Simulator(ABC):
         self.param_dim = poi_dim + nuisance_dim
         self.data_dim = data_dim
         self.data_sample_size = data_sample_size
-    
-    @property
-    @abstractmethod
-    def poi_grid(self) -> Union[np.ndarray, torch.Tensor]:
-        pass
 
     @abstractmethod
     def simulate_for_test_statistic(
