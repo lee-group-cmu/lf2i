@@ -60,7 +60,7 @@ class ACORE(TestStatistic):
         if mode == 'critical_values':
             return self._compute_for_critical_values(parameters, samples, param_space_bounds)
         elif mode == 'confidence_sets':
-            return self._compute_for_confidence_sets(parameters, samples)
+            return self._compute_for_confidence_sets(parameters, samples, param_space_bounds)
         elif mode == 'diagnostics':
             return self._compute_for_diagnostics(parameters, samples, param_space_bounds)
         else:
