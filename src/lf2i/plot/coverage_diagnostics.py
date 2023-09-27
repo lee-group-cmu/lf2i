@@ -62,7 +62,7 @@ def coverage_probability_plot(
             binned_sum_proba, xedges, yedges = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins], weights=np.round(coverage_probability*100, 2))
             bin_counts, xedges, yedges = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins]) 
             heatmap_values = binned_sum_proba/bin_counts
-            heatmap = ax.imshow(heatmap_values, cmap='inferno', aspect='auto', extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], vmin=vmin_vmax[0], vmax=vmin_vmax[1])
+            heatmap = ax.imshow(heatmap_values.T, cmap='inferno', aspect='auto', extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], vmin=vmin_vmax[0], vmax=vmin_vmax[1])
             if show_text:
                 # Add the text
                 jump_x = (xedges[-1] - xedges[0]) / (2.0 * len(x_bins))
@@ -71,7 +71,7 @@ def coverage_probability_plot(
                 y_positions = np.linspace(start=yedges[0], stop=yedges[-1], num=len(y_bins)-1, endpoint=False)
                 for y_index, y in enumerate(y_positions):
                     for x_index, x in enumerate(x_positions):
-                        label = heatmap_values[::-1, :][y_index, x_index]
+                        label = heatmap_values.T[:, ::-1][y_index, x_index]
                         text_x = x + jump_x
                         text_y = y + jump_y
                         ax.text(text_x, text_y, f'{label:.1f}', color='black', ha='center', va='center')
