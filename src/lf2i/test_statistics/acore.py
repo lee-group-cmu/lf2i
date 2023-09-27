@@ -163,7 +163,7 @@ class ACORE(TestStatistic):
                     numerator[j] = self._maximize_log_odds(sample=sample, fixed_poi=parameter_grid[j, :], optimization_bounds=param_space_bounds[-self.nuisance_dim:])
                 return numerator / denominator
             
-            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)}x{out.shape[1]} points...", total=len(it))) as _:
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it))) as _:
                 out = np.vstack(Parallel(n_jobs=self.n_jobs)(delayed(lambda idx: param_grid_loop(
                     sample=samples[idx, :, :], 
                     denominator=self._maximize_log_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
