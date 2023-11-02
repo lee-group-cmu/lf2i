@@ -17,6 +17,5 @@ ESTIMATORS = {
     # probabilistic classification algorithms (for likelihood estimation)
     'qda': lambda **kwargs: QuadraticDiscriminantAnalysis(**kwargs),
     'mlp_c': lambda **kwargs: MLPClassifier(**kwargs),
-    # 'mlp_torch': None, # TODO: how to pass kwargs to both Learner and Classifier?  lambda **kwargs: Learner
     'gb_c': lambda **kwargs: XGBClassifier(**kwargs),
 }

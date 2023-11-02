@@ -1,9 +1,11 @@
 from typing import Optional, Union, List, Dict, Any
 import warnings
+from joblib import Parallel, delayed
 
 from tqdm import tqdm
 import numpy as np
 import torch
+from sbi.simulators.simutils import tqdm_joblib
 from lf2i.test_statistics._base import TestStatistic
 from lf2i.utils.waldo_inputs import preprocess_waldo_estimation, preprocess_waldo_evaluation, preprocess_waldo_computation
 
@@ -21,7 +23,7 @@ class Waldo(TestStatistic):
         If `str`, will use one of the predefined estimators. 
         If `Any`, a trained estimator is expected. Needs to implement `estimator.predict(X=...)` ("prediction"), or `estimator.sample(sample_shape=..., x=...)` ("posterior").
     poi_dim : int
-        Dimensionality (number) of the parameters of interest
+        Dimensionality (number) of the parameters of interest.
     estimation_method : str
         Whether the estimator is a prediction algorithm ("prediction") or a posterior estimator ("posterior").
     num_posterior_samples : Optional[int], optional
@@ -32,6 +34,8 @@ class Waldo(TestStatistic):
         Hyperparameters and settings for the conditional mean estimator, by default {}.
     cond_variance_estimator_kwargs: Dict
         Hyperparameters and settings for the conditional variance estimator, by default {}.
+    n_jobs : int, optional
+        Number of workers to use when evaluating Waldo over multiple inputs if using a posterior estimator. By default -2, which uses all cores minus one.
     """
 
     def __init__(
@@ -42,7 +46,8 @@ class Waldo(TestStatistic):
         num_posterior_samples: Optional[int] = None,
         cond_variance_estimator: Optional[Union[str, Any]] = None,
         estimator_kwargs: Dict = {},
-        cond_variance_estimator_kwargs: Dict = {}
+        cond_variance_estimator_kwargs: Dict = {},
+        n_jobs: int = -2
     ) -> None:
         super().__init__(acceptance_region='left', estimation_method=estimation_method)
 
@@ -57,6 +62,7 @@ class Waldo(TestStatistic):
             self.num_posterior_samples = num_posterior_samples
         else:
             raise ValueError(f"Waldo estimation is supported only using `prediction` algorithms or `posterior` estimators, got {estimation_method}")
+        self.n_jobs = n_jobs
     
     @staticmethod
     def _compute_for_critical_values(
@@ -108,32 +114,6 @@ class Waldo(TestStatistic):
         conditional_var: Union[np.ndarray, List],
         mode: str
     ) -> np.ndarray:
-        """
-        Compute the Waldo test statistic in a suitable way given `mode`.
-        If `mode == critical_values` or `mode == diagnostics`, evaluate Waldo over pairs `\{(\theta_i, x_i)}_{i=1,\dots}`
-        If `mode == confidence_sets`, evaluate Waldo over all parameters *for each* sample.
-
-        Parameters
-        ----------
-        parameters : np.ndarray
-            Parameters over which to evaluate the test statistic.
-        conditional_mean : Union[np.ndarray, List]
-            Conditioanal means (given samples), to use in the computation of Waldo.
-        conditional_var : Union[np.ndarray, List]
-            Conditional variances - or covariance matrices - (given samples), to use in the computation of Waldo.
-        mode : str
-            Either 'critical_values', 'confidence_sets', 'diagnostics'.
-
-        Returns
-        -------
-        np.ndarray
-            Waldo test statistics evaluated over parameters and samples.
-
-        Raises
-        ------
-        ValueError
-            If `mode` is not among the pre-specified values.
-        """
         # TODO: unify computations regardless of self.estimation_method (prediction or posterior)
         # TODO: unify computations regardless of mode?
         # TODO: vectorize computations when d>1
@@ -168,7 +148,7 @@ class Waldo(TestStatistic):
         """
         # if `self.estimation_method == prediction`, assume both estimators accept same input types
         parameters, samples = preprocess_waldo_estimation(parameters, samples, self.estimation_method, self.estimator, self.poi_dim)
-        if self.method == 'prediction':
+        if self.estimation_method == 'prediction':
             self.estimator.fit(X=samples, y=parameters)
             if self.poi_dim > 1:
                 warnings.warn("Using 'prediction' with poi_dim > 1 might have inconsistencies and has not been thoroughly checked yet")
@@ -190,7 +170,8 @@ class Waldo(TestStatistic):
         """Evaluate the Waldo test statistic over the given parameters and samples. 
         
         Behaviour differs depending on mode: 'critical_values', 'confidence_sets', 'diagnostics'.
-        See self.compute() for details. 
+        If mode equals `critical_values` or `diagnostics`, evaluate Waldo over pairs :math:`\{(\theta_i, x_i)}_{i=1,\dots}`.
+        If mode equals `confidence_sets`, evaluate Waldo over all pairs given by the cartesian product of `parameters` (the parameter grid to construct confidence sets) and `samples`.
 
         Parameters
         ----------
@@ -214,10 +195,33 @@ class Waldo(TestStatistic):
             conditional_mean = self.estimator.predict(X=samples)
             conditional_var = self.cond_variance_estimator.predict(X=samples)
         else:
-            conditional_mean = []
-            conditional_var = []
-            for idx in tqdm(range(samples.shape[0]), desc='Approximating conditional mean and covariance'):  # axis 0 indexes different simulations/observations
+            def sampling_loop(idx):
                 posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).numpy()
-                conditional_mean.append(np.mean(posterior_samples, axis=0).reshape(1, self.poi_dim))
-                conditional_var.append(np.cov(posterior_samples.T))  # need samples.shape = (data_d, num_samples)
+                cond_mean = np.mean(posterior_samples, axis=0).reshape(1, self.poi_dim)
+                cond_var = np.cov(posterior_samples.T)  # need samples.shape = (data_d, num_samples)
+                return cond_mean, cond_var
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Approximating conditional mean and covariance for {samples.shape[0]} points...", total=len(it))) as _:
+                out = list(zip(*Parallel(n_jobs=self.n_jobs)(delayed(sampling_loop)(idx) for idx in it)))  # axis 0 indexes different simulations/observations
+                conditional_mean, conditional_var = out[0], out[1]
         return self._compute(parameters, conditional_mean, conditional_var, mode)
+
+
+"""
+def sampling_loop(idx):
+    posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).numpy()
+    cond_mean = np.mean(posterior_samples, axis=0).reshape(1, self.poi_dim)
+    cond_var = np.cov(posterior_samples.T)  # need samples.shape = (data_d, num_samples)
+    return cond_mean, cond_var
+with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Approximating conditional mean and covariance for {samples.shape[0]} points...", total=len(it))) as _:
+    out = list(zip(*Parallel(n_jobs=self.n_jobs)(delayed(sampling_loop)(idx) for idx in it)))  # axis 0 indexes different simulations/observations
+conditional_mean, conditional_var = out[0], out[1]
+"""
+
+"""
+conditional_mean = []
+conditional_var = []
+for idx in tqdm(range(samples.shape[0]), desc='Approximating conditional mean and covariance'):  # axis 0 indexes different simulations/observations
+    posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).numpy()
+    conditional_mean.append(np.mean(posterior_samples, axis=0).reshape(1, self.poi_dim))
+    conditional_var.append(np.cov(posterior_samples.T))  # need samples.shape = (data_d, num_samples)
+"""

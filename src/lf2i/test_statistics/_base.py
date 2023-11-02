@@ -1,7 +1,7 @@
 from typing import Union, Dict, Any, List
 from abc import ABC, abstractmethod
 
-from lf2i.test_statistics.estimators import ESTIMATORS
+from lf2i.test_statistics._estimators import ESTIMATORS
 
 
 class TestStatistic(ABC):
@@ -14,8 +14,8 @@ class TestStatistic(ABC):
         Must be either `left` or `right`.
     estimation_method : str
         The method with which the test statistic is estimated. 
-        If likelihood-based test statistics are used, such as ACORE and BFF, then 'likelihood'. 
-        If prediction/posterior-based test statistics are used, such as WALDO, then 'prediction' or 'posterior'.
+        If likelihood-based test statistics are used, e.g. ACORE and BFF, then 'likelihood'. 
+        If prediction/posterior-based test statistics are used, e.g. WALDO, then 'prediction' or 'posterior'.
     """
     
     def __init__(

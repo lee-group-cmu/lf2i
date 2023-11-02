@@ -4,9 +4,11 @@ import warnings
 import itertools
 import numpy as np
 import torch
+from sklearn.base import BaseEstimator
+from xgboost.sklearn import XGBModel
 
 
-def preprocess_quantile_regression(
+def preprocess_train_quantile_regression(
     test_statistics: Union[np.ndarray, torch.Tensor],
     parameters: Union[np.ndarray, torch.Tensor],
     param_dim: int
@@ -16,6 +18,23 @@ def preprocess_quantile_regression(
     if isinstance(parameters, torch.Tensor):
         parameters = parameters.numpy()
     return test_statistics.reshape(-1, ), parameters.reshape(-1, param_dim)
+
+
+def preprocess_predict_quantile_regression(
+    parameters: Union[np.ndarray, torch.Tensor],
+    estimator: Any,
+    param_dim: int
+) -> Union[np.ndarray, torch.Tensor]:
+    if isinstance(estimator, torch.nn.Module):
+        # PyTorch models
+        if isinstance(parameters, np.ndarray):
+            parameters = torch.from_numpy(parameters)
+    if isinstance(estimator, (BaseEstimator, XGBModel)):
+        # Scikit-Learn or XGBoost models
+        if isinstance(parameters, torch.Tensor):
+            parameters = parameters.numpy()
+    return parameters.reshape(-1, param_dim)
+
 
 def preprocess_neyman_inversion(
     test_statistic: np.ndarray,
@@ -60,14 +79,14 @@ def preprocess_indicators_posterior(
     samples: torch.Tensor,
     parameter_grid: torch.Tensor,
     param_dim: int,
-    data_sample_size: int,
+    batch_size: int,
     posterior: Union[Any, Sequence[Any]]
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Iterator[Any]]:
     if isinstance(posterior, Sequence):
         posterior = iter(posterior)
     else:
         posterior = itertools.cycle([posterior])
-    return parameters.reshape(-1, param_dim), samples.reshape(parameters.shape[0], data_sample_size, -1), parameter_grid.reshape(-1, param_dim), posterior
+    return parameters.reshape(-1, param_dim), samples.reshape(parameters.shape[0], batch_size, -1), parameter_grid.reshape(-1, param_dim), posterior
 
 
 def preprocess_indicators_prediction(

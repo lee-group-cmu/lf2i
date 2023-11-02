@@ -89,8 +89,7 @@ def epsilon_variance_correction(
     param_dim: int,
     epsilon: float = 1e-3
 ) -> Union[List, np.ndarray]:
-    """Make sure the estimated conditional variance is always >= 0+epsilon to avoid ZeroDivisionError or exploding test statistics.
-    """
+    # Make sure the estimated conditional variance is always >= 0+epsilon to avoid ZeroDivisionError or exploding test statistics.
     warning_msg = f"""At least one element of `conditional_var` is negative.\n
                         You should make sure your conditional variance estimator output is non-negative.\n"""
     if param_dim == 1:
@@ -98,7 +97,5 @@ def epsilon_variance_correction(
             warnings.warn(warning_msg + f"Applying eps={epsilon} correction.")
         return np.maximum(conditional_var, epsilon)
     else:
-        if any([np.sum(el < 0) for el in conditional_var]) > 0:
-             warnings.warn(warning_msg)
         # not implemented   
         return conditional_var

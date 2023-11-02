@@ -8,7 +8,7 @@ KEYWORDS = "likelihood-free inference simulator likelihood posterior parameter"
 URL = "https://github.com/lee-group-cmu/lf2i"
 EMAIL = "lee.group.cmu@gmail.com"
 AUTHOR = "Luca Masserano, Niccolò Dalmasso, David Zhao, Rafael Izbicki, Ann B. Lee"
-REQUIRES_PYTHON = ">=3.9.0"
+REQUIRES_PYTHON = ">=3.9.0, <3.12"
 
 REQUIRED = [
     "alphashape",
@@ -70,5 +70,7 @@ setup(
     install_requires=REQUIRED,
     extras_require=EXTRAS,
     license="MIT",
-    entry_points=ENTRY_POINTS
+    entry_points=ENTRY_POINTS,
+    package_data={'': ['*.r', '*.R']},
+    include_package_data=True
 )

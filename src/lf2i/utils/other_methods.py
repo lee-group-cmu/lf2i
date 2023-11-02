@@ -18,11 +18,11 @@ def hpd_region(
     tol: float = 0.01
 ) -> Tuple[float, torch.Tensor]:
     """
-    Compute a high-posterior-density region at the desired confidence (technically, credible) level.
+    Compute a high-posterior-density region at the desired credible level.
 
     Parameters
     ----------
-    posterior : NeuralPosterior
+    posterior : Union[NeuralPosterior, KDEWrapper]
         Estimated posterior distribution. Must implement `log_prob(...)` method.
     param_grid : torch.Tensor
         Fine grid of evaluation points in the support of the posterior.
@@ -71,18 +71,14 @@ def hpd_region(
     return current_confidence_level, param_grid[posterior_probs >= p_levels[idx-1], :]
 
 
-def central_prediction_sets(
+def gaussian_prediction_sets(
     conditional_mean_estimator: Any,
     conditional_variance_estimator: Any,
     samples: Union[torch.Tensor, np.ndarray],
     confidence_level: float,
     param_dim: int
 ) -> np.ndarray:
-    r"""Compute prediction sets centered around the point estimate using a Gaussian approximation:
-
-    .. math::
-
-        \mathbb{E}[\theta|X] \pm z_{1-\alpha/2} \cdot \sqrt{\mathbb{V}[\theta|X]}
+    r"""Compute prediction sets centered around the point estimate using a Gaussian approximation: :math:`\mathbb{E}[\theta|X] \pm z_{1-\alpha/2} \cdot \sqrt{\mathbb{V}[\theta|X]}`.
 
     Parameters
     ----------

@@ -1,6 +1,8 @@
 from typing import Any, Dict, Optional, Tuple, Union, Sequence
 import pathlib
 from tqdm import tqdm
+import warnings
+from joblib import Parallel, delayed
 
 import rpy2.robjects as robj
 import rpy2.robjects.numpy2ri
@@ -8,18 +10,19 @@ import numpy as np
 import torch
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
 from sbi.utils.kde import KDEWrapper
+from sbi.simulators.simutils import tqdm_joblib
 
 from lf2i.test_statistics.waldo import Waldo
-from lf2i.utils.lf2i_inputs import (
+from lf2i.utils.calibration_diagnostics_inputs import (
     preprocess_indicators_lf2i, 
     preprocess_indicators_posterior, 
     preprocess_indicators_prediction, 
     preprocess_diagnostics
 )
-from lf2i.utils.other_methods import hpd_region, central_prediction_sets
+from lf2i.utils.other_methods import hpd_region, gaussian_prediction_sets
 
 
-def coverage_diagnostics(
+def estimate_coverage_proba(
     indicators: np.ndarray,
     parameters: np.ndarray,
     estimator: str,
@@ -28,8 +31,8 @@ def coverage_diagnostics(
     new_parameters: Optional[np.ndarray] = None,
     n_sigma: int = 2
 ) -> Tuple[Any, np.ndarray, np.ndarray, np.ndarray]:
-    """Estimate conditional coverage probabilities by regressing dummy `indicators`, which signal if 
-    the corresponding value in `parameters` was included or not in the parameter region, against the `parameters` themselves. 
+    r"""Estimate conditional coverage probabilities by regressing `indicators`, which signal if the corresponding value in `parameters` 
+    was included or not in the parameter region, against the `parameters` themselves. 
 
     Note that `indicators` can be computed from any parameter region (posterior credible sets, confidence sets, prediction sets, etc ...).
 
@@ -40,29 +43,31 @@ def coverage_diagnostics(
     parameters : np.ndarray
         Array of p-dimensional parameters.
     estimator : str
-        Name of the probabilistic classifier to use to estimate conditional coverage probabilities. 
+        Name of the probabilistic classifier to use to estimate coverage probabilities. 
     estimator_kwargs : Dict
         Settings for `estimator`.
     param_dim : int
         Dimensionality of the parameter.
     new_parameters : Optional[np.ndarray], optional
-        Array of parameters over which to estimate/evaluate conditional coverage probabilities, by default None.
+        Array of parameters over which to estimate/evaluate coverage probabilities.
         If not provided, both training and evaluation of the probabilistic classifier are done over `parameters`.
     n_sigma : int, optional
-        Uncertainties around the estimated mean coverage proabilities are computed as mean +- se * n_sigma, by default 2.
+        Uncertainties around the estimated mean coverage proabilities are computed as :math:`\mu \pm se \cdot n\_sigma`.
+        If using the `splines` estimator, the standard errors are based on the posterior distribution of the model coefficients. 
+        By default 2.
 
     Returns
     -------
     Tuple[Any, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-        Fitted estimator, evaluated parameters, and estimated conditional coverage probabilities -- mean, upper-n_sigma bound. lower-n_sigma bound
+        Fitted estimator, evaluated parameters, and estimated coverage probabilities -- mean, upper-n_sigma bound. lower-n_sigma bound
 
     Raises
     ------
     ValueError
-        `Estimator` must be one of [`gam`, TBD]
+        `Estimator` must be one of [`splines`]
     """
     indicators, parameters, new_parameters = preprocess_diagnostics(indicators, parameters, new_parameters, param_dim)
-    if estimator in ['gam']:
+    if estimator in ['splines']:
         estimator = fit_r_estimator(
             estimator,
             indicators, 
@@ -76,7 +81,8 @@ def coverage_diagnostics(
             n_sigma
         )
     else:
-        raise ValueError(f"Estimators currently supported: [`gam`]; got {estimator}")
+        # TODO: additional methods?
+        raise ValueError(f"Estimators currently supported: [`splines`]; got {estimator}")
     out_parameters = parameters if new_parameters is None else new_parameters
     return estimator, out_parameters, mean_proba, upper_proba, lower_proba
 
@@ -139,10 +145,11 @@ def compute_indicators_posterior(
     parameter_grid: torch.Tensor,
     confidence_level: float,
     param_dim: int,
-    data_sample_size: int,
+    batch_size: int,
     num_p_levels: int = 100_000,
     tol: float = 0.01,
-    return_credible_regions: bool = False
+    return_credible_regions: bool = False,
+    n_jobs: int = -2
 ) -> Union[np.ndarray, Tuple[np.ndarray, Sequence[np.ndarray]]]:
     """Construct an array of indicators which mark whether each value in `parameters` is included or not in the corresponding posterior credible region.
 
@@ -161,15 +168,17 @@ def compute_indicators_posterior(
         Confidence level of the credible regions to be constructed. Must be in (0, 1).
     param_dim : int
         Dimensionality of the parameter.
-    data_sample_size : int
-        Number of samples generated from the same parameter value, for each sample in `samples`. 
-        Each sample/element of `samples` is of size (n, d).
+    batch_size : int
+        Number of samples drawn from the same parameter value, for each batch in `samples`. 
+        Each element of `samples` is of size (batch_size, data_dim).
     num_p_levels : int, optional
         Number of level sets to consider to construct the high-posterior-density credible region, by default 100_000.
     tol : float, optional
         Tolerance for the coverage probability of the credible region, used as stopping criterion to construct it, by default 0.01.
     return_credible_regions: bool, optional
         Whether to return the credible regions computed along the way or not.
+    n_jobs : int, optional
+        Number of workers to use when computing indicators over a sequence of inputs. By default -2, which uses all cores minus one.
 
     Returns
     -------
@@ -178,27 +187,28 @@ def compute_indicators_posterior(
         If `return_credible_regions`, then return a tuple whose second element is a sequence of credible regions (one for each parameter/sample).
     """
     parameters, samples, parameter_grid, posterior = \
-        preprocess_indicators_posterior(parameters, samples, parameter_grid, param_dim, data_sample_size, posterior)
+        preprocess_indicators_posterior(parameters, samples, parameter_grid, param_dim, batch_size, posterior)
     
-    indicators = torch.zeros(size=(parameters.shape[0], ))
-    credible_regions = []
-    for i in tqdm(range(parameters.shape[0]), desc="Computing indicators for credible regions"):
+    def single_hpd_region(idx):
         _, credible_region = hpd_region(
             posterior=next(posterior),
-            param_grid=torch.cat((parameter_grid, parameters[i, :].reshape(1, param_dim))),
-            x=samples[i, :, :],
+            param_grid=torch.cat((parameter_grid, parameters[idx, :].reshape(1, param_dim))),
+            x=samples[idx, :, :],
             confidence_level=confidence_level,
             num_p_levels=num_p_levels, tol=tol
         )
-        if parameters[i, :] in credible_region:
-            # TODO: this is not safe. Better to return an array of bools and check if True
-            indicators[i] = 1
-        credible_regions.append(credible_region.numpy())
+        # TODO: this is not safe. Better to return an array of bools and check if True
+        indicator = 1 if parameters[idx, :] in credible_region else 0
+        return credible_region, indicator
+
+    with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing indicators for {len(it)} credible regions", total=len(it))) as _:
+        out = list(zip(*Parallel(n_jobs=n_jobs)(delayed(single_hpd_region)(idx) for idx in it)))
+    credible_regions, indicators = out[0], np.array(out[1])
     
     if return_credible_regions:
-        return indicators.numpy(), credible_regions
+        return indicators, credible_regions
     else:
-        return indicators.numpy()
+        return indicators
 
 
 def compute_indicators_prediction(
@@ -235,7 +245,7 @@ def compute_indicators_prediction(
     """
     parameters, samples = preprocess_indicators_prediction(parameters, samples, param_dim)
     if param_dim == 1:
-        prediction_sets_bounds = central_prediction_sets(
+        prediction_sets_bounds = gaussian_prediction_sets(
             conditional_mean_estimator=test_statistic.estimator,
             conditional_variance_estimator=test_statistic.cond_variance_estimator,
             samples=samples,
@@ -261,7 +271,7 @@ def fit_r_estimator(
     parameters: np.ndarray,
     param_dim: int
 ) -> Any:
-    """Estimate conditional coverage probabilities using a pre-defined estimator available in R. 
+    """Estimate coverage probabilities across the whole parameter space using a pre-defined estimator available in R. 
 
     Parameters
     ----------
@@ -292,10 +302,17 @@ def fit_r_estimator(
     indicators = robj.r.matrix(indicators)
     parameters = robj.r.matrix(parameters.reshape((parameters.size)), nrow=parameters.shape[0], ncol=parameters.shape[1], byrow=True)
 
-    if estimator == 'gam':
-        output_dict = robj.globalenv['fit_gam'](indicators, parameters, param_dim)
+    if estimator == 'splines':
+        try:
+            output_dict = robj.globalenv['fit_joint_splines'](indicators, parameters, param_dim)
+        except Exception as e:
+            estimator = 'gam_splines'
+            # NOTE: memoryerror can occur if joint splines tensor is too big. Default behaviour is to use additive splines (one for each input) for now.
+            warnings.warn(f'Training joint tensor product splines basis raised {str(e)}. Reverting to additive splines via GAMs.')
+            output_dict = robj.globalenv['fit_additive_splines'](indicators, parameters, param_dim)
     else: 
-        raise NotImplementedError(f"Estimator must be one of [`gam`], got {estimator}")
+        # TODO: additional methods?
+        raise NotImplementedError(f"Estimator must be one of [`splines`], got {estimator}")
 
     output_dict = dict(zip(output_dict.names, list(output_dict)))
     return output_dict[estimator]
@@ -307,7 +324,7 @@ def predict_r_estimator(
     param_dim: int,
     n_sigma: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Evaluate the trained R estimator and estimate the conditional coverage probabilities given `parameters`.
+    """Evaluate the trained R estimator and estimate the coverage probabilities given `parameters`.
 
     Parameters
     ----------
@@ -329,6 +346,7 @@ def predict_r_estimator(
     rpy2.robjects.numpy2ri.activate()
 
     parameters = robj.r.matrix(parameters.reshape((parameters.size)), nrow=parameters.shape[0], ncol=parameters.shape[1], byrow=True)
+    # TODO: this assumes a gam-like model
     output_dict = robj.globalenv['predict_gam'](fitted_estimator, parameters, param_dim)
     output_dict = dict(zip(output_dict.names, list(output_dict)))
 

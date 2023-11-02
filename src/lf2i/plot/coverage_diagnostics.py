@@ -26,7 +26,8 @@ def coverage_probability_plot(
     params_labels: Optional[Union[Tuple[str], List[str]]] = None,
     vmin_vmax: Optional[Union[Tuple, List]] = None,
     custom_ax: Optional[Axes] = None,  # if passing custom ax for pairplot
-    show_text: bool = False
+    show_text: bool = False,
+    show_undercoverage: bool = False
 ) -> None:
     if param_dim == 1:
         df_plot = pd.DataFrame({
@@ -74,7 +75,19 @@ def coverage_probability_plot(
                         label = heatmap_values.T[::-1, :][y_index, x_index]
                         text_x = x + jump_x
                         text_y = y + jump_y
-                        ax.text(text_x, text_y, f'{label:.1f}', color='black', ha='center', va='center')
+                        ax.text(text_x, text_y, f'{label:.1f}', color='black', ha='center', va='center', fontsize=7)
+            if show_undercoverage:
+                binned_sum_upper_proba, _, _ = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins], weights=np.round(upper_proba*100, 2))
+                bin_counts_upper, _, _ = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins]) 
+                heatmap_upper_values = binned_sum_upper_proba/bin_counts_upper
+                jump_x = (xedges[-1] - xedges[0]) / (2.0 * len(x_bins))
+                jump_y = (yedges[-1] - yedges[0]) / (2.0 * len(y_bins))
+                x_positions = np.linspace(start=xedges[0], stop=xedges[-1], num=len(x_bins)-1, endpoint=False)
+                y_positions = np.linspace(start=yedges[0], stop=yedges[-1], num=len(y_bins)-1, endpoint=False)
+                for y_index, y in enumerate(y_positions):
+                    for x_index, x in enumerate(x_positions):
+                        if heatmap_upper_values.T[::-1, :][y_index, x_index] < confidence_level*100:
+                            plt.scatter(x + jump_x, y + jump_y, marker='X', color='red', s=200)
             if custom_ax is None:
                 # use one commmon colorbar on main figure
                 cbar = fig.colorbar(heatmap, format='%1.2f')

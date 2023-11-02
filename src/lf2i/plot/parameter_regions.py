@@ -27,7 +27,7 @@ def plot_parameter_region(
     elif param_dim == 3:
         raise NotImplementedError
     else:
-        raise ValueError("Impossible to plot a confidence region for parameters with more than 3 dimensions")
+        raise ValueError("Impossible to plot a confidence region for parameters with more than 3 dimensions. Use 'parameter_regions_pairplot'.")
 
     if save_fig_path is not None:
         plt.savefig(save_fig_path, bbox_inches='tight')
@@ -91,11 +91,11 @@ def plot_parameter_region_2D(
         ax.scatter(x=true_parameter.reshape(-1,)[0], y=true_parameter.reshape(-1,)[1], alpha=1, c="red", marker="*", s=250, zorder=10)
     
     if parameter_space_bounds is not None:
-        param_names = labels if param_names is None else param_names
+        param_names = labels if param_names is None else param_names  # TODO: if none of them is supplied this throws an error
         ax.set_xlim(parameter_space_bounds[param_names[0]]['low'], parameter_space_bounds[param_names[0]]['high'])
         ax.set_ylim(parameter_space_bounds[param_names[1]]['low'], parameter_space_bounds[param_names[1]]['high'])
     if custom_ax is None:
-        labels = [r"$\theta_{{(1)}}$", r"$\theta^{{(2)}}$"] if labels is None else labels
+        labels = [r"$\theta_{{(1)}}$", r"$\theta_{{(2)}}$"] if labels is None else labels
         ax.set_xlabel(labels[0], fontsize=45)
         ax.set_ylabel(labels[1], fontsize=45)
         ax.tick_params(labelsize=30)
@@ -154,7 +154,6 @@ def parameter_regions_pairplot(
                         scatter=scatter,
                         custom_ax=ax[row, col]
                     )
-                
                 # labels
                 if col == row+1:
                     ax[row, col].set_xlabel(r'$\theta_{}$'.format(col) if labels is None else labels[col], fontsize=20)
