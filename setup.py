@@ -56,7 +56,7 @@ except FileNotFoundError:
 
 setup(
     name=NAME,
-    version="0.2.1",
+    version="0.3.1",
     description=DESCRIPTION,
     keywords=KEYWORDS,
     long_description=long_description,
