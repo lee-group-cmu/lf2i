@@ -167,11 +167,11 @@ class Waldo(TestStatistic):
         samples: Union[np.ndarray, torch.Tensor], 
         mode: str
     ) -> np.ndarray:
-        """Evaluate the Waldo test statistic over the given parameters and samples. 
+        r"""Evaluate the Waldo test statistic over the given parameters and samples. 
         
-        Behaviour differs depending on mode: 'critical_values', 'confidence_sets', 'diagnostics'.
-        If mode equals `critical_values` or `diagnostics`, evaluate Waldo over pairs :math:`\{(\theta_i, x_i)\}_{i=1,\dots}`.
-        If mode equals `confidence_sets`, evaluate Waldo over all pairs given by the cartesian product of `parameters` (the parameter grid to construct confidence sets) and `samples`.
+        Behaviour differs depending on mode: 'critical_values', 'confidence_sets', 'diagnostics':
+            - If mode equals `critical_values` or `diagnostics`, evaluate Waldo over pairs :math:`(\theta_i, x_i)`.
+            - If mode equals `confidence_sets`, evaluate Waldo over all pairs given by the cartesian product of `parameters` (the parameter grid to construct confidence sets) and `samples`.
 
         Parameters
         ----------
