@@ -5,26 +5,28 @@ from scipy.stats import norm
 import torch
 
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
+from sbi.utils.kde import KDEWrapper
 from lf2i.utils.waldo_inputs import epsilon_variance_correction
 
 
 def hpd_region(
-    posterior: NeuralPosterior, 
-    param_grid: Union[torch.Tensor, np.ndarray], 
-    x: Union[torch.Tensor, np.ndarray],
+    posterior: Union[NeuralPosterior, KDEWrapper],
+    param_grid: torch.Tensor, 
+    x: torch.Tensor, 
     confidence_level: float, 
     num_p_levels: int = 100_000, 
     tol: float = 0.01
-) -> Tuple[float, Union[np.ndarray, torch.Tensor]]:
-    """Compute a high-posterior-density region at the desired confidence (technically, credible) level.
+) -> Tuple[float, torch.Tensor]:
+    """
+    Compute a high-posterior-density region at the desired credible level.
 
     Parameters
     ----------
-    posterior : NeuralPosterior
-        Estimated posterior distribution. Must implement `log_prob(theta=..., x=...)` method.
-    param_grid : Union[torch.Tensor, np.ndarray]
+    posterior : Union[NeuralPosterior, KDEWrapper]
+        Estimated posterior distribution. Must implement `log_prob(...)` method.
+    param_grid : torch.Tensor
         Fine grid of evaluation points in the support of the posterior.
-    x : Union[torch.Tensor, np.ndarray]
+    x : torch.Tensor
         Observed sample given which the posterior p(theta|x) is evaluated.
     confidence_level : float
         Desired confidence level for the credible region.
@@ -35,42 +37,48 @@ def hpd_region(
 
     Returns
     -------
-    Tuple[float, Union[np.ndarray, torch.Tensor]]
+    Tuple[float, torch.Tensor]
         Final confidence level, hpd credible region
+
+    Raises
+    ------
+    ValueError
+        If posterior is not an instance of NeuralPosterior or KDEWrapper from the `sbi` package.
     """
     # evaluate posterior over fine grid of values in support
-    posterior_probs = torch.exp(posterior.log_prob(theta=param_grid, x=x))
+    if isinstance(posterior, NeuralPosterior):
+        posterior_probs = torch.exp(posterior.log_prob(theta=param_grid, x=x).double()).double()
+    elif isinstance(posterior, KDEWrapper):
+        posterior_probs = torch.exp(posterior.log_prob(param_grid).double()).double()
+    else:
+        raise ValueError
     posterior_probs /= torch.sum(posterior_probs)  # make sure they sum to 1
 
     # descend the level sets of the posterior (p_levels) and stop when the area above the level equals confidence level 
-    p_levels = np.linspace(0.99, 0, num_p_levels)  # thresholds to include or not parameters
+    p_levels = torch.linspace(0.99, 0, num_p_levels)  # thresholds to include or not parameters
     current_confidence_level = 1
     new_confidence_levels = []
     idx = 0
-    while np.abs(current_confidence_level - confidence_level) > tol:
+    while abs(current_confidence_level - confidence_level) > tol:
         if idx == num_p_levels:  # no more to examine
             break
         new_confidence_level = torch.sum(posterior_probs[posterior_probs >= p_levels[idx]])
         new_confidence_levels.append(new_confidence_level)
-        if np.abs(new_confidence_level - confidence_level) < np.abs(current_confidence_level - confidence_level):
+        if abs(new_confidence_level - confidence_level) < abs(current_confidence_level - confidence_level):
             current_confidence_level = new_confidence_level
         idx += 1
     # all params such that p(params|x) > p_level, where p_levels is the last chosen one
     return current_confidence_level, param_grid[posterior_probs >= p_levels[idx-1], :]
 
 
-def central_prediction_sets(
+def gaussian_prediction_sets(
     conditional_mean_estimator: Any,
     conditional_variance_estimator: Any,
     samples: Union[torch.Tensor, np.ndarray],
     confidence_level: float,
     param_dim: int
 ) -> np.ndarray:
-    r"""Compute prediction sets centered around the point estimate using a Gaussian approximation:
-
-    .. math::
-
-        \mathbb{E}[\theta|X] \pm z_{1-\alpha/2} \cdot \sqrt{\mathbb{V}[\theta|X]}
+    r"""Compute prediction sets centered around the point estimate using a Gaussian approximation: :math:`\mathbb{E}[\theta|X] \pm z_{1-\alpha/2} \cdot \sqrt{\mathbb{V}[\theta|X]}`.
 
     Parameters
     ----------

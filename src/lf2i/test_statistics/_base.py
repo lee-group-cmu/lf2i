@@ -12,15 +12,19 @@ class TestStatistic(ABC):
     acceptance_region : str
         Whether the acceptance region for the corresponding test is defined to be on the right or on the left of the critical value. 
         Must be either `left` or `right`.
-    estimator_kwargs: Dict
-        Hyperparameters and settings for the estimator, by default {}.
+    estimation_method : str
+        The method with which the test statistic is estimated. 
+        If likelihood-based test statistics are used, e.g. ACORE and BFF, then 'likelihood'. 
+        If prediction/posterior-based test statistics are used, e.g. WALDO, then 'prediction' or 'posterior'.
     """
     
     def __init__(
         self,
         acceptance_region: str,
+        estimation_method: str
     ) -> None:
         self.acceptance_region = acceptance_region
+        self.estimation_method = estimation_method
         self._estimator_trained = dict()
     
     def _choose_estimator(

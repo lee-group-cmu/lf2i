@@ -11,6 +11,7 @@ lf2i.confidence\_regions.neyman\_inversion module
    :members:
    :undoc-members:
    :show-inheritance:
+   :member-order: bysource
 
 Module contents
 ---------------
@@ -19,3 +20,4 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+   :member-order: bysources

@@ -1,0 +1,7 @@
+# Juypter notebooks blow up the total language fraction unrealistically.
+# Easy fix is to exclude these files from counting. 
+# Adapted from https://github.com/drandreaskrueger/chainhammer/blob/master/.gitattributes
+
+examples/waldo_posterior_2Dgaussian_mean.ipynb linguist-generated=true
+examples/waldo_prediction_1Dgaussian_mean.ipynb linguist-generated=true
+docs/* linguist-generated=true

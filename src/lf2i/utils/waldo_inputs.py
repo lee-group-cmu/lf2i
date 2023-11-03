@@ -11,11 +11,11 @@ from xgboost.sklearn import XGBModel
 def preprocess_waldo_estimation(
     parameters: Union[np.ndarray, torch.Tensor], 
     samples: Union[np.ndarray, torch.Tensor], 
-    method: str,
+    estimation_method: str,
     estimator: object,
     param_dim: int
 ) -> Tuple[Union[np.ndarray, torch.Tensor], ...]:
-    if method == 'prediction':
+    if estimation_method == 'prediction':
         # make sure types are correct for:
         if isinstance(estimator, torch.nn.Module):
             # PyTorch models
@@ -38,7 +38,7 @@ def preprocess_waldo_estimation(
     
     if (len(samples.shape) == 3) and (samples.shape[1] > 1):
         warnings.warn(f"You provided a simulated set with single-sample size = {samples.shape[1]}. This dimension will be flattened for estimation or evaluation. Is this the desired behaviour?")
-    if param_dim == 1:
+    if (param_dim == 1) and (estimation_method == 'prediction'):
         parameters = parameters.reshape(-1, )
     else:
         parameters = parameters.reshape(-1, param_dim)
@@ -48,11 +48,11 @@ def preprocess_waldo_estimation(
 def preprocess_waldo_evaluation(
     parameters: Union[np.ndarray, torch.Tensor], 
     samples: Union[np.ndarray, torch.Tensor], 
-    method: str,
+    estimation_method: str,
     estimator: object,
     param_dim: int
 ) -> Tuple[Union[np.ndarray, torch.Tensor], ...]:
-    return preprocess_waldo_estimation(parameters, samples, method, estimator, param_dim)
+    return preprocess_waldo_estimation(parameters, samples, estimation_method, estimator, param_dim)
 
 
 def preprocess_waldo_computation(
@@ -89,10 +89,13 @@ def epsilon_variance_correction(
     param_dim: int,
     epsilon: float = 1e-3
 ) -> Union[List, np.ndarray]:
-    """Make sure the estimated conditional variance is always >= 0+epsilon to avoid ZeroDivisionError or exploding test statistics.
-    """
+    # Make sure the estimated conditional variance is always >= 0+epsilon to avoid ZeroDivisionError or exploding test statistics.
+    warning_msg = f"""At least one element of `conditional_var` is negative.\n
+                        You should make sure your conditional variance estimator output is non-negative.\n"""
     if param_dim == 1:
-        return conditional_var - min(0, np.min(conditional_var)) + epsilon
+        if np.sum(conditional_var < 0) > 0:
+            warnings.warn(warning_msg + f"Applying eps={epsilon} correction.")
+        return np.maximum(conditional_var, epsilon)
     else:
-        # not implemented
+        # not implemented   
         return conditional_var

@@ -8,10 +8,12 @@ KEYWORDS = "likelihood-free inference simulator likelihood posterior parameter"
 URL = "https://github.com/lee-group-cmu/lf2i"
 EMAIL = "lee.group.cmu@gmail.com"
 AUTHOR = "Luca Masserano, Niccolò Dalmasso, David Zhao, Rafael Izbicki, Ann B. Lee"
-REQUIRES_PYTHON = ">=3.9.0"
+REQUIRES_PYTHON = ">=3.9.0, <3.12"
 
 REQUIRED = [
+    "alphashape",
     "click",
+    "descartes",
     "matplotlib>=3.6.0",
     "numpy",
     "rpy2>=3.5.4",
@@ -21,7 +23,8 @@ REQUIRED = [
     "seaborn>=0.12.1",
     "torch>=1.12.1",
     "tqdm",
-    "xgboost>=1.6.2"
+    "xgboost>=1.6.2",
+    "joblib"
 ]
 
 EXTRAS = {
@@ -53,7 +56,7 @@ except FileNotFoundError:
 
 setup(
     name=NAME,
-    version="0.2.1",
+    version="0.3.1",
     description=DESCRIPTION,
     keywords=KEYWORDS,
     long_description=long_description,
@@ -67,5 +70,7 @@ setup(
     install_requires=REQUIRED,
     extras_require=EXTRAS,
     license="MIT",
-    entry_points=ENTRY_POINTS
+    entry_points=ENTRY_POINTS,
+    package_data={'': ['*.r', '*.R']},
+    include_package_data=True
 )

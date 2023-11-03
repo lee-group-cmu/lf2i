@@ -4,10 +4,10 @@ lf2i.utils package
 Submodules
 ----------
 
-lf2i.utils.lf2i\_inputs module
-------------------------------
+lf2i.utils.calibration\_diagnostics\_inputs module
+--------------------------------------------------
 
-.. automodule:: lf2i.utils.lf2i_inputs
+.. automodule:: lf2i.utils.calibration_diagnostics_inputs
    :members:
    :undoc-members:
    :show-inheritance:
@@ -20,8 +20,16 @@ lf2i.utils.miscellanea module
    :undoc-members:
    :show-inheritance:
 
-lf2i.utils.posterior module
----------------------------
+lf2i.utils.odds\_inputs module
+------------------------------
+
+.. automodule:: lf2i.utils.odds_inputs
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+lf2i.utils.other\_methods module
+--------------------------------
 
 .. automodule:: lf2i.utils.other_methods
    :members:
@@ -32,14 +40,6 @@ lf2i.utils.waldo\_inputs module
 -------------------------------
 
 .. automodule:: lf2i.utils.waldo_inputs
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: lf2i.utils
    :members:
    :undoc-members:
    :show-inheritance:

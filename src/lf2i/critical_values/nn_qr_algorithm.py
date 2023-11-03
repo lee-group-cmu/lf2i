@@ -1,6 +1,6 @@
 # Part of this code was adapted from https://colab.research.google.com/drive/1nXOlrmVHqCHiixqiMF6H8LSciz583_W2
 
-from typing import Union, List, Tuple
+from typing import Sequence
 from tqdm import tqdm
 
 from itertools import chain
@@ -13,20 +13,20 @@ class QuantileLoss(torch.nn.Module):
 
     Parameters
     ----------
-    quantiles : Union[Tuple, List, np.ndarray, torch.Tensor]
+    quantiles : Sequence[float]
         Target quantiles. Values must be in the range `(0, 1)`.
     """
     def __init__(
         self, 
-        quantiles: Union[Tuple, List, np.ndarray, torch.Tensor]
+        quantiles: Sequence[float]
     ) -> None:
-        super.__init__()
+        super().__init__()
         self.quantiles = quantiles
 
     def forward(
         self, 
-        targets: torch.Tensor, 
-        predictions: torch.Tensor
+        predictions: torch.Tensor,
+        targets: torch.Tensor
     ) -> torch.Tensor:
         assert not targets.requires_grad
         assert predictions.size(0) == targets.size(0)
@@ -48,7 +48,7 @@ class QuantileNN(torch.nn.Module):
         Number of target quantiles.
     input_d : int
         Dimensionality of the input. 
-    hidden_layer_shapes : Union[Tuple, List]
+    hidden_layer_shapes : Sequence[int]
         The i-th element represents the number of neurons in the i-th hidden layer.
     dropout_p : float, optional
         Probability for the dropout layers, by default 0.0
@@ -57,7 +57,7 @@ class QuantileNN(torch.nn.Module):
         self,
         n_quantiles: int,
         input_d: int,
-        hidden_layer_shapes: Union[Tuple, List],
+        hidden_layer_shapes: Sequence[int],
         hidden_activation: torch.nn.Module = torch.nn.ReLU(),
         dropout_p: float = 0.0,
     ) -> None:
@@ -88,11 +88,10 @@ class QuantileNN(torch.nn.Module):
         # output
         self.model = torch.nn.Sequential(*self.model)
         self.final_layers = torch.nn.ModuleList(
-            [torch.nn.Linear(self.hidden_layer_shapes[-1], 1) for _ in range(len(self.n_quantiles))]
+            [torch.nn.Linear(self.hidden_layer_shapes[-1], 1) for _ in range(self.n_quantiles)]
         )
     
     def init_weights(self) -> None:
-        torch.manual_seed(self.seed)
         for m in chain(self.model, self.final_layers):
             if isinstance(m, torch.nn.Linear):
                 torch.nn.init.orthogonal_(m.weight)
@@ -155,7 +154,7 @@ class Learner:
                 ).float().to(self.device).requires_grad_(False)
                 
                 batch_predictions = self.model(batch_X)
-                batch_loss = self.loss(batch_predictions, batch_y)
+                batch_loss = self.loss(predictions=batch_predictions, targets=batch_y)
                 batch_loss.backward()
                 self.optimizer.step()
                 epoch_losses.append(batch_loss.cpu().detach().numpy())
