@@ -6,7 +6,7 @@
 <!--- - [LF2I: Likelihood-Free Frequentist Inference](#lf2i-likelihood-free-frequentist-inference)---> 
 - [LF2I: Likelihood-Free Frequentist Inference](#lf2i-likelihood-free-frequentist-inference)
   - [Getting Started](#getting-started)
-    - [What is LFI?](#what-is-lfi)
+    - [What is LF2I?](#what-is-lf2i)
     - [What does LF2I do?](#what-does-lf2i-do)
     - [Structure of LF2I](#structure-of-lf2i)
     - [Usage](#usage)
@@ -16,7 +16,7 @@
 
 ## Getting Started
 
-### What is LFI?
+### What is LF2I?
 `lf2i` is a Python package for likelihood-free inference; that is, inference on the parameters $\boldsymbol{\theta}$ of a statistical model $F_{\boldsymbol{\theta}}$ in a setting where the likelihood $\mathcal{L}(\boldsymbol{\theta}; \mathcal{D}):=p(\mathcal{D}|\boldsymbol{\theta})$ cannot be evaluated but is *implicitly* encoded by a high-fidelity simulator for $F_{\boldsymbol{\theta}}$. In other words, one can simulate data in batches of size $n$, $\mathcal{D}=(X_1, \dots, X_n)$, for any given $\boldsymbol{\theta}$ in the parameter space.
 
 ### What does LF2I do?
