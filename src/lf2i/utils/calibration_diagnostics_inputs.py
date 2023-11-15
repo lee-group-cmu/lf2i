@@ -64,7 +64,8 @@ def preprocess_diagnostics(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     check_for_nans(indicators)
     check_for_nans(parameters)
-    check_for_nans(new_parameters)
+    if new_parameters:
+        check_for_nans(new_parameters)
     if isinstance(indicators, torch.Tensor):
         indicators = indicators.numpy()
     if isinstance(parameters, torch.Tensor):
