@@ -4,6 +4,7 @@ import warnings
 import numpy as np
 from scipy.stats import norm
 import torch
+from torch.distributions import Distribution
 
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
 from sbi.utils.kde import KDEWrapper
@@ -11,7 +12,7 @@ from lf2i.utils.waldo_inputs import epsilon_variance_correction
 
 
 def hpd_region(
-    posterior: Union[NeuralPosterior, KDEWrapper],
+    posterior: Union[NeuralPosterior, KDEWrapper, Distribution],
     param_grid: torch.Tensor, 
     x: torch.Tensor, 
     confidence_level: float, 
@@ -23,7 +24,7 @@ def hpd_region(
 
     Parameters
     ----------
-    posterior : Union[NeuralPosterior, KDEWrapper]
+    posterior : Union[NeuralPosterior, KDEWrapper, Distribution]
         Estimated posterior distribution. Must implement `log_prob(...)` method.
     param_grid : torch.Tensor
         Fine grid of evaluation points in the support of the posterior.
@@ -51,7 +52,7 @@ def hpd_region(
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
             posterior_probs = torch.exp(posterior.log_prob(theta=param_grid, x=x).double()).double()
-    elif isinstance(posterior, KDEWrapper):
+    elif isinstance(posterior, (KDEWrapper, Distribution)):
         posterior_probs = torch.exp(posterior.log_prob(param_grid).double()).double()
     else:
         raise ValueError

@@ -52,6 +52,11 @@ def plot_parameter_regions(
         legend = fig.legend(leg_handles, leg_labels, bbox_to_anchor=(0.5, 0.5))
         if alpha_shape:
             legend.legendHandles[0]._sizes = [40]
+        
+        ax.set_xlabel(r'$\theta_0$' if labels is None else labels[0], fontsize=20)
+        ax.tick_params(axis='x', labelsize=12)
+        ax.set_ylabel(r'$\theta_1$' if labels is None else labels[1], fontsize=20, labelpad=3, rotation=0)
+        ax.tick_params(axis='y', labelsize=12)
     elif param_dim == 3:
         raise NotImplementedError
     else:
