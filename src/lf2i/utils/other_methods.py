@@ -1,4 +1,5 @@
 from typing import Union, Tuple, Any
+import warnings
 
 import numpy as np
 from scipy.stats import norm
@@ -47,7 +48,9 @@ def hpd_region(
     """
     # evaluate posterior over fine grid of values in support
     if isinstance(posterior, NeuralPosterior):
-        posterior_probs = torch.exp(posterior.log_prob(theta=param_grid, x=x).double()).double()
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
+            posterior_probs = torch.exp(posterior.log_prob(theta=param_grid, x=x).double()).double()
     elif isinstance(posterior, KDEWrapper):
         posterior_probs = torch.exp(posterior.log_prob(param_grid).double()).double()
     else:

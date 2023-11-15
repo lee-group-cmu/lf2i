@@ -110,13 +110,13 @@ def plot_parameter_region_2D(
         ax = custom_ax
 
     if scatter:
-        ax.scatter(x=parameter_region[:, 0], y=parameter_region[:, 1], s=3.5, c=color, zorder=1, label=region_name)
+        ax.scatter(x=parameter_region[:, 0], y=parameter_region[:, 1], s=3.5, color=to_rgba(color, 1), zorder=1, label=region_name)
     if alpha_shape:
         alpha_shape = alphashape.alphashape(parameter_region, alpha=alpha)
         patch = PolygonPatchFixed(alpha_shape, fc=to_rgba(color, 0.2), ec=to_rgba(color, 1), lw=2, label=region_name)
         ax.add_patch(patch)
     if true_parameter is not None:
-        ax.scatter(x=true_parameter.reshape(-1,)[0], y=true_parameter.reshape(-1,)[1], alpha=1, c="red", marker="*", s=250, zorder=10)
+        ax.scatter(x=true_parameter.reshape(-1,)[0], y=true_parameter.reshape(-1,)[1], alpha=1, color="red", marker="*", s=250, zorder=10)
     
     if parameter_space_bounds is not None:
         param_names = labels if param_names is None else param_names  # TODO: if none of them is supplied this throws an error
