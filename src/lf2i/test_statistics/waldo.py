@@ -196,7 +196,9 @@ class Waldo(TestStatistic):
             conditional_var = self.cond_variance_estimator.predict(X=samples)
         else:
             def sampling_loop(idx):
-                posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).numpy()
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
+                    posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).numpy()
                 cond_mean = np.mean(posterior_samples, axis=0).reshape(1, self.poi_dim)
                 cond_var = np.cov(posterior_samples.T)  # need samples.shape = (data_d, num_samples)
                 return cond_mean, cond_var
