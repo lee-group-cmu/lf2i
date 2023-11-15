@@ -10,20 +10,48 @@ import alphashape
 from lf2i.plot.miscellanea import PolygonPatchFixed
 
 
-def plot_parameter_region(
-    parameter_region: np.ndarray, 
+def plot_parameter_regions(
+    *parameter_regions: np.ndarray, 
     param_dim: int,
-    true_parameter: Optional[np.ndarray] = None,
+    true_parameter: Optional[np.ndarray] = None,  # can plot multiple regions for the same true parameter, not different
     parameter_space_bounds: Optional[Dict[str, float]] = None,
+    colors: Optional[Sequence[str]] = None,
+    region_names: Optional[Sequence[str]] = None,
+    labels: Optional[np.ndarray] = None,
+    param_names: Optional[np.ndarray] = None,
+    alpha_shape: bool = False,
+    alpha: Optional[float] = None,
+    scatter: bool = True,
+    figsize: Optional[Sequence[int]] = (15, 15),
     save_fig_path: Optional[str] = None,
     **kwargs
 ) -> None:
     """Dispatcher to plot parameter regions of different dimensionality.
     """
     if param_dim == 1:
-        plot_parameter_region_1D(parameter_region, true_parameter, parameter_space_bounds, **kwargs)
+        # TODO: adapt to plot multiples as for 2D
+        plot_parameter_region_1D(parameter_regions[0], true_parameter, parameter_space_bounds, **kwargs)
     elif param_dim == 2:
-        plot_parameter_region_2D(parameter_region=parameter_region, true_parameter=true_parameter, parameter_space_bounds=parameter_space_bounds, **kwargs)
+        colors = colors or cm.rainbow(np.linspace(0, 1, len(region_names)))
+        assert len(region_names) == len(colors) == len(parameter_regions)
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
+        for i, param_reg in enumerate(parameter_regions):
+            leg_handles, leg_labels = plot_parameter_region_2D(
+                parameter_region=param_reg, 
+                true_parameter=true_parameter, 
+                parameter_space_bounds=parameter_space_bounds, 
+                labels=labels,
+                param_names=param_names,
+                color=colors[i],
+                region_name=region_names[i],
+                alpha_shape=alpha_shape,
+                alpha=alpha,
+                scatter=scatter,
+                custom_ax=ax
+            )
+        legend = fig.legend(leg_handles, leg_labels, bbox_to_anchor=(0.5, 0.5))
+        if alpha_shape:
+            legend.legendHandles[0]._sizes = [40]
     elif param_dim == 3:
         raise NotImplementedError
     else:

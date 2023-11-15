@@ -17,7 +17,8 @@ def train_qr_algorithm(
     algorithm: Union[str, Callable],
     alpha: Union[float, Sequence[float]],
     param_dim: int,
-    algorithm_kwargs: Union[Dict[str, Any], Dict[str, Dict[str, Any]]] = {}
+    algorithm_kwargs: Union[Dict[str, Any], Dict[str, Dict[str, Any]]] = {},
+    n_jobs: int = -2
 ) -> Any:
     """Dispatcher to train different quantile regressors.
 
@@ -42,6 +43,8 @@ def train_qr_algorithm(
         
         If algorithm == 'gb', pass {'cv': hp_dist} to do a randomized search over the hyperparameters in hp_dist (a `Dict`) via 5-fold cross validation. 
         Include 'n_iter' as a key to decide how many hyperparameter setting to sample for randomized search. Defaults to 10.
+    n_jobs : int, optional
+        Number of workers to use when doing random search with 5-fold CV. By default -2, which uses all cores minus one. If -1, use all cores.
 
     Returns
     -------
@@ -54,6 +57,14 @@ def train_qr_algorithm(
         Only one of 'gb', 'nn' or an instantiated custom quantile regressor (Any) is currently accepted as algorithm.
     """
     assert not isinstance(alpha, Sequence)
+    if n_jobs == -2:
+        n_jobs = max(1, os.cpu_count()-1)
+    elif n_jobs == -1:
+        n_jobs = os.cpu_count()
+    elif n_jobs == 0:
+        raise ValueError('n_jobs must be greater than 0')
+    else:
+        n_jobs = n_jobs
     test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim)
     if algorithm == "gb":
         if 'cv' in algorithm_kwargs:
@@ -65,7 +76,7 @@ def train_qr_algorithm(
                 param_distributions=algorithm_kwargs['cv'],
                 n_iter=10 if 'n_iter' not in algorithm_kwargs else algorithm_kwargs['n_iter'],
                 scoring=make_scorer(mean_pinball_loss, alpha=alpha, greater_is_better=False),
-                n_jobs=os.cpu_count()-2,
+                n_jobs=n_jobs,
                 refit=True,
                 cv=5,
                 verbose=1

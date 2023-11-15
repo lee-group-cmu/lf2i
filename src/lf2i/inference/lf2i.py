@@ -142,7 +142,8 @@ class LF2I:
                 algorithm=quantile_regressor,
                 algorithm_kwargs=quantile_regressor_kwargs,
                 alpha=confidence_level if self.test_statistic.acceptance_region == 'left' else 1-confidence_level,
-                param_dim=parameters_cv.shape[1]
+                param_dim=parameters_cv.shape[1],
+                n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2  # all cores minus 1
             )
 
         # construct confidence_regions
