@@ -6,7 +6,7 @@ import torch
 from sklearn.base import BaseEstimator
 from xgboost.sklearn import XGBModel
 
-from lf2i.utils.miscellanea import to_np_if_torch
+from lf2i.utils.miscellanea import to_np_if_torch, check_for_nans
 
 
 def preprocess_odds_estimation(
@@ -16,6 +16,9 @@ def preprocess_odds_estimation(
     param_dim: int,
     estimator: Any
 ) -> Tuple[Union[np.ndarray, torch.Tensor]]:
+    check_for_nans(labels)
+    check_for_nans(parameters)
+    check_for_nans(samples)
     # TODO: this is not general, i.e. assumes our torch “construction” with a Learner that has a model attribute
     if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
         # PyTorch models
@@ -83,6 +86,8 @@ def preprocess_for_odds_cv(
     Tuple[Union[np.ndarray, torch.Tensor]]
         Parameters, samples, and stacked parameters and samples. The stacked vector is flattened along dim 1, with output shape `(n_samples*batch_size, param_dim+data_dim)`.
     """
+    check_for_nans(parameters)
+    check_for_nans(samples)
     # TODO: this is not general, i.e. assumes our torch “construction” with a Learner that has a model attribute
     if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
         if isinstance(parameters, np.ndarray):
@@ -146,7 +151,8 @@ def preprocess_for_odds_cs(
     np.ndarray
         Parameter grid, samples, and stacked parameter grid and samples. The stacked vector has output shape `(param_grid_size*n_samples*batch_size, param_dim+data_dim)`.
     """    
-    
+    check_for_nans(parameter_grid)
+    check_for_nans(samples)
     parameter_grid = parameter_grid.reshape(-1, poi_dim)
     samples = samples.reshape(-1, batch_size, data_dim)   
     # TODO: this is not general, i.e. assumes our torch “construction” with a Learner that has a model attribute

@@ -7,12 +7,16 @@ import torch
 from sklearn.base import BaseEstimator
 from xgboost.sklearn import XGBModel
 
+from lf2i.utils.miscellanea import check_for_nans
+
 
 def preprocess_train_quantile_regression(
     test_statistics: Union[np.ndarray, torch.Tensor],
     parameters: Union[np.ndarray, torch.Tensor],
     param_dim: int
 ) -> Tuple[Union[np.ndarray, torch.Tensor]]:
+    check_for_nans(test_statistics)
+    check_for_nans(parameters)
     if isinstance(test_statistics, torch.Tensor):
         test_statistics = test_statistics.numpy()
     if isinstance(parameters, torch.Tensor):
@@ -25,6 +29,7 @@ def preprocess_predict_quantile_regression(
     estimator: Any,
     param_dim: int
 ) -> Union[np.ndarray, torch.Tensor]:
+    check_for_nans(parameters)
     if isinstance(estimator, torch.nn.Module):
         # PyTorch models
         if isinstance(parameters, np.ndarray):
@@ -37,15 +42,18 @@ def preprocess_predict_quantile_regression(
 
 
 def preprocess_neyman_inversion(
-    test_statistic: np.ndarray,
+    test_statistics: np.ndarray,
     critical_values: np.ndarray,
     parameter_grid: Union[np.ndarray, torch.Tensor],
     param_dim: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    check_for_nans(test_statistics)
+    check_for_nans(critical_values)
+    check_for_nans(parameter_grid)
     if isinstance(parameter_grid, torch.Tensor):
         parameter_grid = parameter_grid.numpy()
     parameter_grid = parameter_grid.reshape(-1, param_dim)
-    return test_statistic.reshape(-1, parameter_grid.shape[0]), critical_values.reshape(1, parameter_grid.shape[0]), parameter_grid
+    return test_statistics.reshape(-1, parameter_grid.shape[0]), critical_values.reshape(1, parameter_grid.shape[0]), parameter_grid
 
 
 def preprocess_diagnostics(
@@ -54,6 +62,9 @@ def preprocess_diagnostics(
     new_parameters: Union[np.ndarray, torch.Tensor, None],
     param_dim: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    check_for_nans(indicators)
+    check_for_nans(parameters)
+    check_for_nans(new_parameters)
     if isinstance(indicators, torch.Tensor):
         indicators = indicators.numpy()
     if isinstance(parameters, torch.Tensor):
@@ -71,6 +82,9 @@ def preprocess_indicators_lf2i(
     parameters: np.ndarray,
     param_dim: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    check_for_nans(test_statistics)
+    check_for_nans(critical_values)
+    check_for_nans(parameters)
     return test_statistics.reshape(-1, ), critical_values.reshape(-1, ), parameters.reshape(-1, param_dim)
 
 
@@ -82,6 +96,9 @@ def preprocess_indicators_posterior(
     batch_size: int,
     posterior: Union[Any, Sequence[Any]]
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Iterator[Any]]:
+    check_for_nans(parameters)
+    check_for_nans(samples)
+    check_for_nans(parameter_grid)
     if isinstance(posterior, Sequence):
         posterior = iter(posterior)
     else:
@@ -94,6 +111,8 @@ def preprocess_indicators_prediction(
     samples: Union[np.ndarray, torch.Tensor],
     param_dim: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    check_for_nans(parameters)
+    check_for_nans(samples)
     if isinstance(parameters, torch.Tensor):
         parameters = parameters.numpy()
     if isinstance(samples, torch.Tensor):

@@ -11,3 +11,11 @@ def np_to_pd(array: np.ndarray, names: Sequence[str]):
 
 def to_np_if_torch(inp: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
     return inp if isinstance(inp, np.ndarray) else inp.cpu().detach().numpy()
+
+def check_for_nans(inp: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+    if isinstance(inp, np.ndarray):
+        if np.isnan(inp).sum() > 0:
+            raise ValueError("Input contains NaN values")
+    else:
+        if torch.isnan(inp).sum() > 0:
+            raise ValueError("Input contains NaN values")

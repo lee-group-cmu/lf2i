@@ -204,24 +204,3 @@ class Waldo(TestStatistic):
                 out = list(zip(*Parallel(n_jobs=self.n_jobs)(delayed(sampling_loop)(idx) for idx in it)))  # axis 0 indexes different simulations/observations
                 conditional_mean, conditional_var = out[0], out[1]
         return self._compute(parameters, conditional_mean, conditional_var, mode)
-
-
-"""
-def sampling_loop(idx):
-    posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).numpy()
-    cond_mean = np.mean(posterior_samples, axis=0).reshape(1, self.poi_dim)
-    cond_var = np.cov(posterior_samples.T)  # need samples.shape = (data_d, num_samples)
-    return cond_mean, cond_var
-with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Approximating conditional mean and covariance for {samples.shape[0]} points...", total=len(it))) as _:
-    out = list(zip(*Parallel(n_jobs=self.n_jobs)(delayed(sampling_loop)(idx) for idx in it)))  # axis 0 indexes different simulations/observations
-conditional_mean, conditional_var = out[0], out[1]
-"""
-
-"""
-conditional_mean = []
-conditional_var = []
-for idx in tqdm(range(samples.shape[0]), desc='Approximating conditional mean and covariance'):  # axis 0 indexes different simulations/observations
-    posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).numpy()
-    conditional_mean.append(np.mean(posterior_samples, axis=0).reshape(1, self.poi_dim))
-    conditional_var.append(np.cov(posterior_samples.T))  # need samples.shape = (data_d, num_samples)
-"""

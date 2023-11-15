@@ -10,7 +10,7 @@ from matplotlib.lines import Line2D
 from matplotlib.axes._axes import Axes
 import seaborn as sns
 
-from lf2i.diagnostics.diagnostics import predict_r_estimator
+from lf2i.diagnostics.coverage_probability import predict_r_estimator
 
 
 def coverage_probability_plot(
@@ -63,7 +63,7 @@ def coverage_probability_plot(
             binned_sum_proba, xedges, yedges = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins], weights=np.round(coverage_probability*100, 2))
             bin_counts, xedges, yedges = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins]) 
             heatmap_values = binned_sum_proba/bin_counts
-            heatmap = ax.imshow(heatmap_values.T, cmap='inferno', aspect='auto', extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], vmin=vmin_vmax[0], vmax=vmin_vmax[1])
+            heatmap = ax.imshow(heatmap_values.T[::-1, :], cmap='inferno', aspect='auto', extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], vmin=vmin_vmax[0], vmax=vmin_vmax[1])
             if show_text:
                 # Add the text
                 jump_x = (xedges[-1] - xedges[0]) / (2.0 * len(x_bins))

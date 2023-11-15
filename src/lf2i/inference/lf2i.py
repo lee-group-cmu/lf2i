@@ -8,7 +8,7 @@ from lf2i.simulator import Simulator
 from lf2i.test_statistics import TestStatistic, ACORE, BFF, Waldo
 from lf2i.critical_values.quantile_regression import train_qr_algorithm
 from lf2i.confidence_regions.neyman_inversion import compute_confidence_regions
-from lf2i.diagnostics.diagnostics import (
+from lf2i.diagnostics.coverage_probability import (
     estimate_coverage_proba, 
     compute_indicators_lf2i, 
     compute_indicators_posterior, 

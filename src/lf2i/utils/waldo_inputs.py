@@ -1,5 +1,4 @@
-from random import sample
-from typing import Tuple, Union, List
+from typing import Tuple, Union, List, Any
 import warnings
 
 import numpy as np
@@ -7,14 +6,18 @@ import torch
 from sklearn.base import BaseEstimator
 from xgboost.sklearn import XGBModel
 
+from lf2i.utils.miscellanea import check_for_nans
+
 
 def preprocess_waldo_estimation(
     parameters: Union[np.ndarray, torch.Tensor], 
     samples: Union[np.ndarray, torch.Tensor], 
     estimation_method: str,
-    estimator: object,
+    estimator: Any,
     param_dim: int
 ) -> Tuple[Union[np.ndarray, torch.Tensor], ...]:
+    check_for_nans(parameters)
+    check_for_nans(samples)
     if estimation_method == 'prediction':
         # make sure types are correct for:
         if isinstance(estimator, torch.nn.Module):
@@ -49,7 +52,7 @@ def preprocess_waldo_evaluation(
     parameters: Union[np.ndarray, torch.Tensor], 
     samples: Union[np.ndarray, torch.Tensor], 
     estimation_method: str,
-    estimator: object,
+    estimator: Any,
     param_dim: int
 ) -> Tuple[Union[np.ndarray, torch.Tensor], ...]:
     return preprocess_waldo_estimation(parameters, samples, estimation_method, estimator, param_dim)
