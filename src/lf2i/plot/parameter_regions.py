@@ -49,7 +49,7 @@ def plot_parameter_regions(
                 scatter=scatter,
                 custom_ax=ax
             )
-        legend = fig.legend(leg_handles, leg_labels, bbox_to_anchor=(0.5, 0.5))
+        legend = fig.legend(leg_handles, leg_labels)
         if alpha_shape:
             legend.legendHandles[0]._sizes = [40]
         
