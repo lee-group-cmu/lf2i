@@ -65,7 +65,6 @@ def train_qr_algorithm(
         raise ValueError('n_jobs must be greater than 0')
     else:
         n_jobs = n_jobs
-    test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim)
     if algorithm == "gb":
         if 'cv' in algorithm_kwargs:
             algorithm = RandomizedSearchCV(
@@ -74,21 +73,21 @@ def train_qr_algorithm(
                     alpha=alpha
                 ),
                 param_distributions=algorithm_kwargs['cv'],
-                n_iter=10 if 'n_iter' not in algorithm_kwargs else algorithm_kwargs['n_iter'],
+                n_iter=20 if 'n_iter' not in algorithm_kwargs else algorithm_kwargs['n_iter'],
                 scoring=make_scorer(mean_pinball_loss, alpha=alpha, greater_is_better=False),
                 n_jobs=n_jobs,
                 refit=True,
                 cv=5,
                 verbose=1
             )
-            algorithm.fit(X=parameters, y=test_statistics)
         else:
             algorithm = GradientBoostingRegressor(
                 loss='quantile', 
                 alpha=alpha, 
                 **algorithm_kwargs
             )
-            algorithm.fit(X=parameters, y=test_statistics)
+        test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)
+        algorithm.fit(X=parameters, y=test_statistics)
     elif algorithm == 'nn':
         # TODO: remove possibility of using a sequence of quantiles -> could incur in quantile crossings. Need to implement monotonicity constraints.
         quantiles = [alpha] if isinstance(alpha, float) else alpha
@@ -105,9 +104,11 @@ def train_qr_algorithm(
             loss=QuantileLoss(quantiles=quantiles), 
             device="cuda" if torch.cuda.is_available() else 'cpu'
         )
+        test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)
         learner_kwargs = {arg: algorithm_kwargs[arg] for arg in ['epochs', 'batch_size']}
         algorithm.fit(X=parameters, y=test_statistics, **learner_kwargs)
     elif isinstance(algorithm, Any):
+        test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)
         algorithm.fit(X=parameters, y=test_statistics)
     else:
         raise ValueError(f"Only 'gb', 'nn' or custom algorithm (Any) are currently supported, got {algorithm}")
