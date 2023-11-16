@@ -131,27 +131,22 @@ class Learner:
     
     def fit(
         self,
-        X: np.ndarray, 
-        y: np.ndarray, 
+        X: torch.Tensor, 
+        y: torch.Tensor,
         epochs: int, 
         batch_size: int
     ) -> None:
         self.model.train()
         for _ in tqdm(range(epochs), desc="Training Quantile NN"):
-            shuffle_idx = np.arange(X.shape[0])
-            np.random.shuffle(shuffle_idx)
-            X = X[shuffle_idx, :]
-            y = y[shuffle_idx]
+            shuffled_idx = torch.randperm(X.shape[0])
+            X = X[shuffled_idx, :]
+            y = y[shuffled_idx]
             epoch_losses = []
             for idx in range(0, X.shape[0], batch_size):
                 self.optimizer.zero_grad()
                 
-                batch_X = torch.from_numpy(
-                    X[idx: min(idx + batch_size, X.shape[0]), :]
-                ).float().to(self.device).requires_grad_(False)
-                batch_y = torch.from_numpy(
-                    y[idx: min(idx + batch_size, y.shape[0])].reshape(-1,1)
-                ).float().to(self.device).requires_grad_(False)
+                batch_X = X[idx: min(idx + batch_size, X.shape[0]), :].float().to(self.device)
+                batch_y = y[idx: min(idx + batch_size, y.shape[0])].reshape(-1, 1).float().to(self.device)
                 
                 batch_predictions = self.model(batch_X)
                 batch_loss = self.loss(predictions=batch_predictions, targets=batch_y)
@@ -162,7 +157,7 @@ class Learner:
 
     def predict(
         self,
-        X: np.ndarray
-    ) -> np.ndarray:
+        X: torch.Tensor
+    ) -> torch.Tensor:
         self.model.eval()
-        return self.model(torch.from_numpy(X).to(self.device).requires_grad_(False)).cpu().detach().numpy()
+        return self.model(X.to(self.device)).cpu().detach()

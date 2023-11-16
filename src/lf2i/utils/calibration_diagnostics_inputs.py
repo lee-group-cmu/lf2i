@@ -7,7 +7,7 @@ import torch
 from sklearn.base import BaseEstimator
 from xgboost.sklearn import XGBModel
 
-from lf2i.utils.miscellanea import check_for_nans
+from lf2i.utils.miscellanea import check_for_nans, to_np_if_torch
 
 
 def preprocess_train_quantile_regression(
@@ -50,8 +50,11 @@ def preprocess_neyman_inversion(
     check_for_nans(test_statistics)
     check_for_nans(critical_values)
     check_for_nans(parameter_grid)
-    if isinstance(parameter_grid, torch.Tensor):
-        parameter_grid = parameter_grid.numpy()
+    
+    test_statistics = to_np_if_torch(test_statistics)
+    parameter_grid = to_np_if_torch(parameter_grid)
+    critical_values = to_np_if_torch(critical_values)
+
     parameter_grid = parameter_grid.reshape(-1, param_dim)
     return test_statistics.reshape(-1, parameter_grid.shape[0]), critical_values.reshape(1, parameter_grid.shape[0]), parameter_grid
 
