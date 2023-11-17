@@ -6,6 +6,7 @@ import torch
 from sklearn.ensemble import GradientBoostingRegressor  # TODO: is tree split done according to quantile loss? Default is 'friedman_mse'
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import make_scorer, mean_pinball_loss
+from catboost import CatBoostRegressor
 
 from lf2i.critical_values.nn_qr_algorithm import QuantileLoss, QuantileNN, Learner
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_train_quantile_regression
@@ -29,7 +30,7 @@ def train_qr_algorithm(
     parameters : Union[np.ndarray, torch.Tensor]
         Parameters used to train the quantile regressor (i.e., inputs).
     algorithm : Union[str, Any]
-        Either 'gb' for gradient boosted trees, 'nn' for a feed-forward neural network, or a custom algorithm (Any).
+        Either 'sk-gb' or 'cat-gb' for gradient boosted trees (Scikit-Learn or CatBoost), 'nn' for a feed-forward neural network, or a custom algorithm (Any).
         The latter must implement a `fit(X=..., y=...)` method.
     alpha : Union[float, Sequence[float]]  # TODO: update this to include sequences, but only with models monotonic in inputs.
         The alpha quantile of the test statistic to be estimated. 
@@ -65,7 +66,7 @@ def train_qr_algorithm(
         raise ValueError('n_jobs must be greater than 0')
     else:
         n_jobs = n_jobs
-    if algorithm == "gb":
+    if algorithm == "sk-gb":
         if 'cv' in algorithm_kwargs:
             algorithm = RandomizedSearchCV(
                 estimator=GradientBoostingRegressor(
@@ -84,6 +85,28 @@ def train_qr_algorithm(
             algorithm = GradientBoostingRegressor(
                 loss='quantile', 
                 alpha=alpha, 
+                **algorithm_kwargs
+            )
+        test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)
+        algorithm.fit(X=parameters, y=test_statistics)
+    elif algorithm == "cat-gb":
+        if 'cv' in algorithm_kwargs:
+            algorithm = RandomizedSearchCV(
+                estimator=CatBoostRegressor(
+                    loss_function=f'Quantile:alpha={alpha}',
+                    silent=True
+                ),
+                param_distributions=algorithm_kwargs['cv'],
+                n_iter=20 if 'n_iter' not in algorithm_kwargs else algorithm_kwargs['n_iter'],
+                scoring=make_scorer(mean_pinball_loss, alpha=alpha, greater_is_better=False),
+                n_jobs=n_jobs,
+                refit=True,
+                cv=5,
+                verbose=1
+            )
+        else:
+            algorithm = CatBoostRegressor(
+                loss_function=f'Quantile:alpha={alpha}',
                 **algorithm_kwargs
             )
         test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)

@@ -21,7 +21,7 @@ def coverage_probability_plot(
     upper_proba: Optional[np.ndarray] = None,
     lower_proba: Optional[np.ndarray] = None,
     save_fig_path: Optional[str] = None,
-    figsize: Tuple = (10, 15),
+    figsize: Tuple = (10, 8),
     ylims: Tuple = (0, 1),
     params_labels: Optional[Union[Tuple[str], List[str]]] = None,
     vmin_vmax: Optional[Union[Tuple, List]] = None,

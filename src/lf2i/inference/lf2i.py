@@ -61,7 +61,7 @@ class LF2I:
         x: Union[np.ndarray, torch.Tensor],
         evaluation_grid: Union[np.ndarray, torch.Tensor],
         confidence_level: float,
-        quantile_regressor: Union[str, Any] = 'gb',
+        quantile_regressor: Union[str, Any] = 'cat-gb',
         quantile_regressor_kwargs: Dict = {},
         T: Optional[Tuple[Union[np.ndarray, torch.Tensor]]] = None,
         T_prime: Optional[Tuple[Union[np.ndarray, torch.Tensor]]] = None,
@@ -83,11 +83,11 @@ class LF2I:
         confidence_level : float
             Desired confidence level, must be in (0, 1).
         quantile_regressor : Union[str, Any], optional
-            If `str`, it is an identifier for the quantile regressor to use, by default 'gb'.
+            If `str`, it is an identifier for the quantile regressor to use, by default 'cat-gb'.
             If `Any`, must be a quantile regressor with `.fit(X=..., y=...)` and `.predict(X=...)` methods.
-            Currently available: ['gb', 'nn']
+            Currently available: ['sk-gb', 'cat-gb', 'nn'].
         quantile_regressor_kwargs : Dict, optional
-            Settings for the chosen quantile regressor, by default {}
+            Settings for the chosen quantile regressor, by default {}. See `lf2i.critical_values.quantile_regression.py` for more details.
         T: Tuple[Union[np.ndarray, torch.Tensor]], optional
             Simulated dataset to train the estimator for the test statistic. Must adhere to the following specifications:
                 - if using `ACORE` or `BFF`, must be a tuple of arrays or tensors (Y, theta, X) in this order as described by Algorithm 3 in https://arxiv.org/abs/2107.03920.
@@ -113,11 +113,11 @@ class LF2I:
         List[np.ndarray]
             The `i`-th element is a confidence region for the `i`-th sample in `x`.
         """
-        if (quantile_regressor == 'gb') and (quantile_regressor_kwargs == {}):
+        if ((quantile_regressor == 'sk-gb') or (quantile_regressor == 'cat-gb')) and (quantile_regressor_kwargs == {}):
             quantile_regressor_kwargs = { # random search over max depth and number of trees via 5-fold CV
                 'cv': {
-                    'n_estimators': [100, 300, 500, 700, 1000],
-                    'max_depth': [1, 3, 5, 7, 10],
+                    'n_estimators' if quantile_regressor == 'sk-gb' else 'iterations': [100, 300, 500, 700, 1000],
+                    'max_depth' if quantile_regressor == 'sk-gb' else 'depth': [1, 3, 5, 7, 10],
                 }
             }  
 

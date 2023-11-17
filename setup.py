@@ -12,8 +12,10 @@ REQUIRES_PYTHON = ">=3.9.0, <3.12"
 
 REQUIRED = [
     "alphashape",
+    "catboost",
     "click",
     "descartes",
+    "joblib",
     "matplotlib>=3.6.0",
     "numpy",
     "rpy2>=3.5.4",
@@ -23,8 +25,7 @@ REQUIRED = [
     "seaborn>=0.12.1",
     "torch>=1.12.1",
     "tqdm",
-    "xgboost>=1.6.2",
-    "joblib"
+    "xgboost>=1.6.2"
 ]
 
 EXTRAS = {
