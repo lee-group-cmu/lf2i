@@ -68,7 +68,7 @@ def preprocess_waldo_computation(
         parameters = parameters.numpy()
     if param_dim == 1:
         parameters = parameters.reshape(-1, param_dim)
-        if isinstance(conditional_mean, [List, Tuple]):
+        if isinstance(conditional_mean, (List, Tuple)):
             # method == posterior
             conditional_mean = np.vstack(conditional_mean)
             conditional_var = np.vstack(conditional_var)
