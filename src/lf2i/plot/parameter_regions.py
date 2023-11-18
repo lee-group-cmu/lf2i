@@ -1,4 +1,5 @@
 from typing import Optional, Tuple, Dict, Sequence
+import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -113,6 +114,9 @@ def plot_parameter_region_2D(
         ax = plt.gca()
     else:
         ax = custom_ax
+    
+    if not scatter:
+        warnings.warn("Contour might be unreliable if alpha is not chosen properly. Please plot scatter as well, and choose alpha appropriately (try from 1 to 20).")
 
     if scatter:
         ax.scatter(x=parameter_region[:, 0], y=parameter_region[:, 1], s=3.5, color=to_rgba(color, 1), zorder=1, label=region_name)

@@ -113,14 +113,6 @@ class LF2I:
         List[np.ndarray]
             The `i`-th element is a confidence region for the `i`-th sample in `x`.
         """
-        if ((quantile_regressor == 'sk-gb') or (quantile_regressor == 'cat-gb')) and (quantile_regressor_kwargs == {}):
-            quantile_regressor_kwargs = { # random search over max depth and number of trees via 5-fold CV
-                'cv': {
-                    'n_estimators' if quantile_regressor == 'sk-gb' else 'iterations': [100, 300, 500, 700, 1000],
-                    'max_depth' if quantile_regressor == 'sk-gb' else 'depth': [1, 3, 5, 7, 10],
-                }
-            }  
-
         # estimate test statistics
         if (not self.test_statistic._check_is_trained()) or re_estimate_test_statistics:
             print('Estimating test statistic ...', flush=True)
@@ -131,6 +123,14 @@ class LF2I:
         # estimate critical values. Need to re-estimate critical values if test statistic is re-estimated because evaluated test statistic changes
         if (self.quantile_regressor is None) or re_estimate_critical_values or re_estimate_test_statistics:
             print('\nEstimating critical values ...', flush=True)
+            if ((quantile_regressor == 'sk-gb') or (quantile_regressor == 'cat-gb')) and (quantile_regressor_kwargs == {}):
+                quantile_regressor_kwargs = { # random search over max depth and number of trees via 5-fold CV
+                    'cv': {
+                        'n_estimators' if quantile_regressor == 'sk-gb' else 'iterations': [100, 300, 500, 700, 1000],
+                        'max_depth' if quantile_regressor == 'sk-gb' else 'depth': [1, 3, 5, 7, 10],
+                    }
+                }
+
             if simulator:
                 parameters_cv, samples_cv = simulator.simulate_for_critical_values(size=b_prime)
             else:

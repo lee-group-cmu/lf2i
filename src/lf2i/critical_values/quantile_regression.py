@@ -46,6 +46,7 @@ def train_qr_algorithm(
         Include 'n_iter' as a key to decide how many hyperparameter setting to sample for randomized search. Defaults to 10.
     n_jobs : int, optional
         Number of workers to use when doing random search with 5-fold CV. By default -2, which uses all cores minus one. If -1, use all cores.
+        `n_jobs == -1` uses all cores. If `n_jobs < -1`, then `n_jobs = os.cpu_count()+1+n_jobs`.
 
     Returns
     -------
@@ -58,8 +59,8 @@ def train_qr_algorithm(
         Only one of 'gb', 'nn' or an instantiated custom quantile regressor (Any) is currently accepted as algorithm.
     """
     assert not isinstance(alpha, Sequence)
-    if n_jobs == -2:
-        n_jobs = max(1, os.cpu_count()-1)
+    if n_jobs < -1:
+        n_jobs = max(1, os.cpu_count()+1+n_jobs)
     elif n_jobs == -1:
         n_jobs = os.cpu_count()
     elif n_jobs == 0:

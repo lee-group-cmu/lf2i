@@ -60,15 +60,15 @@ def preprocess_waldo_evaluation(
 
 def preprocess_waldo_computation(
     parameters: Union[np.ndarray, torch.Tensor],
-    conditional_mean: Union[np.ndarray, List],
-    conditional_var: Union[np.ndarray, List],
+    conditional_mean: Union[np.ndarray, List, Tuple],
+    conditional_var: Union[np.ndarray, List, Tuple],
     param_dim: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     if isinstance(parameters, torch.Tensor):
         parameters = parameters.numpy()
     if param_dim == 1:
         parameters = parameters.reshape(-1, param_dim)
-        if isinstance(conditional_mean, List):
+        if isinstance(conditional_mean, [List, Tuple]):
             # method == posterior
             conditional_mean = np.vstack(conditional_mean)
             conditional_var = np.vstack(conditional_var)
@@ -88,7 +88,7 @@ def preprocess_waldo_computation(
 
 
 def epsilon_variance_correction(
-    conditional_var: Union[List, np.ndarray],
+    conditional_var: Union[List, Tuple, np.ndarray],
     param_dim: int,
     epsilon: float = 1e-3
 ) -> Union[List, np.ndarray]:

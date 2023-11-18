@@ -36,6 +36,7 @@ class Waldo(TestStatistic):
         Hyperparameters and settings for the conditional variance estimator, by default {}.
     n_jobs : int, optional
         Number of workers to use when evaluating Waldo over multiple inputs if using a posterior estimator. By default -2, which uses all cores minus one.
+        `n_jobs == -1` uses all cores. If `n_jobs < -1`, then `n_jobs = os.cpu_count()+1+n_jobs`.
     """
 
     def __init__(

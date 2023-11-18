@@ -40,6 +40,7 @@ class BFF(TestStatistic):
         Hyperparameters and settings for the conditional mean estimator, by default {}.
     n_jobs : int, optional
         Number of workers to use when computing BFF over multiple inputs, by default -2, which uses all cores minus one.
+        `n_jobs == -1` uses all cores. If `n_jobs < -1`, then `n_jobs = os.cpu_count()+1+n_jobs`.
     """
 
     def __init__(
