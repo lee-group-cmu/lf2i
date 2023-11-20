@@ -16,7 +16,8 @@ def hpd_region(
     param_grid: torch.Tensor, 
     x: torch.Tensor, 
     confidence_level: float, 
-    num_p_levels: int = 100_000, 
+    num_p_levels: int = 100_000,
+    norm_posterior_samples: int = 10_000, 
     tol: float = 0.01
 ) -> Tuple[float, torch.Tensor]:
     """
@@ -34,6 +35,8 @@ def hpd_region(
         Desired confidence level for the credible region.
     num_p_levels : int, optional
         Number of level sets to examine, by default 100_000. More level sets imply higher precision in the confidence level.
+    norm_posterior_samples : int, optional
+        Number of samples to use to estimate the leakage correction factor, by default 10_000. More samples lead to better estimates of the normalization constant.
     tol : float, optional
         Coverage levels within tol of `confidence_level` will be accepted, by default 0.01.
 
@@ -50,8 +53,8 @@ def hpd_region(
     # evaluate posterior over fine grid of values in support
     if isinstance(posterior, NeuralPosterior):
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
-            posterior_probs = torch.exp(posterior.log_prob(theta=param_grid, x=x).double()).double()
+            warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ... when using NSF
+            posterior_probs = torch.exp(posterior.log_prob(theta=param_grid, x=x, leakage_correction_params={'num_rejection_samples': norm_posterior_samples}).double()).double()
     elif isinstance(posterior, (KDEWrapper, Distribution)):
         posterior_probs = torch.exp(posterior.log_prob(param_grid).double()).double()
     else:
