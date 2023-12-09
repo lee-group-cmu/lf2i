@@ -148,6 +148,7 @@ def compute_indicators_posterior(
     batch_size: int,
     num_p_levels: int = 100_000,
     tol: float = 0.01,
+    norm_posterior_samples: int = 10_000, 
     return_credible_regions: bool = False,
     n_jobs: int = -2
 ) -> Union[np.ndarray, Tuple[np.ndarray, Sequence[np.ndarray]]]:
@@ -175,6 +176,8 @@ def compute_indicators_posterior(
         Number of level sets to consider to construct the high-posterior-density credible region, by default 100_000.
     tol : float, optional
         Tolerance for the coverage probability of the credible region, used as stopping criterion to construct it, by default 0.01.
+    norm_posterior_samples : int, optional
+        Number of samples to use to estimate the leakage correction factor, by default 10_000. More samples lead to better estimates of the normalization constant.
     return_credible_regions: bool, optional
         Whether to return the credible regions computed along the way or not.
     n_jobs : int, optional
@@ -195,7 +198,8 @@ def compute_indicators_posterior(
             param_grid=torch.cat((parameter_grid, parameters[idx, :].reshape(1, param_dim))),
             x=samples[idx, :, :],
             confidence_level=confidence_level,
-            num_p_levels=num_p_levels, tol=tol
+            num_p_levels=num_p_levels, tol=tol,
+            norm_posterior_samples=norm_posterior_samples
         )
         # TODO: this is not safe. Better to return an array of bools and check if True
         indicator = 1 if parameters[idx, :] in credible_region else 0

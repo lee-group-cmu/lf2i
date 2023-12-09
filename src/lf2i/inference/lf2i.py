@@ -172,7 +172,8 @@ class LF2I:
         posterior_estimator: Optional[Any] = None,
         evaluation_grid: Union[np.ndarray, torch.Tensor] = None,
         confidence_level: Optional[float] = None,
-        num_p_levels: Optional[int] = 10_000
+        num_p_levels: Optional[int] = 10_000,
+        norm_posterior_samples: int = 10_000
     ) -> Tuple[Any, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Independent diagnostics check for the empirical coverage of a desired uncertainty quantification method across the whole parameter space.
         It estimates the coverage probability at all parameter values and provides 2-sigma prediction intervals around these estimates.
@@ -215,7 +216,9 @@ class LF2I:
             prediction intervals and compute indicators. If `region_type == `lf2i`, this information is already embedded in `self.quantile_regressor`. Must be in (0, 1).
         num_p_levels: int, optional
             If `region_type == posterior` and `indicators` are not provided, number of level sets to consider to construct the high-posterior-density credible region, by default 100_000.
-
+        norm_posterior_samples : int, optional
+            Number of samples to use to estimate the leakage correction factor, by default 10_000. More samples lead to better estimates of the normalization constant.
+            
         Returns
         -------
         Tuple[Any, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
@@ -249,7 +252,8 @@ class LF2I:
                     confidence_level=confidence_level,
                     param_dim=evaluation_grid.shape[1],
                     batch_size=self.test_statistic.batch_size if hasattr(self.test_statistic, "batch_size") else 1,
-                    num_p_levels=num_p_levels
+                    num_p_levels=num_p_levels,
+                    norm_posterior_samples=norm_posterior_samples
                 )
             elif region_type == 'prediction':
                 assert isinstance(self.test_statistic, Waldo), \
