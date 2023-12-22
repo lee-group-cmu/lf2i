@@ -123,27 +123,30 @@ class LF2I:
         if not self.quantile_regressor:  # need to evaluate test statistic for calibration only the first time the procedure is run
             print('\nEstimating critical values ...', flush=True)
             if ((quantile_regressor == 'sk-gb') or (quantile_regressor == 'cat-gb')) and (quantile_regressor_kwargs == {}):
-                quantile_regressor_kwargs = { # random search over max depth and number of trees via 5-fold CV
+                self.quantile_regressor_kwargs = { # random search over max depth and number of trees via 5-fold CV
                     'cv': {
                         'n_estimators' if quantile_regressor == 'sk-gb' else 'iterations': [100, 300, 500, 700, 1000],
                         'max_depth' if quantile_regressor == 'sk-gb' else 'depth': [1, 3, 5, 7, 10],
                     }
                 }
-
-            if simulator:
-                parameters_cv, samples_cv = simulator.simulate_for_critical_values(size=b_prime)
             else:
-                parameters_cv, samples_cv = T_prime[0], T_prime[1]
-            test_statistics_cv = self.test_statistic.evaluate(parameters_cv, samples_cv, mode='critical_values')
+                self.quantile_regressor_kwargs = quantile_regressor_kwargs
+            
+            # save parameters and test statistics for calibration to use them for future runs with different confidence levels
+            if simulator:
+                self.parameters_cv, samples_cv = simulator.simulate_for_critical_values(size=b_prime)
+            else:
+                self.parameters_cv, samples_cv = T_prime[0], T_prime[1]
+            self.test_statistics_cv = self.test_statistic.evaluate(self.parameters_cv, samples_cv, mode='critical_values')
         
         if f'{confidence_level}' not in self.quantile_regressor:
             self.quantile_regressor[f'{confidence_level}'] = train_qr_algorithm(
-                test_statistics=test_statistics_cv,
-                parameters=parameters_cv,
+                test_statistics=self.test_statistics_cv,
+                parameters=self.parameters_cv,
                 algorithm=quantile_regressor,
                 algorithm_kwargs=quantile_regressor_kwargs,
                 alpha=confidence_level if self.test_statistic.acceptance_region == 'left' else 1-confidence_level,
-                param_dim=parameters_cv.shape[1] if parameters_cv.ndim > 1 else 1,
+                param_dim=self.parameters_cv.shape[1] if self.parameters_cv.ndim > 1 else 1,
                 n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2  # all cores minus 1
             )
 
