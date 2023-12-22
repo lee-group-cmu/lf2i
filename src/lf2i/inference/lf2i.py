@@ -54,7 +54,7 @@ class LF2I:
             self.test_statistic = test_statistic
         else:
             raise ValueError(f"Expected one of `acore`, `bff`, `waldo` or an instance of a custom `lf2i.test_statistics._base.TestStatistic`, got {test_statistic}")
-        self.quantile_regressor = None
+        self.quantile_regressor = {}
 
     def inference(
         self,
@@ -68,8 +68,7 @@ class LF2I:
         simulator: Optional[Simulator] = None,
         b: Optional[int] = None, 
         b_prime: Optional[int] = None, 
-        re_estimate_test_statistics: bool = False,
-        re_estimate_critical_values: bool = False
+        re_estimate_test_statistics: bool = False
     ) -> List[np.ndarray]:
         """Estimate test statistic and critical values, and construct a confidence region for all observations in `x`.
 
@@ -114,14 +113,14 @@ class LF2I:
             The `i`-th element is a confidence region for the `i`-th sample in `x`.
         """
         # estimate test statistics
-        if (not self.test_statistic._check_is_trained()) or re_estimate_test_statistics:
+        if not self.test_statistic._check_is_trained():
             print('Estimating test statistic ...', flush=True)
             if simulator:
                 T = simulator.simulate_for_test_statistic(size=b, estimation_method=self.test_statistic.estimation_method)
             self.test_statistic.estimate(*T)
             
-        # estimate critical values. Need to re-estimate critical values if test statistic is re-estimated because evaluated test statistic changes
-        if (self.quantile_regressor is None) or re_estimate_critical_values or re_estimate_test_statistics:
+        # estimate critical value
+        if not self.quantile_regressor:  # need to evaluate test statistic for calibration only the first time the procedure is run
             print('\nEstimating critical values ...', flush=True)
             if ((quantile_regressor == 'sk-gb') or (quantile_regressor == 'cat-gb')) and (quantile_regressor_kwargs == {}):
                 quantile_regressor_kwargs = { # random search over max depth and number of trees via 5-fold CV
@@ -136,7 +135,9 @@ class LF2I:
             else:
                 parameters_cv, samples_cv = T_prime[0], T_prime[1]
             test_statistics_cv = self.test_statistic.evaluate(parameters_cv, samples_cv, mode='critical_values')
-            self.quantile_regressor = train_qr_algorithm(
+        
+        if f'{confidence_level}' not in self.quantile_regressor:
+            self.quantile_regressor[f'{confidence_level}'] = train_qr_algorithm(
                 test_statistics=test_statistics_cv,
                 parameters=parameters_cv,
                 algorithm=quantile_regressor,
@@ -151,7 +152,9 @@ class LF2I:
         test_statistics_x = self.test_statistic.evaluate(evaluation_grid, x, mode='confidence_sets')
         confidence_regions = compute_confidence_regions(
             test_statistic=test_statistics_x,
-            critical_values=self.quantile_regressor.predict(X=preprocess_predict_quantile_regression(evaluation_grid, self.quantile_regressor, self.test_statistic.poi_dim)),
+            critical_values=self.quantile_regressor[f'{confidence_level}'].predict(
+                X=preprocess_predict_quantile_regression(evaluation_grid, self.quantile_regressor[f'{confidence_level}'], self.test_statistic.poi_dim)
+            ),
             parameter_grid=to_np_if_torch(evaluation_grid),
             acceptance_region=self.test_statistic.acceptance_region,
             poi_dim=self.test_statistic.poi_dim
@@ -161,6 +164,7 @@ class LF2I:
     def diagnostics(
         self,
         region_type: str,
+        confidence_level: float,
         coverage_estimator: str = 'splines',
         coverage_estimator_kwargs: Dict = {},
         T_double_prime: Optional[Tuple[Union[np.ndarray, torch.Tensor]]] = None,
@@ -171,7 +175,6 @@ class LF2I:
         parameters: Optional[np.ndarray] = None,
         posterior_estimator: Optional[Any] = None,
         evaluation_grid: Union[np.ndarray, torch.Tensor] = None,
-        confidence_level: Optional[float] = None,
         num_p_levels: Optional[int] = 10_000,
         norm_posterior_samples: int = 10_000
     ) -> Tuple[Any, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -188,6 +191,9 @@ class LF2I:
                 - credible regions from a posterior distribution ('posterior');
                 - Gaussian prediction intervals centered around predictions ('prediction'). For this, `self.test_statistic` must be Waldo.
             If none of the above, then must provide `indicators` and `parameters`.
+        confidence_level : float
+            If `region_type in [`posterior`, `prediction`]` and `indicators` are not provided, must give the confidence level to construct credible regions or 
+            prediction intervals and compute indicators. If `region_type == `lf2i`, needed to choose which of the trained quantile regressors to use. Must be in (0, 1).
         coverage_estimator : str, optional
             Probabilistic classifier to use to estimate coverage probabilities, by default 'splines'
         coverage_estimator_kwargs : Dict, optional
@@ -211,9 +217,6 @@ class LF2I:
         evaluation_grid: Union[np.ndarray, torch.Tensor]
             If `region_type in [`posterior`, `prediction`]` and `indicators` are not provided, grid of points over the parameter space over which to construct a 
             high-posterior-density credible region or a Gaussian interval centered around predictions.
-        confidence_level : float
-            If `region_type in [`posterior`, `prediction`]` and `indicators` are not provided, must give the confidence level to construct credible regions or 
-            prediction intervals and compute indicators. If `region_type == `lf2i`, this information is already embedded in `self.quantile_regressor`. Must be in (0, 1).
         num_p_levels: int, optional
             If `region_type == posterior` and `indicators` are not provided, number of level sets to consider to construct the high-posterior-density credible region, by default 100_000.
         norm_posterior_samples : int, optional
@@ -238,7 +241,9 @@ class LF2I:
             if region_type == 'lf2i':
                 indicators = compute_indicators_lf2i(
                     test_statistics=self.test_statistic.evaluate(parameters, samples, mode='diagnostics'),
-                    critical_values=self.quantile_regressor.predict(X=preprocess_predict_quantile_regression(parameters, self.quantile_regressor, parameters.shape[1])),
+                    critical_values=self.quantile_regressor[f'{confidence_level}'].predict(
+                        X=preprocess_predict_quantile_regression(parameters, self.quantile_regressor[f'{confidence_level}'], parameters.shape[1] if parameters.ndim > 1 else 1)
+                    ),
                     parameters=parameters,
                     acceptance_region=self.test_statistic.acceptance_region,
                     param_dim=parameters.shape[1] if parameters.ndim > 1 else 1
@@ -250,7 +255,7 @@ class LF2I:
                     samples=samples,
                     parameter_grid=evaluation_grid,
                     confidence_level=confidence_level,
-                    param_dim=evaluation_grid.shape[1],
+                    param_dim=evaluation_grid.shape[1] if evaluation_grid.ndim > 1 else 1,
                     batch_size=self.test_statistic.batch_size if hasattr(self.test_statistic, "batch_size") else 1,
                     num_p_levels=num_p_levels,
                     norm_posterior_samples=norm_posterior_samples
@@ -263,7 +268,7 @@ class LF2I:
                     parameters=parameters,  # TODO: what if we want to do diagnostics against both POIs and nuisances?
                     samples=samples,
                     confidence_level=confidence_level,
-                    param_dim=evaluation_grid.shape[1]
+                    param_dim=evaluation_grid.shape[1] if evaluation_grid.ndim > 1 else 1
                 )
             else:
                 raise ValueError(
