@@ -142,7 +142,7 @@ class LF2I:
                 algorithm=quantile_regressor,
                 algorithm_kwargs=quantile_regressor_kwargs,
                 alpha=confidence_level if self.test_statistic.acceptance_region == 'left' else 1-confidence_level,
-                param_dim=parameters_cv.shape[1],
+                param_dim=parameters_cv.shape[1] if parameters_cv.ndim > 1 else 1,
                 n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2  # all cores minus 1
             )
 
@@ -241,7 +241,7 @@ class LF2I:
                     critical_values=self.quantile_regressor.predict(X=preprocess_predict_quantile_regression(parameters, self.quantile_regressor, parameters.shape[1])),
                     parameters=parameters,
                     acceptance_region=self.test_statistic.acceptance_region,
-                    param_dim=parameters.shape[1]
+                    param_dim=parameters.shape[1] if parameters.ndim > 1 else 1
                 )
             elif region_type == 'posterior':
                 indicators = compute_indicators_posterior(
@@ -276,7 +276,7 @@ class LF2I:
             parameters=parameters,
             estimator=coverage_estimator,
             estimator_kwargs=coverage_estimator_kwargs,
-            param_dim=parameters.shape[1],
+            param_dim=parameters.shape[1] if parameters.ndim > 1 else 1,
             new_parameters=new_parameters
         )
         return diagnostics_estimator, out_parameters, mean_proba, upper_proba, lower_proba
