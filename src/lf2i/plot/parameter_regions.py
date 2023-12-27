@@ -73,7 +73,8 @@ def plot_parameter_region_1D(
     true_parameter: np.ndarray,
     parameter_space_bounds: Optional[Dict[str, float]] = None,
     figsize: Optional[Tuple[int, int]] = None,
-    color: Optional[str] = 'green'
+    color: Optional[str] = 'green',
+    log_scale: bool = False
 ) -> None:
     """Plot 1-dimensional parameter regions using the lower and upper bounds.
     """
@@ -88,6 +89,8 @@ def plot_parameter_region_1D(
         ax.set_ylim(parameter_space_bounds['low'], parameter_space_bounds['high'])
     ax.set_ylabel(r'$\theta$', fontsize=45, rotation=0)
     ax.get_xaxis().set_visible(False)
+    if log_scale:
+        ax.set_yscale('log')
     ax.tick_params(labelsize=20)
     ax.legend(prop={'size': 12})
     plt.show()
