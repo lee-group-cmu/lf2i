@@ -19,6 +19,7 @@ def train_qr_algorithm(
     alpha: Union[float, Sequence[float]],
     param_dim: int,
     algorithm_kwargs: Union[Dict[str, Any], Dict[str, Dict[str, Any]]] = {},
+    verbose: bool = True,
     n_jobs: int = -2
 ) -> Any:
     """Dispatcher to train different quantile regressors.
@@ -44,6 +45,8 @@ def train_qr_algorithm(
         
         If algorithm == 'gb', pass {'cv': hp_dist} to do a randomized search over the hyperparameters in hp_dist (a `Dict`) via 5-fold cross validation. 
         Include 'n_iter' as a key to decide how many hyperparameter setting to sample for randomized search. Defaults to 10.
+    verbose: bool, optional
+        Whether to print information on the hyper-parameter search for quantile regression, by default True.
     n_jobs : int, optional
         Number of workers to use when doing random search with 5-fold CV. By default -2, which uses all cores minus one. If -1, use all cores.
         `n_jobs == -1` uses all cores. If `n_jobs < -1`, then `n_jobs = os.cpu_count()+1+n_jobs`.
@@ -80,7 +83,7 @@ def train_qr_algorithm(
                 n_jobs=n_jobs,
                 refit=True,
                 cv=5,
-                verbose=1
+                verbose=1 if verbose else 0
             )
         else:
             algorithm = GradientBoostingRegressor(
@@ -103,7 +106,7 @@ def train_qr_algorithm(
                 n_jobs=n_jobs,
                 refit=True,
                 cv=5,
-                verbose=1
+                verbose=1 if verbose else 0
             )
         else:
             algorithm = CatBoostRegressor(
