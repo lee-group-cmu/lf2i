@@ -150,6 +150,7 @@ def compute_indicators_posterior(
     tol: float = 0.01,
     norm_posterior_samples: int = 10_000, 
     return_credible_regions: bool = False,
+    verbose: bool = True,
     n_jobs: int = -2
 ) -> Union[np.ndarray, Tuple[np.ndarray, Sequence[np.ndarray]]]:
     """Construct an array of indicators which mark whether each value in `parameters` is included or not in the corresponding posterior credible region.
@@ -180,6 +181,8 @@ def compute_indicators_posterior(
         Number of samples to use to estimate the leakage correction factor, by default 10_000. More samples lead to better estimates of the normalization constant.
     return_credible_regions: bool, optional
         Whether to return the credible regions computed along the way or not.
+    verbose: bool, optional
+        Whether to print progress bars or not, by default True.
     n_jobs : int, optional
         Number of workers to use when computing indicators over a sequence of inputs. By default -2, which uses all cores minus one.
 
@@ -205,7 +208,7 @@ def compute_indicators_posterior(
         indicator = 1 if parameters[idx, :] in credible_region else 0
         return credible_region, indicator
 
-    with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing indicators for {len(it)} credible regions", total=len(it))) as _:
+    with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing indicators for {len(it)} credible regions", total=len(it), disable=not verbose)) as _:
         out = list(zip(*Parallel(n_jobs=n_jobs)(delayed(single_hpd_region)(idx) for idx in it)))
     credible_regions, indicators = out[0], np.array(out[1])
     

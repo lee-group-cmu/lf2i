@@ -1,5 +1,4 @@
 from typing import Optional, Union, Dict, List, Tuple, Any
-import warnings
 
 import numpy as np
 import torch
@@ -68,7 +67,7 @@ class LF2I:
         simulator: Optional[Simulator] = None,
         b: Optional[int] = None, 
         b_prime: Optional[int] = None, 
-        re_estimate_test_statistics: bool = False
+        verbose: bool = True
     ) -> List[np.ndarray]:
         """Estimate test statistic and critical values, and construct a confidence region for all observations in `x`.
 
@@ -102,26 +101,28 @@ class LF2I:
             Number of simulations used to estimate the test statistic. Used only if `simulator` is provided.
         b_prime : int, optional
             Number of simulations used to estimate the critical values. Used only if `simulator` is provided.
-        re_estimate_test_statistics : bool, optional
-            Whether to re-estimate the test statistics if a previous call to `.infer()` was made, by default False.
-        re_estimate_critical_values : bool, optional
-            Whether to re-estimate the critical values if a previous call to `.infer()` was made, by default False.
+        verbose: bool, optional
+            Whether to print checkpoints and progress bars or not, by default True.
 
         Returns
         -------
         List[np.ndarray]
             The `i`-th element is a confidence region for the `i`-th sample in `x`.
         """
+        self.test_statistic.verbose = verbose  # lf2i verbosity takes precedence
+        
         # estimate test statistics
         if not self.test_statistic._check_is_trained():
-            print('Estimating test statistic ...', flush=True)
+            if verbose:
+                print('Estimating test statistic ...', flush=True)
             if simulator:
                 T = simulator.simulate_for_test_statistic(size=b, estimation_method=self.test_statistic.estimation_method)
-            self.test_statistic.estimate(*T)
+            self.test_statistic.estimate(*T)  # TODO: control verbosity when estimating
             
-        # estimate critical value
+        # estimate critical values
         if not self.quantile_regressor:  # need to evaluate test statistic for calibration only the first time the procedure is run
-            print('\nEstimating critical values ...', flush=True)
+            if verbose:
+                print('\nEstimating critical values ...', flush=True)
             if ((quantile_regressor == 'sk-gb') or (quantile_regressor == 'cat-gb')) and (quantile_regressor_kwargs == {}):
                 self.quantile_regressor_kwargs = { # random search over max depth and number of trees via 5-fold CV
                     'cv': {
@@ -151,7 +152,8 @@ class LF2I:
             )
 
         # construct confidence_regions
-        print('\nConstructing confidence regions ...', flush=True)
+        if verbose:
+            print('\nConstructing confidence regions ...', flush=True)
         test_statistics_x = self.test_statistic.evaluate(evaluation_grid, x, mode='confidence_sets')
         confidence_regions = compute_confidence_regions(
             test_statistic=test_statistics_x,
@@ -179,7 +181,8 @@ class LF2I:
         posterior_estimator: Optional[Any] = None,
         evaluation_grid: Union[np.ndarray, torch.Tensor] = None,
         num_p_levels: Optional[int] = 10_000,
-        norm_posterior_samples: int = 10_000
+        norm_posterior_samples: int = 10_000,
+        verbose: bool = True
     ) -> Tuple[Any, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Independent diagnostics check for the empirical coverage of a desired uncertainty quantification method across the whole parameter space.
         It estimates the coverage probability at all parameter values and provides 2-sigma prediction intervals around these estimates.
@@ -224,6 +227,8 @@ class LF2I:
             If `region_type == posterior` and `indicators` are not provided, number of level sets to consider to construct the high-posterior-density credible region, by default 100_000.
         norm_posterior_samples : int, optional
             Number of samples to use to estimate the leakage correction factor, by default 10_000. More samples lead to better estimates of the normalization constant.
+        verbose: bool, optional
+            Whether to print checkpoints and progress bars or not, by default True.
             
         Returns
         -------
@@ -235,6 +240,8 @@ class LF2I:
         ValueError
             If `region_type` is not among those supported and `indicators is None`
         """
+        self.test_statistic.verbose = verbose  # lf2i verbosity takes precedence
+        
         if indicators is None:
             if simulator:
                 parameters, samples = simulator.simulate_for_diagnostics(size=b_double_prime)

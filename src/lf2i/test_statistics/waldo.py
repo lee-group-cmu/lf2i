@@ -34,6 +34,8 @@ class Waldo(TestStatistic):
         Hyperparameters and settings for the conditional mean estimator, by default {}.
     cond_variance_estimator_kwargs: Dict
         Hyperparameters and settings for the conditional variance estimator, by default {}.
+    verbose: bool, optional
+        Whether to print progress bars when evaluating or not, by default True.
     n_jobs : int, optional
         Number of workers to use when evaluating Waldo over multiple inputs if using a posterior estimator. By default -2, which uses all cores minus one.
         `n_jobs == -1` uses all cores. If `n_jobs < -1`, then `n_jobs = os.cpu_count()+1+n_jobs`.
@@ -48,6 +50,7 @@ class Waldo(TestStatistic):
         cond_variance_estimator: Optional[Union[str, Any]] = None,
         estimator_kwargs: Dict = {},
         cond_variance_estimator_kwargs: Dict = {},
+        verbose: bool = True,
         n_jobs: int = -2
     ) -> None:
         super().__init__(acceptance_region='left', estimation_method=estimation_method)
@@ -63,6 +66,7 @@ class Waldo(TestStatistic):
             self.num_posterior_samples = num_posterior_samples
         else:
             raise ValueError(f"Waldo estimation is supported only using `prediction` algorithms or `posterior` estimators, got {estimation_method}")
+        self.verbose = verbose
         self.n_jobs = n_jobs
     
     @staticmethod
@@ -203,7 +207,7 @@ class Waldo(TestStatistic):
                 cond_mean = np.mean(posterior_samples, axis=0).reshape(1, self.poi_dim)
                 cond_var = np.cov(posterior_samples.T)  # need samples.shape = (data_d, num_samples)
                 return cond_mean, cond_var
-            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Approximating conditional mean and covariance for {samples.shape[0]} points...", total=len(it))) as _:
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Approximating conditional mean and covariance for {samples.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
                 out = list(zip(*Parallel(n_jobs=self.n_jobs)(delayed(sampling_loop)(idx) for idx in it)))  # axis 0 indexes different simulations/observations
                 conditional_mean, conditional_var = out[0], out[1]
         return self._compute(parameters, conditional_mean, conditional_var, mode)
