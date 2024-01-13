@@ -84,20 +84,20 @@ def preprocess_waldo_computation(
             conditional_mean = conditional_mean.reshape(-1, 1, param_dim)
             conditional_var = conditional_var.reshape(-1, param_dim, param_dim)
     
-    return parameters, conditional_mean, check_if_nonpositve(conditional_var, param_dim)
+    return parameters, conditional_mean, check_if_positive(conditional_var, param_dim)
 
 
-def check_if_nonpositve(
+def check_if_positive(
     conditional_var: Union[List[np.ndarray], Tuple[np.ndarray], np.ndarray], 
     param_dim: int
 ) -> Union[List, Tuple, np.ndarray]:
     error_msg = """At least one element of `conditional_var` is negative.\n
                 You should make sure your conditional variance estimator output is non-negative."""
     if param_dim == 1:
-        if (conditional_var < 0).any() or np.isclose(conditional_var, 0).any():
+        if not (conditional_var > 0).all():
             raise ValueError(error_msg)
     else:
         for elem in conditional_var:
-            if (elem < 0).any() or np.isclose(elem, 0).any():
+            if not (elem > 0).all():
                 raise ValueError(error_msg)
     return conditional_var
