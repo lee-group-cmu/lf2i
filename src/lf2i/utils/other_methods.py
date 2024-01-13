@@ -8,7 +8,6 @@ from torch.distributions import Distribution
 
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
 from sbi.utils.kde import KDEWrapper
-from lf2i.utils.waldo_inputs import epsilon_variance_correction
 
 
 def hpd_region(
@@ -117,8 +116,8 @@ def gaussian_prediction_sets(
         conditional_var = conditional_variance_estimator.predict(X=samples).reshape(-1, 1)
         z_percentile = norm(loc=0, scale=1).ppf(1-((1-confidence_level)/2))  # two-tailed
         prediction_sets_bounds = np.hstack((
-            conditional_mean - z_percentile*np.sqrt(epsilon_variance_correction(conditional_var, param_dim)),
-            conditional_mean + z_percentile*np.sqrt(epsilon_variance_correction(conditional_var, param_dim))
+            conditional_mean - z_percentile*np.sqrt(conditional_var),
+            conditional_mean + z_percentile*np.sqrt(conditional_var)
         ))
         assert prediction_sets_bounds.shape == (conditional_mean.shape[0], 2)
     else:

@@ -84,21 +84,20 @@ def preprocess_waldo_computation(
             conditional_mean = conditional_mean.reshape(-1, 1, param_dim)
             conditional_var = conditional_var.reshape(-1, param_dim, param_dim)
     
-    return parameters, conditional_mean, epsilon_variance_correction(conditional_var, param_dim)
+    return parameters, conditional_mean, check_if_nonpositve(conditional_var, param_dim)
 
 
-def epsilon_variance_correction(
-    conditional_var: Union[List, Tuple, np.ndarray],
-    param_dim: int,
-    epsilon: float = 1e-3
-) -> Union[List, np.ndarray]:
-    # Make sure the estimated conditional variance is always >= 0+epsilon to avoid ZeroDivisionError or exploding test statistics.
-    warning_msg = f"""At least one element of `conditional_var` is negative.\n
-                        You should make sure your conditional variance estimator output is non-negative.\n"""
+def check_if_nonpositve(
+    conditional_var: Union[List[np.ndarray], Tuple[np.ndarray], np.ndarray], 
+    param_dim: int
+) -> Union[List, Tuple, np.ndarray]:
+    error_msg = """At least one element of `conditional_var` is negative.\n
+                You should make sure your conditional variance estimator output is non-negative."""
     if param_dim == 1:
-        if np.sum(conditional_var < 0) > 0:
-            warnings.warn(warning_msg + f"Applying eps={epsilon} correction.")
-        return np.maximum(conditional_var, epsilon)
+        if (conditional_var < 0).any() or np.isclose(conditional_var, 0).any():
+            raise ValueError(error_msg)
     else:
-        # not implemented   
-        return conditional_var
+        for elem in conditional_var:
+            if (elem < 0).any() or np.isclose(elem, 0).any():
+                raise ValueError(error_msg)
+    return conditional_var
