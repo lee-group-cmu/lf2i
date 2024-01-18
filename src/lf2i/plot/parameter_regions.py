@@ -1,6 +1,7 @@
 from typing import Optional, Tuple, Dict, Sequence
 import warnings
 
+from itertools import cycle
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
@@ -19,19 +20,39 @@ def plot_parameter_regions(
     colors: Optional[Sequence[str]] = None,
     region_names: Optional[Sequence[str]] = None,
     labels: Optional[np.ndarray] = None,
+    linestyles: Optional[Sequence[str]] = None,
     param_names: Optional[np.ndarray] = None,
     alpha_shape: bool = False,
     alpha: Optional[float] = None,
     scatter: bool = True,
+    log_scale: bool = False,
+    title: str = 'Parameter Regions',
     figsize: Optional[Sequence[int]] = (15, 15),
-    save_fig_path: Optional[str] = None,
-    **kwargs
+    save_fig_path: Optional[str] = None
 ) -> None:
     """Dispatcher to plot parameter regions of different dimensionality.
     """
     if param_dim == 1:
+        fig, ax = plt.subplots(1, 1, figsize=figsize if figsize is not None else (3, 9))
+
         # TODO: adapt to plot multiples as for 2D
-        plot_parameter_region_1D(parameter_regions[0], true_parameter, parameter_space_bounds, **kwargs)
+        linestyles = cycle(linestyles) if linestyles else cycle(['-', '--', '-.', ':'])
+        colors = colors or cm.rainbow(np.linspace(0, 1, len(region_names)))
+        assert len(region_names) == len(colors) == len(parameter_regions)
+        for i, param_reg in enumerate(parameter_regions):
+            leg_handles, leg_labels = plot_parameter_region_1D(
+                param_reg, true_parameter, parameter_space_bounds, color=colors[i], region_name=region_names[i], linestyle=next(linestyles), custom_ax=ax
+            )
+        
+        if parameter_space_bounds is not None:
+            ax.set_ylim(parameter_space_bounds['low'], parameter_space_bounds['high'])
+        ax.set_ylabel(r'$\theta$', fontsize=45, rotation=0, labelpad=15)
+        ax.get_xaxis().set_visible(False)
+        if log_scale:
+            ax.set_yscale('log')
+        ax.tick_params(labelsize=20)
+        ax.legend(prop={'size': 12})
+        ax.set_title(title, fontsize=15)
     elif param_dim == 2:
         colors = colors or cm.rainbow(np.linspace(0, 1, len(region_names)))
         assert len(region_names) == len(colors) == len(parameter_regions)
@@ -74,26 +95,37 @@ def plot_parameter_region_1D(
     parameter_space_bounds: Optional[Dict[str, float]] = None,
     figsize: Optional[Tuple[int, int]] = None,
     color: Optional[str] = 'green',
-    log_scale: bool = False
+    log_scale: bool = False,
+    region_name: str = 'Parameter Region',
+    linestyle: str = '-',
+    custom_ax: Optional[Axes] = None
 ) -> None:
     """Plot 1-dimensional parameter regions using the lower and upper bounds.
     """
-    _, ax = plt.subplots(1, 1, figsize=figsize if figsize is not None else (3, 9))
+    
+    if custom_ax is None:
+        _, ax = plt.subplots(1, 1, figsize=figsize if figsize is not None else (3, 9))
+    else:
+        ax = custom_ax
 
     ax.scatter(x=true_parameter, y=true_parameter, alpha=1, c="red", marker="*", s=250, zorder=10)
-    ax.axhline(y=np.min(parameter_region.reshape(1, -1), axis=1), xmin=0.45, xmax=0.55, label="Confidence Region", color=color)
-    ax.axhline(y=np.max(parameter_region.reshape(1, -1), axis=1), xmin=0.45, xmax=0.55, color=color)
-    ax.vlines(x=true_parameter, ymin=np.min(parameter_region), ymax=np.max(parameter_region), color=color)
+    ax.axhline(y=np.min(parameter_region.reshape(1, -1), axis=1), xmin=0.45, xmax=0.55, label=region_name, color=color, linestyle=linestyle)
+    ax.axhline(y=np.max(parameter_region.reshape(1, -1), axis=1), xmin=0.45, xmax=0.55, color=color, linestyle=linestyle)
+    ax.vlines(x=true_parameter, ymin=np.min(parameter_region), ymax=np.max(parameter_region), color=color, linestyle=linestyle)
 
-    if parameter_space_bounds is not None:
-        ax.set_ylim(parameter_space_bounds['low'], parameter_space_bounds['high'])
-    ax.set_ylabel(r'$\theta$', fontsize=45, rotation=0)
-    ax.get_xaxis().set_visible(False)
-    if log_scale:
-        ax.set_yscale('log')
-    ax.tick_params(labelsize=20)
-    ax.legend(prop={'size': 12})
-    plt.show()
+    if custom_ax is None:
+        if parameter_space_bounds is not None:
+            ax.set_ylim(parameter_space_bounds['low'], parameter_space_bounds['high'])
+        ax.set_ylabel(r'$\theta$', fontsize=45, rotation=0)
+        ax.get_xaxis().set_visible(False)
+        if log_scale:
+            ax.set_yscale('log')
+        ax.tick_params(labelsize=20)
+        ax.legend(prop={'size': 12})
+        plt.show()
+    else:
+        # to plot legend in main plot
+        return ax.get_legend_handles_labels()
 
 
 def plot_parameter_region_2D(
