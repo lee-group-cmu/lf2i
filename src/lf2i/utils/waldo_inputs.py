@@ -97,7 +97,6 @@ def check_if_positive(
         if not (conditional_var > 0).all():
             raise ValueError(error_msg)
     else:
-        for elem in conditional_var:
-            if not (elem > 0).all():
-                raise ValueError(error_msg)
+        # TODO: check if positive definite. We know it's symmetric; do we want to check for eigenvals > 0 for all conditional vars?
+        pass
     return conditional_var
