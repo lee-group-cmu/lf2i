@@ -14,7 +14,7 @@ from lf2i.diagnostics.coverage_probability import (
     compute_indicators_prediction
 )
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_predict_quantile_regression
-from lf2i.utils.miscellanea import to_np_if_torch
+from lf2i.utils.miscellanea import to_np_if_torch, to_torch_if_np
 
 
 class LF2I:
@@ -225,7 +225,7 @@ class LF2I:
             If `region_type in [`posterior`, `prediction`]` and `indicators` are not provided, grid of points over the parameter space over which to construct a 
             high-posterior-density credible region or a Gaussian interval centered around predictions.
         num_p_levels: int, optional
-            If `region_type == posterior` and `indicators` are not provided, number of level sets to consider to construct the high-posterior-density credible region, by default 100_000.
+            If `region_type == posterior` and `indicators` are not provided, number of level sets to consider to construct the high-posterior-density credible region, by default 10_000.
         norm_posterior_samples : int, optional
             Number of samples to use to estimate the leakage correction factor, by default 10_000. More samples lead to better estimates of the normalization constant.
         verbose: bool, optional
@@ -264,7 +264,7 @@ class LF2I:
                     posterior=posterior_estimator,
                     parameters=parameters,  # TODO: what if we want to do diagnostics against both POIs and nuisances?
                     samples=samples,
-                    parameter_grid=evaluation_grid,
+                    parameter_grid=to_torch_if_np(evaluation_grid),
                     confidence_level=confidence_level,
                     param_dim=evaluation_grid.shape[1] if evaluation_grid.ndim > 1 else 1,
                     batch_size=self.test_statistic.batch_size if hasattr(self.test_statistic, "batch_size") else 1,

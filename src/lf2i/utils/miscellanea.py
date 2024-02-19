@@ -12,6 +12,9 @@ def np_to_pd(array: np.ndarray, names: Sequence[str]):
 def to_np_if_torch(inp: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
     return inp if isinstance(inp, np.ndarray) else inp.cpu().detach().numpy()
 
+def to_torch_if_np(inp: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
+    return inp if isinstance(inp, torch.Tensor) else torch.from_numpy(inp)
+
 def check_for_nans(inp: Union[np.ndarray, pd.Series, pd.DataFrame, torch.Tensor]) -> Union[np.ndarray, pd.Series, pd.DataFrame, torch.Tensor]:
     if isinstance(inp, np.ndarray):
         if np.isnan(inp).sum() > 0:
