@@ -202,7 +202,7 @@ class LF2I:
             If `region_type in [`posterior`, `prediction`]` and `indicators` are not provided, must give the confidence level to construct credible regions or 
             prediction intervals and compute indicators. If `region_type == `lf2i`, needed to choose which of the trained quantile regressors to use. Must be in (0, 1).
         coverage_estimator : str, optional
-            Probabilistic classifier to use to estimate coverage probabilities, by default 'splines'
+            Probabilistic classifier to use to estimate coverage probabilities, by default 'splines'. Currently supported: ['splines', 'cat-gb'].
         coverage_estimator_kwargs : Dict, optional
             Settings for the probabilistic classifier, by default {}
         T_double_prime: Tuple[Union[np.ndarray, torch.Tensor]], optional

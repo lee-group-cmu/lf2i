@@ -25,8 +25,8 @@ def preprocess_train_quantile_regression(
             test_statistics = torch.from_numpy(test_statistics)
         if isinstance(parameters, np.ndarray):
             parameters = torch.from_numpy(parameters)
-    if isinstance(estimator, (BaseEstimator, XGBModel)):
-        # Scikit-Learn or XGBoost models
+    else:
+        # numpy-based models
         if isinstance(test_statistics, torch.Tensor):
             test_statistics = test_statistics.numpy()
         if isinstance(parameters, torch.Tensor):

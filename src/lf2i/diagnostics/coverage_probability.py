@@ -7,6 +7,8 @@ from joblib import Parallel, delayed
 import rpy2.robjects as robj
 import rpy2.robjects.numpy2ri
 import numpy as np
+from sklearn.model_selection import RandomizedSearchCV
+from catboost import CatBoostClassifier
 import torch
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
 from sbi.utils.kde import KDEWrapper
@@ -30,7 +32,7 @@ def estimate_coverage_proba(
     param_dim: int,
     new_parameters: Optional[np.ndarray] = None,
     n_sigma: int = 2
-) -> Tuple[Any, np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[Any, np.ndarray, Optional[np.ndarray], Optional[np.ndarray]]:
     r"""Estimate conditional coverage probabilities by regressing `indicators`, which signal if the corresponding value in `parameters` 
     was included or not in the parameter region, against the `parameters` themselves. 
 
@@ -58,16 +60,16 @@ def estimate_coverage_proba(
 
     Returns
     -------
-    Tuple[Any, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-        Fitted estimator, evaluated parameters, and estimated coverage probabilities -- mean, upper-n_sigma bound. lower-n_sigma bound
+    Tuple[Any, np.ndarray, Optional[np.ndarray], Optional[np.ndarray]]
+        Fitted estimator, evaluated parameters, and estimated coverage probabilities -- mean, upper-n_sigma bound, lower-n_sigma bound. Bounds only available if `estimator="splines"`.
 
     Raises
     ------
     ValueError
-        `Estimator` must be one of [`splines`]
+        `Estimator` must be one of [`splines`, `cat-gb`].
     """
     indicators, parameters, new_parameters = preprocess_diagnostics(indicators, parameters, new_parameters, param_dim)
-    if estimator in ['splines']:
+    if estimator  == 'splines':
         estimator = fit_r_estimator(
             estimator,
             indicators, 
@@ -80,9 +82,25 @@ def estimate_coverage_proba(
             param_dim,
             n_sigma
         )
+    elif estimator == 'cat-gb':
+        estimator = RandomizedSearchCV(
+            estimator=CatBoostClassifier(
+                loss_function='CrossEntropy',
+                silent=True
+            ),
+            param_distributions={
+                'iterations': [100, 300, 500, 700, 1000], 'depth': [1, 3, 5, 7, 10],
+            },
+            n_iter=20,
+            n_jobs=-2,
+            refit=True,
+            cv=5
+        )
+        estimator.fit(X=parameters, y=indicators)
+        mean_proba, upper_proba, lower_proba = estimator.predict(X=parameters if new_parameters is None else new_parameters), None, None
     else:
         # TODO: additional methods?
-        raise ValueError(f"Estimators currently supported: [`splines`]; got {estimator}")
+        raise ValueError(f"Estimators currently supported: [`splines`, `cat-gb`]; got {estimator}")
     out_parameters = parameters if new_parameters is None else new_parameters
     return estimator, out_parameters, mean_proba, upper_proba, lower_proba
 
