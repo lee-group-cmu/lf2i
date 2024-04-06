@@ -66,7 +66,8 @@ class LF2I:
         T_prime: Optional[Tuple[Union[np.ndarray, torch.Tensor]]] = None,
         simulator: Optional[Simulator] = None,
         b: Optional[int] = None, 
-        b_prime: Optional[int] = None, 
+        b_prime: Optional[int] = None,
+        retrain_qr: bool = False,
         verbose: bool = True
     ) -> List[np.ndarray]:
         """Estimate test statistic and critical values, and construct a confidence region for all observations in `x`.
@@ -101,6 +102,8 @@ class LF2I:
             Number of simulations used to estimate the test statistic. Used only if `simulator` is provided.
         b_prime : int, optional
             Number of simulations used to estimate the critical values. Used only if `simulator` is provided.
+        retrain_qr: bool, optional
+            Whether to retrain the quantile regressor or not, even at a previously done confidence level. 
         verbose: bool, optional
             Whether to print checkpoints and progress bars or not, by default True.
 
@@ -140,8 +143,8 @@ class LF2I:
                 self.parameters_cv, samples_cv = T_prime[0], T_prime[1]
             self.test_statistics_cv = self.test_statistic.evaluate(self.parameters_cv, samples_cv, mode='critical_values')
         
-        if f'{confidence_level}' not in self.quantile_regressor:
-            self.quantile_regressor[f'{confidence_level}'] = train_qr_algorithm(
+        if (f'{confidence_level:.2f}' not in self.quantile_regressor) or retrain_qr:
+            self.quantile_regressor[f'{confidence_level:.2f}'] = train_qr_algorithm(
                 test_statistics=self.test_statistics_cv,
                 parameters=self.parameters_cv,
                 algorithm=quantile_regressor,
