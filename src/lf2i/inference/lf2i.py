@@ -161,8 +161,8 @@ class LF2I:
         test_statistics_x = self.test_statistic.evaluate(evaluation_grid, x, mode='confidence_sets')
         confidence_regions = compute_confidence_regions(
             test_statistic=test_statistics_x,
-            critical_values=self.quantile_regressor[f'{confidence_level}'].predict(
-                X=preprocess_predict_quantile_regression(evaluation_grid, self.quantile_regressor[f'{confidence_level}'], self.test_statistic.poi_dim)
+            critical_values=self.quantile_regressor[f'{confidence_level:.2f}'].predict(
+                X=preprocess_predict_quantile_regression(evaluation_grid, self.quantile_regressor[f'{confidence_level:.2f}'], self.test_statistic.poi_dim)
             ),
             parameter_grid=to_np_if_torch(evaluation_grid),
             acceptance_region=self.test_statistic.acceptance_region,
@@ -255,8 +255,8 @@ class LF2I:
             if region_type == 'lf2i':
                 indicators = compute_indicators_lf2i(
                     test_statistics=self.test_statistic.evaluate(parameters, samples, mode='diagnostics'),
-                    critical_values=self.quantile_regressor[f'{confidence_level}'].predict(
-                        X=preprocess_predict_quantile_regression(parameters, self.quantile_regressor[f'{confidence_level}'], parameters.shape[1] if parameters.ndim > 1 else 1)
+                    critical_values=self.quantile_regressor[f'{confidence_level:.2f}'].predict(
+                        X=preprocess_predict_quantile_regression(parameters, self.quantile_regressor[f'{confidence_level:.2f}'], parameters.shape[1] if parameters.ndim > 1 else 1)
                     ),
                     parameters=parameters,
                     acceptance_region=self.test_statistic.acceptance_region,
