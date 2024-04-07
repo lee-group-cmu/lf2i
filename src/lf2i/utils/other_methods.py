@@ -44,7 +44,7 @@ def hpd_region(
     Returns
     -------
     Tuple[float, torch.Tensor]
-        Actual credible level and HPD region
+        Actual credible level and HPD region.
 
     Raises
     ------

@@ -126,6 +126,14 @@ class LF2I:
         if not self.quantile_regressor:  # need to evaluate test statistic for calibration only the first time the procedure is run
             if verbose:
                 print('\nEstimating critical values ...', flush=True)
+            # save parameters and test statistics for calibration to use them for future runs with different confidence levels
+            if simulator:
+                self.parameters_cv, samples_cv = simulator.simulate_for_critical_values(size=b_prime)
+            else:
+                self.parameters_cv, samples_cv = T_prime[0], T_prime[1]
+            self.test_statistics_cv = self.test_statistic.evaluate(self.parameters_cv, samples_cv, mode='critical_values')
+        
+        if (f'{confidence_level:.2f}' not in self.quantile_regressor) or retrain_qr:
             if ((quantile_regressor == 'sk-gb') or (quantile_regressor == 'cat-gb')) and (quantile_regressor_kwargs == {}):
                 self.quantile_regressor_kwargs = { # random search over max depth and number of trees via 5-fold CV
                     'cv': {
@@ -135,15 +143,7 @@ class LF2I:
                 }
             else:
                 self.quantile_regressor_kwargs = quantile_regressor_kwargs
-            
-            # save parameters and test statistics for calibration to use them for future runs with different confidence levels
-            if simulator:
-                self.parameters_cv, samples_cv = simulator.simulate_for_critical_values(size=b_prime)
-            else:
-                self.parameters_cv, samples_cv = T_prime[0], T_prime[1]
-            self.test_statistics_cv = self.test_statistic.evaluate(self.parameters_cv, samples_cv, mode='critical_values')
-        
-        if (f'{confidence_level:.2f}' not in self.quantile_regressor) or retrain_qr:
+
             self.quantile_regressor[f'{confidence_level:.2f}'] = train_qr_algorithm(
                 test_statistics=self.test_statistics_cv,
                 parameters=self.parameters_cv,
