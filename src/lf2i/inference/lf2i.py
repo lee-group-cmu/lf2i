@@ -184,8 +184,8 @@ class LF2I:
         parameters: Optional[np.ndarray] = None,
         posterior_estimator: Optional[Any] = None,
         evaluation_grid: Union[np.ndarray, torch.Tensor] = None,
-        num_p_levels: Optional[int] = 10_000,
-        norm_posterior_samples: int = 10_000,
+        num_level_sets: Optional[int] = 10_000,
+        norm_posterior_samples: Optional[int] = None,
         verbose: bool = True
     ) -> Tuple[Any, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Independent diagnostics check for the empirical coverage of a desired uncertainty quantification method across the whole parameter space.
@@ -227,10 +227,12 @@ class LF2I:
         evaluation_grid: Union[np.ndarray, torch.Tensor]
             If `region_type in [`posterior`, `prediction`]` and `indicators` are not provided, grid of points over the parameter space over which to construct a 
             high-posterior-density credible region or a Gaussian interval centered around predictions.
-        num_p_levels: int, optional
-            If `region_type == posterior` and `indicators` are not provided, number of level sets to consider to construct the high-posterior-density credible region, by default 10_000.
+        num_level_sets: int, optional
+            If `region_type == posterior` and `indicators` are not provided, Number of level sets to examine, by default 10_000. 
+            A high number of level sets ensures the actual credible level is as close as possible to the specified one.
         norm_posterior_samples : int, optional
-            Number of samples to use to estimate the leakage correction factor, by default 10_000. More samples lead to better estimates of the normalization constant.
+            Number of samples to use to estimate the leakage correction factor, by default None. More samples lead to better estimates of the normalization constant when using a normalized posterior.
+            If `None`, uses the un-normalized posterior (but note that the density is already being explicitly normalized over the `evaluation_grid` to compute the HPD region).
         verbose: bool, optional
             Whether to print checkpoints and progress bars or not, by default True.
             
@@ -268,10 +270,10 @@ class LF2I:
                     parameters=parameters,  # TODO: what if we want to do diagnostics against both POIs and nuisances?
                     samples=samples,
                     parameter_grid=to_torch_if_np(evaluation_grid),
-                    confidence_level=confidence_level,
+                    credible_level=confidence_level,
                     param_dim=evaluation_grid.shape[1] if evaluation_grid.ndim > 1 else 1,
                     batch_size=self.test_statistic.batch_size if hasattr(self.test_statistic, "batch_size") else 1,
-                    num_p_levels=num_p_levels,
+                    num_level_sets=num_level_sets,
                     norm_posterior_samples=norm_posterior_samples
                 )
             elif region_type == 'prediction':

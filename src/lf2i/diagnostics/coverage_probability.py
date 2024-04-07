@@ -91,7 +91,7 @@ def estimate_coverage_proba(
             param_distributions={
                 'iterations': [100, 300, 500, 700, 1000], 'depth': [1, 3, 5, 7, 10],
             },
-            n_iter=20,
+            n_iter=25,
             n_jobs=-2,
             refit=True,
             cv=5
@@ -161,12 +161,12 @@ def compute_indicators_posterior(
     parameters: torch.Tensor,
     samples: torch.Tensor,
     parameter_grid: torch.Tensor,
-    confidence_level: float,
+    credible_level: float,
     param_dim: int,
     batch_size: int,
-    num_p_levels: int = 100_000,
+    num_level_sets: int = 10_000,
     tol: float = 0.01,
-    norm_posterior_samples: int = 10_000, 
+    norm_posterior_samples: Optional[int] = None,
     return_credible_regions: bool = False,
     verbose: bool = True,
     n_jobs: int = -2
@@ -184,19 +184,22 @@ def compute_indicators_posterior(
         Array of d-dimensional samples, each generated from the corresponding value in `parameters`.
     parameter_grid : torch.Tensor,
         Parameter space over which `posterior` is defined. This is used to construct the credible region. 
-    confidence_level : float
-        Confidence level of the credible regions to be constructed. Must be in (0, 1).
+    credible_level : float
+        Desired credible level for the HPD regions. Must be in (0, 1).
     param_dim : int
         Dimensionality of the parameter.
     batch_size : int
         Number of samples drawn from the same parameter value, for each batch in `samples`. 
         Each element of `samples` is of size (batch_size, data_dim).
-    num_p_levels : int, optional
-        Number of level sets to consider to construct the high-posterior-density credible region, by default 100_000.
+    num_level_sets : int, optional
+        Number of level sets to consider to construct the high-posterior-density region, by default 10_000.
+        A high number of level sets ensures the actual credible level is as close as possible to the specified one.
     tol : float, optional
-        Tolerance for the coverage probability of the credible region, used as stopping criterion to construct it, by default 0.01.
+        Actual credible levels within `tol` of the specified `credible_level` will be considered acceptable, by default 0.01.
+        NOTE: this is used as a stopping criterion, but if the closest actual credible level is not within `tol` of `credible_level`, a warning is raised but the HPD region is still used.
     norm_posterior_samples : int, optional
-        Number of samples to use to estimate the leakage correction factor, by default 10_000. More samples lead to better estimates of the normalization constant.
+        Number of samples to use to estimate the leakage correction factor, by default None. More samples lead to better estimates of the normalization constant when returning a normalized posterior.
+        If `None`, uses the un-normalized posterior (but note that the density is already being explicitly normalized over the `param_grid`).
     return_credible_regions: bool, optional
         Whether to return the credible regions computed along the way or not.
     verbose: bool, optional
@@ -207,7 +210,7 @@ def compute_indicators_posterior(
     Returns
     -------
     Union[np.ndarray, Tuple[np.ndarray, Sequence[np.ndarray]]]
-        Array of zeros and ones that indicate whether the corresponding value in `parameters` is included or not in the credible region.
+        Array of zeros and ones that indicates whether the corresponding value in `parameters` is included or not in the credible region.
         If `return_credible_regions`, then return a tuple whose second element is a sequence of credible regions (one for each parameter/sample).
     """
     parameters, samples, parameter_grid, posterior = \
@@ -218,8 +221,8 @@ def compute_indicators_posterior(
             posterior=next(posterior),
             param_grid=torch.cat((parameter_grid, parameters[idx, :].reshape(1, param_dim))),
             x=samples[idx, :, :],
-            confidence_level=confidence_level,
-            num_p_levels=num_p_levels, tol=tol,
+            credible_level=credible_level,
+            num_level_sets=num_level_sets, tol=tol,
             norm_posterior_samples=norm_posterior_samples
         )
         # TODO: this is not safe. Better to return an array of bools and check if True
