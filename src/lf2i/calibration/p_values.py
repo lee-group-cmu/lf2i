@@ -135,9 +135,14 @@ def estimate_rejection_proba(
                 )
             inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm)
             algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
-
+            
             algorithm = CalibratedClassifierCV(
-                estimator=algorithm,
+                estimator=CatBoostClassifier(
+                    loss_function='CrossEntropy',
+                    silent=True,
+                    monotone_constraints="0:1",  # 1 means non-decreasing function of cutoffs (always 0-th column of inputs),
+                    **(algorithm.best_params_ if 'cv' in algorithm_kwargs else algorithm_kwargs)
+                ),
                 method='isotonic',
                 cv=5,
                 n_jobs=n_jobs
