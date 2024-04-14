@@ -47,8 +47,8 @@ def compute_confidence_regions(
     ValueError
         Acceptance region must be either `left` or `right`.
     """
-    test_statistic, critical_values, parameter_grid = \
-        preprocess_neyman_inversion(test_statistic, critical_values, parameter_grid, poi_dim)
+    test_statistic, critical_values, p_values, parameter_grid = \
+        preprocess_neyman_inversion(test_statistic, critical_values, p_values, parameter_grid, poi_dim)
 
     if calibration_method == 'critical-values':
         if acceptance_region == 'left':
