@@ -106,10 +106,13 @@ def estimate_coverage_proba(
 
 
 def compute_indicators_lf2i(
+    calibration_method: str,
     test_statistics: np.ndarray,
-    critical_values: np.ndarray,
     parameters: np.ndarray,
-    acceptance_region: str,
+    critical_values: Optional[np.ndarray],
+    p_values: Optional[np.ndarray],
+    alpha: Optional[float],
+    acceptance_region: Optional[str],
     param_dim: int
 ) -> np.ndarray:
     """Construct an array of indicators which mark whether each value in `parameters` is included or not in the corresponding LF2I confidence region.
@@ -120,15 +123,25 @@ def compute_indicators_lf2i(
 
     Parameters
     ----------
+    calibration_method : str
+        Either `critical-values` or `p-values`.
     test_statistics : np.ndarray
-        Array of test statistics. Each value must be computed for the test with corresponding (null) value of `parameters`, given a sample generate from it. 
-    critical_values : np.ndarray
-        Array of critical values, each computed for the test with corresponding (null) value of `parameters`, against which to compare the test statistics.
+        Array of test statistics. Each value must be computed for the test with corresponding (null) value of `parameters`, given a sample generate from it.
+        Only used if `calibration_method = 'critical-values`. 
     parameters : np.ndarray
         True (simulated) parameter values. If a parameter is in the acceptance region of the corresponding test, then it is included in the confidence set. 
-    acceptance_region : str
+        Only used if `calibration_method = 'critical-values`.
+    critical_values : np.ndarray, optional
+        Array of critical values, each computed for the test with corresponding (null) value of `parameters`, against which to compare the test statistics.
+        Only used if `calibration_method = 'critical-values`.
+    p_values : np.ndarray, optional
+        Array of p-values, each computed for the test with corresponding (null) value of `parameters`, against which to compare the provided level :math:`\alpha`.
+        Only used if `calibration_method = 'p-values`.
+    alpha: float, optional
+        If `calibration_method = 'p-values`, used to decide whether the test rejects or not, otherwise ignored.
+    acceptance_region : str, optional
         Whether the acceptance region for the corresponding test is defined to be on the right or on the left of the critical value. 
-        Must be either `left` or `right`.
+        Must be either `left` or `right`.  Only used if `calibration_method = 'critical-values`.
     param_dim : int
         Dimensionality of the parameter.
     Returns
@@ -142,16 +155,19 @@ def compute_indicators_lf2i(
         `acceptance_region` must be either `left` or `right`.
     """
     # TODO: convert torch Tensors into numpy arrays
-    test_statistics, critical_values, parameters = \
-        preprocess_indicators_lf2i(test_statistics, critical_values, parameters, param_dim)
+    test_statistics, critical_values, p_values, parameters = \
+        preprocess_indicators_lf2i(test_statistics, critical_values, p_values, parameters, param_dim)
     
     indicators = np.zeros(shape=(parameters.shape[0], ))
-    if acceptance_region == 'left':
-        indicators[test_statistics <= critical_values] = 1
-    elif acceptance_region == 'right':
-        indicators[test_statistics >= critical_values] = 1
+    if calibration_method == 'critical-values':
+        if acceptance_region == 'left':
+            indicators[test_statistics <= critical_values] = 1
+        elif acceptance_region == 'right':
+            indicators[test_statistics >= critical_values] = 1
+        else:
+            raise ValueError(f"Acceptance region must be either `left` or `right`, got {acceptance_region}")
     else:
-        raise ValueError(f"Acceptance region must be either `left` or `right`, got {acceptance_region}")
+        indicators[p_values > alpha] = 1
 
     return indicators
 

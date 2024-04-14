@@ -1,11 +1,12 @@
-from typing import Optional, Union, Dict, List, Tuple, Any
+from typing import Optional, Union, Dict, List, Tuple, Any, Sequence
 
 import numpy as np
 import torch
 
 from lf2i.simulator import Simulator
 from lf2i.test_statistics import TestStatistic, ACORE, BFF, Waldo
-from lf2i.critical_values.quantile_regression import train_qr_algorithm
+from lf2i.calibration.critical_values import train_qr_algorithm
+from lf2i.calibration.p_values import augment_calibration_set, estimate_rejection_proba
 from lf2i.confidence_regions.neyman_inversion import compute_confidence_regions
 from lf2i.diagnostics.coverage_probability import (
     estimate_coverage_proba, 
@@ -13,7 +14,7 @@ from lf2i.diagnostics.coverage_probability import (
     compute_indicators_posterior, 
     compute_indicators_prediction
 )
-from lf2i.utils.calibration_diagnostics_inputs import preprocess_predict_quantile_regression
+from lf2i.utils.calibration_diagnostics_inputs import preprocess_predict_quantile_regression, preprocess_predict_p_values
 from lf2i.utils.miscellanea import to_np_if_torch, to_torch_if_np
 
 
@@ -53,23 +54,25 @@ class LF2I:
             self.test_statistic = test_statistic
         else:
             raise ValueError(f"Expected one of `acore`, `bff`, `waldo` or an instance of a custom `lf2i.test_statistics._base.TestStatistic`, got {test_statistic}")
-        self.quantile_regressor = {}
+        self.calibration_model = {}
 
     def inference(
         self,
         x: Union[np.ndarray, torch.Tensor],
         evaluation_grid: Union[np.ndarray, torch.Tensor],
-        confidence_level: float,
-        quantile_regressor: Union[str, Any] = 'cat-gb',
-        quantile_regressor_kwargs: Dict = {},
+        confidence_level: Union[float, Sequence[float]],
+        calibration_method: str,
+        calibration_model: Union[str, Any] = 'cat-gb',
+        calibration_model_kwargs: Dict = {},
         T: Optional[Tuple[Union[np.ndarray, torch.Tensor]]] = None,
         T_prime: Optional[Tuple[Union[np.ndarray, torch.Tensor]]] = None,
         simulator: Optional[Simulator] = None,
         b: Optional[int] = None, 
         b_prime: Optional[int] = None,
-        retrain_qr: bool = False,
+        num_augment: int = 5,
+        retrain_calibration: bool = False,
         verbose: bool = True
-    ) -> List[np.ndarray]:
+    ) -> Union[List[np.ndarray], Dict[str, List[np.ndarray]]]:
         """Estimate test statistic and critical values, and construct a confidence region for all observations in `x`.
 
         Parameters
@@ -79,22 +82,24 @@ class LF2I:
         evaluation_grid: Union[np.ndarray, torch.Tensor]
             Grid of points over the parameter space over which to invert hypothesis tests and construct the confidence regions. 
             Each confidence set will be a subset of this grid.
-        confidence_level : float
-            Desired confidence level, must be in (0, 1).
-        quantile_regressor : Union[str, Any], optional
-            If `str`, it is an identifier for the quantile regressor to use, by default 'cat-gb'.
-            If `Any`, must be a quantile regressor with `.fit(X=..., y=...)` and `.predict(X=...)` methods.
-            Currently available: ['sk-gb', 'cat-gb', 'nn'].
-        quantile_regressor_kwargs : Dict, optional
-            Settings for the chosen quantile regressor, by default {}. See `lf2i.critical_values.quantile_regression.py` for more details.
+        confidence_level : Union[float, Sequence[float]]
+            Desired confidence level(s), must be in :math:`(0, 1)`.
+        calibration_method : str
+            Either `critical-values` (via quantile regression) or `p-values` (via monotonic probabilistic classification).
+        calibration_model : Union[str, Any], optional
+            If `str`, it is an identifier for the model used for calibration, by default 'cat-gb'.
+            If `Any`, must be an object implementing the `.fit(X=..., y=...)` and `.predict(X=...)` methods.
+            Currently available: ['cat-gb', 'nn'] or a pre-instantiated object.
+        calibration_model_kwargs : Dict, optional
+            Settings for the chosen calibration model, by default {}. See modules in `lf2i.calibration` for more details.
         T: Tuple[Union[np.ndarray, torch.Tensor]], optional
             Simulated dataset to train the estimator for the test statistic. Must adhere to the following specifications:
-                - if using `ACORE` or `BFF`, must be a tuple of arrays or tensors (Y, theta, X) in this order as described by Algorithm 3 in https://arxiv.org/abs/2107.03920.
-                - if using `Waldo`, must be a tuple of arrays or tensors (theta, X) in this order as described by Algorithm 1 in https://arxiv.org/pdf/2205.15680.pdf.
+                - if using `ACORE` or `BFF`, must be a tuple of arrays or tensors :math:`(Y, \theta, X)` in this order as described by Algorithm 3 in https://arxiv.org/abs/2107.03920.
+                - if using `Waldo`, must be a tuple of arrays or tensors :math:`(\theta, X)` in this order as described by Algorithm 1 in https://arxiv.org/pdf/2205.15680.pdf.
                 - if using a custom test statistic, then an arbitrary tuple of arrays of tensors is expected.
             If not given, must supply a `simulator`.
         T_prime: Tuple[Union[np.ndarray, torch.Tensor]], optional
-            Simulated dataset to train the quantile regressor to estimate critical values. Must be a tuple of arrays or tensors (theta, X).
+            Simulated dataset to train the calibration model to estimate critical values or p-values. Must be a tuple of arrays or tensors :math:`(\theta, X)`.
             If not given, must supply a `simulator`.
         simulator: Simulator, optional
             If `T` and `T_prime` are not given, must pass an instance of `lf2i.simulator.Simulator`.
@@ -102,16 +107,21 @@ class LF2I:
             Number of simulations used to estimate the test statistic. Used only if `simulator` is provided.
         b_prime : int, optional
             Number of simulations used to estimate the critical values. Used only if `simulator` is provided.
-        retrain_qr: bool, optional
-            Whether to retrain the quantile regressor or not, even at a previously done confidence level. 
+        num_augment : int
+            If `calibration_method = p-values', indicates the number of cutoffs to resample for each value in `test_statistics`. 
+            The augmented calibration set will be of size `num_augment` :math:`\times B^\prime`, where :math:`B^\prime` is the size of the original calibration set.
+        retrain_calibration: bool, optional
+            Whether to retrain the calibration model or not, even at a previously done confidence level. 
         verbose: bool, optional
             Whether to print checkpoints and progress bars or not, by default True.
 
         Returns
         -------
-        List[np.ndarray]
-            The `i`-th element is a confidence region for the `i`-th sample in `x`.
+        Union[List[np.ndarray], List[List[np.ndarray]]]
+            If `confidence_level` is a single value, the `i`-th element is a confidence region for the `i`-th sample in `x`.
+            If `confidence_level` is a sequence of values, the `j`-th element is a list containing the confidence regions (indexed as above) at the `j`-th confidence level.
         """
+        assert calibration_method in ['critical-values', 'p-values']
         self.test_statistic.verbose = verbose  # lf2i verbosity takes precedence
         
         # estimate test statistics
@@ -122,58 +132,109 @@ class LF2I:
                 T = simulator.simulate_for_test_statistic(size=b, estimation_method=self.test_statistic.estimation_method)
             self.test_statistic.estimate(*T)  # TODO: control verbosity when estimating
             
-        # estimate critical values
-        if not self.quantile_regressor:  # need to evaluate test statistic for calibration only the first time the procedure is run
+        # estimate critical values or p-values
+        if not self.calibration_model:  # need to evaluate test statistic for calibration only the first time the procedure is run
             if verbose:
-                print('\nEstimating critical values ...', flush=True)
+                print('\nCalibration ...', flush=True)
             # save parameters and test statistics for calibration to use them for future runs with different confidence levels
             if simulator:
-                self.parameters_cv, samples_cv = simulator.simulate_for_critical_values(size=b_prime)
+                # TODO: change methods name in simulators and test statistics -> calibration, no critical values
+                self.parameters_calib, samples_calib = simulator.simulate_for_critical_values(size=b_prime)
             else:
-                self.parameters_cv, samples_cv = T_prime[0], T_prime[1]
-            self.test_statistics_cv = self.test_statistic.evaluate(self.parameters_cv, samples_cv, mode='critical_values')
+                self.parameters_calib, samples_calib = T_prime[0], T_prime[1]
+            self.test_statistics_calib = self.test_statistic.evaluate(self.parameters_calib, samples_calib, mode='critical_values')
         
-        if (f'{confidence_level:.2f}' not in self.quantile_regressor) or retrain_qr:
-            if ((quantile_regressor == 'sk-gb') or (quantile_regressor == 'cat-gb')) and (quantile_regressor_kwargs == {}):
-                self.quantile_regressor_kwargs = { # random search over max depth and number of trees via 5-fold CV
-                    'cv': {
-                        'n_estimators' if quantile_regressor == 'sk-gb' else 'iterations': [100, 300, 500, 700, 1000],
-                        'max_depth' if quantile_regressor == 'sk-gb' else 'depth': [1, 3, 5, 7, 10],
-                    }
+        # TODO: calib_dict_key is necessary if training multiple quantile regressors separately at different levels alpha.
+        # Eventually it should be removed because 
+        #   1) no guarantee to avoid quantile crossings with separate estimation; 
+        #   2) better and cheaper to estimate quantiles jointly anyway (although still no guarantee of avoiding crossings)
+        calib_dict_key = f'{confidence_level:.2f}' if isinstance(confidence_level, float) else 'multiple_levels'
+        if (calib_dict_key not in self.calibration_model) or retrain_calibration:
+            if (calibration_model == 'cat-gb') and (calibration_model_kwargs == {}):
+                self.calibration_model_kwargs = { # random search over max depth and number of trees via 5-fold CV
+                    'cv': {'iterations': [100, 300, 500, 700, 1000], 'depth': [1, 3, 5, 7, 10]},
+                    'n_iter': 25
                 }
             else:
-                self.quantile_regressor_kwargs = quantile_regressor_kwargs
+                self.calibration_model_kwargs = calibration_model_kwargs
 
-            self.quantile_regressor[f'{confidence_level:.2f}'] = train_qr_algorithm(
-                test_statistics=self.test_statistics_cv,
-                parameters=self.parameters_cv,
-                algorithm=quantile_regressor,
-                algorithm_kwargs=self.quantile_regressor_kwargs,
-                alpha=confidence_level if self.test_statistic.acceptance_region == 'left' else 1-confidence_level,
-                param_dim=self.parameters_cv.shape[1] if self.parameters_cv.ndim > 1 else 1,
-                verbose=verbose,
-                n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2  # all cores minus 1
-            )
+            if calibration_method == 'critical-values':
+                if isinstance(confidence_level, float):
+                    alpha = confidence_level if self.test_statistic.acceptance_region == 'left' else 1-confidence_level
+                else:
+                    alpha = [cl if self.test_statistic.acceptance_region == 'left' else 1-cl for cl in confidence_level]
+                
+                self.calibration_model[calib_dict_key] = train_qr_algorithm(
+                    test_statistics=self.test_statistics_calib,
+                    parameters=self.parameters_calib,
+                    algorithm=calibration_model,
+                    algorithm_kwargs=self.calibration_model_kwargs,
+                    alpha=alpha,
+                    param_dim=self.parameters_calib.shape[1] if self.parameters_calib.ndim > 1 else 1,
+                    verbose=verbose,
+                    n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2  # all cores minus 1
+                )
+            else:
+                augmented_inputs, rejection_indicators = augment_calibration_set(
+                    test_statistics=self.test_statistics_calib,
+                    poi=self.parameters_calib,
+                    num_augment=num_augment,
+                    acceptance_region=self.test_statistic.acceptance_region
+                )
+                self.calibration_model[calib_dict_key] = estimate_rejection_proba(
+                    inputs=augmented_inputs,
+                    rejection_indicators=rejection_indicators,
+                    algorithm=calibration_model,
+                    algorithm_kwargs=self.calibration_model_kwargs,
+                    verbose=verbose,
+                    n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2
+                )
 
         # construct confidence_regions
         if verbose:
             print('\nConstructing confidence regions ...', flush=True)
         test_statistics_x = self.test_statistic.evaluate(evaluation_grid, x, mode='confidence_sets')
-        confidence_regions = compute_confidence_regions(
-            test_statistic=test_statistics_x,
-            critical_values=self.quantile_regressor[f'{confidence_level:.2f}'].predict(
-                X=preprocess_predict_quantile_regression(evaluation_grid, self.quantile_regressor[f'{confidence_level:.2f}'], self.test_statistic.poi_dim)
-            ),
-            parameter_grid=to_np_if_torch(evaluation_grid),
-            acceptance_region=self.test_statistic.acceptance_region,
-            poi_dim=self.test_statistic.poi_dim
-        )
-        return confidence_regions
+        if calibration_method == 'critical_values':
+            # TODO: what if multiple levels? Do we allow this when using critical values?
+            critical_values = to_np_if_torch(self.calibration_model[calib_dict_key].predict(
+                X=preprocess_predict_quantile_regression(evaluation_grid, self.calibration_model[calib_dict_key], self.test_statistic.poi_dim)
+            ))
+            p_values = None
+        else:
+            
+            critical_values = None
+            # TODO: preprocessing should be isolated
+            evaluation_grid = to_np_if_torch(evaluation_grid)
+            if evaluation_grid.ndim == 1:
+                evaluation_grid = np.expand_dims(evaluation_grid, axis=1)
+            p_values = to_np_if_torch(self.calibration_model[calib_dict_key].predict(
+                X=preprocess_predict_p_values(test_statistics_x.reshape(-1, ), np.tile(evaluation_grid, reps=(test_statistics_x.shape[0], 1)), self.calibration_model[calib_dict_key])
+            ).reshape(test_statistics_x.shape[0], evaluation_grid.shape[0]))
+
+        if isinstance(confidence_level, float):
+            alpha = [1-confidence_level]
+        else:
+            alpha = [1-cl for cl in confidence_level]
+        
+        confidence_regions = []
+        for a in alpha:
+            confidence_regions.append(compute_confidence_regions(
+                calibration_method=calibration_method,
+                test_statistic=test_statistics_x,
+                parameter_grid=to_np_if_torch(evaluation_grid),
+                critical_values=critical_values,
+                p_values=p_values,
+                alpha=a,
+                acceptance_region=self.test_statistic.acceptance_region,
+                poi_dim=self.test_statistic.poi_dim
+            ))
+        return confidence_regions if len(alpha) > 1 else confidence_regions[0]
 
     def diagnostics(
         self,
         region_type: str,
         confidence_level: float,
+        calibration_method: Optional[str] = None,
         coverage_estimator: str = 'splines',
         coverage_estimator_kwargs: Dict = {},
         T_double_prime: Optional[Tuple[Union[np.ndarray, torch.Tensor]]] = None,
@@ -201,9 +262,11 @@ class LF2I:
                 - credible regions from a posterior distribution ('posterior');
                 - Gaussian prediction intervals centered around predictions ('prediction'). For this, `self.test_statistic` must be Waldo.
             If none of the above, then must provide `indicators` and `parameters`.
+        calibration_method : str, optional
+            If `region_type = 'lf2i', either `critical-values` or `p-values`, ignored otherwise.
         confidence_level : float
             If `region_type in [`posterior`, `prediction`]` and `indicators` are not provided, must give the confidence level to construct credible regions or 
-            prediction intervals and compute indicators. If `region_type == `lf2i`, needed to choose which of the trained quantile regressors to use. Must be in (0, 1).
+            prediction intervals and compute indicators. If `region_type == `lf2i`, needed to evaluate the calibration method. Must be in (0, 1).
         coverage_estimator : str, optional
             Probabilistic classifier to use to estimate coverage probabilities, by default 'splines'. Currently supported: ['splines', 'cat-gb'].
         coverage_estimator_kwargs : Dict, optional
@@ -246,6 +309,7 @@ class LF2I:
         ValueError
             If `region_type` is not among those supported and `indicators is None`
         """
+        assert calibration_method in ['critical-values', 'p-values']
         self.test_statistic.verbose = verbose  # lf2i verbosity takes precedence
         
         if indicators is None:
@@ -255,12 +319,26 @@ class LF2I:
                 parameters, samples = T_double_prime[0], T_double_prime[1]
         
             if region_type == 'lf2i':
+                calib_dict_key = f'{confidence_level:.2f}' if isinstance(confidence_level, float) else 'multiple_levels'
+                test_statistics = self.test_statistic.evaluate(parameters, samples, mode='diagnostics')
+                if calibration_method == 'critical-values':
+                    critical_values = to_np_if_torch(self.calibration_model[calib_dict_key].predict(
+                        X=preprocess_predict_quantile_regression(parameters, self.calibration_model[calib_dict_key], parameters.shape[1] if parameters.ndim > 1 else 1)
+                    ))
+                    p_values = None
+                else:
+                    critical_values = None
+                    p_values = to_np_if_torch(self.calibration_model[calib_dict_key].predict(
+                        X=preprocess_predict_p_values(test_statistics, parameters, self.calibration_model[calib_dict_key])
+                    ))
+
                 indicators = compute_indicators_lf2i(
-                    test_statistics=self.test_statistic.evaluate(parameters, samples, mode='diagnostics'),
-                    critical_values=self.quantile_regressor[f'{confidence_level:.2f}'].predict(
-                        X=preprocess_predict_quantile_regression(parameters, self.quantile_regressor[f'{confidence_level:.2f}'], parameters.shape[1] if parameters.ndim > 1 else 1)
-                    ),
+                    calibration_method=calibration_method,
+                    test_statistics=test_statistics,
                     parameters=parameters,
+                    critical_values=critical_values,
+                    p_values=p_values,
+                    alpha=1-confidence_level,
                     acceptance_region=self.test_statistic.acceptance_region,
                     param_dim=parameters.shape[1] if parameters.ndim > 1 else 1
                 )

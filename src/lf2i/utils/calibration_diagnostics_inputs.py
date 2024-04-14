@@ -1,4 +1,4 @@
-from typing import Union, Tuple, Any, Sequence, Iterator
+from typing import Union, Tuple, Any, Sequence, Iterator, Optional
 import warnings
 
 import itertools
@@ -52,6 +52,54 @@ def preprocess_predict_quantile_regression(
     return parameters.reshape(-1, param_dim)
 
 
+def preprocess_fit_p_values(
+    inp: Union[np.ndarray, torch.Tensor],
+    rejection_probs_model: Any
+) -> Union[np.ndarray, torch.Tensor]:
+    check_for_nans(inp)
+    if isinstance(rejection_probs_model, torch.nn.Module) or (hasattr(rejection_probs_model, 'model') and isinstance(rejection_probs_model.model, torch.nn.Module)):
+        # PyTorch models
+        if isinstance(inp, np.ndarray):
+            inp = torch.from_numpy(inp)
+        if inp.ndim == 1:
+            inp = inp.unsqueeze(1)
+    else:  # assume anything else works with numpy arrays
+        # Scikit-Learn, XGBoost, CatBoost, etc...
+        if isinstance(inp, torch.Tensor):
+            inp = inp.numpy()
+        if inp.ndim == 1:
+            inp = np.expand_dims(inp, axis=1)
+    return inp
+
+
+def preprocess_predict_p_values(
+    test_stats: Union[np.ndarray, torch.Tensor],
+    poi: Union[np.ndarray, torch.Tensor],
+    rejection_probs_model: Any
+) -> Union[np.ndarray, torch.Tensor]:
+    check_for_nans(test_stats)
+    check_for_nans(poi)
+    if isinstance(rejection_probs_model, torch.nn.Module) or (hasattr(rejection_probs_model, 'model') and isinstance(rejection_probs_model.model, torch.nn.Module)):
+        # PyTorch models
+        if isinstance(test_stats, np.ndarray):
+            test_stats = torch.from_numpy(test_stats).reshape(-1, 1)
+        if isinstance(poi, np.ndarray):
+            poi = torch.from_numpy(poi)
+        if poi.ndim == 1:
+            poi = poi.unsqueeze(1)
+        stacked_inp = torch.hstack((test_stats, poi))
+    else:  # assume anything else works with numpy arrays
+        # Scikit-Learn, XGBoost, CatBoost, etc...
+        if isinstance(test_stats, torch.Tensor):
+            test_stats = test_stats.numpy().reshape(-1, 1)
+        if isinstance(poi, torch.Tensor):
+            poi = poi.numpy()
+        if poi.ndim == 1:
+            poi = np.expand_dims(poi, axis=1)
+        stacked_inp = np.hstack((test_stats, poi))
+    return stacked_inp
+
+
 def preprocess_neyman_inversion(
     test_statistics: np.ndarray,
     critical_values: np.ndarray,
@@ -93,14 +141,18 @@ def preprocess_diagnostics(
 
 def preprocess_indicators_lf2i(
     test_statistics: np.ndarray,
-    critical_values: np.ndarray,
+    critical_values: Optional[np.ndarray],
+    p_values: Optional[np.ndarray],
     parameters: np.ndarray,
     param_dim: int
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     check_for_nans(test_statistics)
-    check_for_nans(critical_values)
+    if critical_values:
+        check_for_nans(critical_values)
+    if p_values:
+        check_for_nans(p_values)
     check_for_nans(parameters)
-    return test_statistics.reshape(-1, ), critical_values.reshape(-1, ), parameters.reshape(-1, param_dim)
+    return test_statistics.reshape(-1, ), critical_values.reshape(-1, ), p_values.reshape(-1, ), parameters.reshape(-1, param_dim)
 
 
 def preprocess_indicators_posterior(
