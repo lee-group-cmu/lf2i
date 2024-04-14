@@ -207,9 +207,9 @@ class LF2I:
             evaluation_grid = to_np_if_torch(evaluation_grid)
             if evaluation_grid.ndim == 1:
                 evaluation_grid = np.expand_dims(evaluation_grid, axis=1)
-            p_values = self.calibration_model[calib_dict_key].predict(
+            p_values = self.calibration_model[calib_dict_key].predict_proba(
                 X=preprocess_predict_p_values(test_statistics_x.reshape(-1, ), np.tile(evaluation_grid, reps=(test_statistics_x.shape[0], 1)), self.calibration_model[calib_dict_key])
-            ).reshape(test_statistics_x.shape[0], evaluation_grid.shape[0])
+            )[:, 1].reshape(test_statistics_x.shape[0], evaluation_grid.shape[0])
 
         if isinstance(confidence_level, float):
             alpha = [1-confidence_level]
@@ -328,9 +328,9 @@ class LF2I:
                     p_values = None
                 else:
                     critical_values = None
-                    p_values = to_np_if_torch(self.calibration_model[calib_dict_key].predict(
+                    p_values = to_np_if_torch(self.calibration_model[calib_dict_key].predict_proba(
                         X=preprocess_predict_p_values(test_statistics, parameters, self.calibration_model[calib_dict_key])
-                    ))
+                    )[:, 1])
 
                 indicators = compute_indicators_lf2i(
                     calibration_method=calibration_method,

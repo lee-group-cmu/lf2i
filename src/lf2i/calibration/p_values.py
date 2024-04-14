@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from torch.nn import BCEWithLogitsLoss
 from sklearn.model_selection import RandomizedSearchCV
+from sklearn.calibration import CalibratedClassifierCV
 from catboost import CatBoostClassifier
 
 from lf2i.calibration.torch_utils import QuantileLoss, FeedForwardNN, LearnerClassification
@@ -134,6 +135,14 @@ def estimate_rejection_proba(
                 )
             inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm)
             algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
+
+            #algorithm = CalibratedClassifierCV(
+            #    estimator=algorithm,
+            #    method='isotonic',
+            #    cv=5,
+            #    n_jobs=n_jobs
+            #)
+            #algorithm.fit(X=inputs, y=rejection_indicators)
         elif algorithm == 'nn':
             # TODO: implement some form of hyperparameter tuning
             nn_kwargs = {arg: algorithm_kwargs[arg] for arg in ['hidden_activation', 'dropout_p', 'batch_norm'] if arg in algorithm_kwargs}
