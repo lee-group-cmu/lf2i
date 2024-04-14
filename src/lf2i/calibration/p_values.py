@@ -7,7 +7,7 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV
 from catboost import CatBoostClassifier
 
-from lf2i.calibration.torch_utils import QuantileLoss, FeedForwardNN, LearnerClassification
+from lf2i.calibration.torch_utils import FeedForwardNN, LearnerClassification
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_fit_p_values
 from lf2i.utils.miscellanea import select_n_jobs
 
@@ -94,7 +94,7 @@ def estimate_rejection_proba(
         Keyword arguments for the desired algorithm, by default {}.
         If algorithm == 'nn', then 'hidden_layer_shapes', 'epochs' and 'batch_size' must be present.
         If algorithm == 'cat-gb', pass {'cv': hp_dist} to do a randomized search over the hyperparameters in hp_dist (a `Dict`) via 5-fold cross validation. 
-        Include 'n_iter' as a key to decide how many hyperparameter setting to sample for randomized search. Defaults to 25.
+        Include 'n_iter' as a key to decide how many hyperparameter setting to sample for randomized search. Defaults to 10.
     cat_poi_idxs : Optional[List[int]], optional
         If `algorithm == 'cat-gb'`, sequence of indexes to indicate the columns of `inputs` containing categorical POIs, by default None.
         Note that the first column of `inputs` is always the resampled cutoffs, hence this should be treated as a 1-indexed array (i.e. col 0 of POIs has index 1).
@@ -112,7 +112,8 @@ def estimate_rejection_proba(
     n_jobs = select_n_jobs(n_jobs)
     if isinstance(algorithm, str):
         if algorithm == 'cat-gb':
-            if ('cv' in algorithm_kwargs) or algorithm_kwargs is None:
+            inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm).reshape(-1, )
+            if ('cv' in algorithm_kwargs) or (algorithm_kwargs is None):
                 algorithm = RandomizedSearchCV(
                     estimator=CatBoostClassifier(
                         loss_function='CrossEntropy',
@@ -120,22 +121,15 @@ def estimate_rejection_proba(
                         monotone_constraints="0:1",  # 1 means non-decreasing function of cutoffs (always 0-th column of inputs),
                     ),
                     param_distributions=algorithm_kwargs['cv'],
-                    n_iter=25 if 'n_iter' not in algorithm_kwargs else algorithm_kwargs['n_iter'],
+                    n_iter=10 if 'n_iter' not in algorithm_kwargs else algorithm_kwargs['n_iter'],
                     n_jobs=n_jobs,
-                    refit=True,
+                    refit=False,
                     cv=5,
                     verbose=1 if verbose else 0
                 )
-            else:
-                algorithm = CatBoostClassifier(
-                    loss_function='CrossEntropy',
-                    silent=True,
-                    monotone_constraints="0:1",
-                    **algorithm_kwargs
-                )
-            inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm)
-            algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
+                algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
             
+            # TODO: not sure this is “kosher“, because the best params are chosen via CV on the same data. Maybe we should leave out a subset for CLF calib.
             algorithm = CalibratedClassifierCV(
                 estimator=CatBoostClassifier(
                     loss_function='CrossEntropy',
@@ -149,6 +143,8 @@ def estimate_rejection_proba(
             )
             algorithm.fit(X=inputs, y=rejection_indicators)
         elif algorithm == 'nn':
+            raise NotImplementedError
+            # TODO: need to enforce monotonicity in the cutoffs, otherwise unreliable
             # TODO: implement some form of hyperparameter tuning
             nn_kwargs = {arg: algorithm_kwargs[arg] for arg in ['hidden_activation', 'dropout_p', 'batch_norm'] if arg in algorithm_kwargs}
             feedforward_nn = FeedForwardNN(

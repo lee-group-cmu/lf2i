@@ -73,6 +73,7 @@ def preprocess_fit_p_values(
 
 
 def preprocess_predict_p_values(
+    mode: str,
     test_stats: Union[np.ndarray, torch.Tensor],
     poi: Union[np.ndarray, torch.Tensor],
     rejection_probs_model: Any
@@ -87,6 +88,8 @@ def preprocess_predict_p_values(
             poi = torch.from_numpy(poi)
         if poi.ndim == 1:
             poi = poi.unsqueeze(1)
+        if mode == 'confidence_sets':
+            poi = torch.tile(poi, dims=(test_stats.shape[0], 1))
         stacked_inp = torch.hstack((test_stats.reshape(-1, 1), poi))
     else:  # assume anything else works with numpy arrays
         # Scikit-Learn, XGBoost, CatBoost, etc...
@@ -96,32 +99,37 @@ def preprocess_predict_p_values(
             poi = poi.numpy()
         if poi.ndim == 1:
             poi = np.expand_dims(poi, axis=1)
+        if mode == 'confidence_sets':
+            poi = np.tile(poi, reps=(test_stats.shape[0], 1))
         stacked_inp = np.hstack((test_stats.reshape(-1, 1), poi))
     return stacked_inp
 
 
 def preprocess_neyman_inversion(
-    test_statistics: np.ndarray,
-    critical_values: Optional[np.ndarray],
-    p_values: Optional[np.ndarray],
+    test_statistics: Optional[Union[np.ndarray, torch.Tensor]],
+    critical_values: Optional[Union[np.ndarray, torch.Tensor]],
+    p_values: Optional[Union[np.ndarray, torch.Tensor]],
     parameter_grid: Union[np.ndarray, torch.Tensor],
     param_dim: int
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[int, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     check_for_nans(parameter_grid)
     parameter_grid = parameter_grid.reshape(-1, param_dim)
     parameter_grid = to_np_if_torch(parameter_grid)
 
+    # either p_values alone or both test statistics and critical values should be given
+    if test_statistics is not None:
+        check_for_nans(test_statistics)
+        test_statistics = to_np_if_torch(test_statistics).reshape(-1, parameter_grid.shape[0])
+        num_obs = test_statistics.shape[0]
     if critical_values is not None:
         check_for_nans(critical_values)
         critical_values = to_np_if_torch(critical_values).reshape(1, parameter_grid.shape[0])
     if p_values is not None:
         check_for_nans(p_values)
         p_values = to_np_if_torch(p_values).reshape(-1, parameter_grid.shape[0])
+        num_obs = p_values.shape[0]
     
-    check_for_nans(test_statistics)
-    test_statistics = to_np_if_torch(test_statistics).reshape(-1, parameter_grid.shape[0])
-    
-    return test_statistics, critical_values, p_values, parameter_grid
+    return num_obs, test_statistics, critical_values, p_values, parameter_grid
 
 
 def preprocess_diagnostics(

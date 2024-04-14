@@ -195,34 +195,26 @@ class LF2I:
             print('\nConstructing confidence regions ...', flush=True)
         test_statistics_x = self.test_statistic.evaluate(evaluation_grid, x, mode='confidence_sets')
         if calibration_method == 'critical-values':
-            # TODO: what if multiple levels? Do we allow this when using critical values?
+            # if estimating for multiple levels, this should return a matrix with dims (eval_grid.shape[0], num_levels)
             critical_values = self.calibration_model[calib_dict_key].predict(
                 X=preprocess_predict_quantile_regression(evaluation_grid, self.calibration_model[calib_dict_key], self.test_statistic.poi_dim)
             )
             p_values = None
         else:
-            
             critical_values = None
-            # TODO: preprocessing should be isolated
-            evaluation_grid = to_np_if_torch(evaluation_grid)
-            if evaluation_grid.ndim == 1:
-                evaluation_grid = np.expand_dims(evaluation_grid, axis=1)
+            # p-values are amortized with respect to levels. Output is always a matrix of dims (num_observations, eval_grid.shape[0])
             p_values = self.calibration_model[calib_dict_key].predict_proba(
-                X=preprocess_predict_p_values(test_statistics_x.reshape(-1, ), np.tile(evaluation_grid, reps=(test_statistics_x.shape[0], 1)), self.calibration_model[calib_dict_key])
-            )[:, 1].reshape(test_statistics_x.shape[0], evaluation_grid.shape[0])
+                X=preprocess_predict_p_values('confidence_sets', test_statistics_x.reshape(-1, ), evaluation_grid, self.calibration_model[calib_dict_key])
+            )[:, 1]
 
-        if isinstance(confidence_level, float):
-            alpha = [1-confidence_level]
-        else:
-            alpha = [1-cl for cl in confidence_level]
-        
+        alpha = [1-confidence_level] if isinstance(confidence_level, float) else [1-cl for cl in confidence_level]
         confidence_regions = []
-        for a in alpha:
+        for idx, a in enumerate(alpha):
             confidence_regions.append(compute_confidence_regions(
                 calibration_method=calibration_method,
                 test_statistic=test_statistics_x,
-                parameter_grid=to_np_if_torch(evaluation_grid),
-                critical_values=critical_values,
+                parameter_grid=evaluation_grid,
+                critical_values=critical_values.reshape(-1, len(alpha))[:, idx] if critical_values is not None else None,
                 p_values=p_values,
                 alpha=a,
                 acceptance_region=self.test_statistic.acceptance_region,
@@ -329,7 +321,7 @@ class LF2I:
                 else:
                     critical_values = None
                     p_values = to_np_if_torch(self.calibration_model[calib_dict_key].predict_proba(
-                        X=preprocess_predict_p_values(test_statistics, parameters, self.calibration_model[calib_dict_key])
+                        X=preprocess_predict_p_values('diagnostics', test_statistics, parameters, self.calibration_model[calib_dict_key])
                     )[:, 1])
 
                 indicators = compute_indicators_lf2i(

@@ -6,7 +6,7 @@ from lf2i.utils.calibration_diagnostics_inputs import preprocess_neyman_inversio
 
 def compute_confidence_regions(
     calibration_method: str,
-    test_statistic: np.ndarray,
+    test_statistic: Optional[np.ndarray],
     parameter_grid: np.ndarray,
     critical_values: Optional[np.ndarray],
     p_values: Optional[np.ndarray],
@@ -22,10 +22,11 @@ def compute_confidence_regions(
         Either `critical-values` or `p-values`.
     test_statistic : np.ndarray
         Test statistic evaluated at all values in the parameter grid *for each* observation. Should have dimensions `(num_observations, parameter_grid_size)`.
+        Only used if `calibration_method = 'critical-values`.
     parameter_grid : np.ndarray
         Grid over the parameter space which contains the evaluation points that will or will not be included in the confidence region.
     critical_values : np.ndarray
-        Critical values evaluated at all values in the parameter grid. Only used if `calibration_method = 'critical-values`. 
+        Critical values evaluated at all values in the parameter grid. Only used if `calibration_method = 'critical-values`.
     p_values : np.ndarray, optional
         Array of p-values evaluated at all values in the parameter grid *for each* observation, against which to compare the provided level :math:`\alpha`.
         Only used if `calibration_method = 'p-values`. Should have dimensions `(num_observations, parameter_grid_size)`.
@@ -47,7 +48,7 @@ def compute_confidence_regions(
     ValueError
         Acceptance region must be either `left` or `right`.
     """
-    test_statistic, critical_values, p_values, parameter_grid = \
+    num_obs, test_statistic, critical_values, p_values, parameter_grid = \
         preprocess_neyman_inversion(test_statistic, critical_values, p_values, parameter_grid, poi_dim)
 
     if calibration_method == 'critical-values':
@@ -58,5 +59,5 @@ def compute_confidence_regions(
         else:
             raise ValueError(f"Acceptance region must be either `left` or `right`, got {acceptance_region}")
     else:
-        which_parameters = p_values > alpha
-    return [parameter_grid[which_parameters[idx, :].reshape(-1, ), :] for idx in range(test_statistic.shape[0])]
+        which_parameters = p_values >= alpha
+    return [parameter_grid[which_parameters[idx, :].reshape(-1, ), :] for idx in range(num_obs)]

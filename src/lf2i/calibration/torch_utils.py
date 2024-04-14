@@ -176,7 +176,7 @@ class LearnerRegression(Learner):
 
 class LearnerClassification(Learner):
 
-    def predict(
+    def predict_proba(
         self,
         X: torch.Tensor
     ) -> torch.Tensor:

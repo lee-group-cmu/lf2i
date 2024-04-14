@@ -1,9 +1,8 @@
-from typing import Union, Callable, Dict, Any, Sequence
-import os
+from typing import Union, Dict, Any, Sequence
+import warnings
 
 import numpy as np
 import torch
-from sklearn.ensemble import GradientBoostingRegressor  # TODO: is tree split done according to quantile loss? Default is 'friedman_mse'
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import make_scorer, mean_pinball_loss
 from catboost import CatBoostRegressor
@@ -38,14 +37,14 @@ def train_qr_algorithm(
         The alpha quantile of the test statistic to be estimated. 
         E.g., for 90% confidence intervals, it should be 0.9 if the acceptance region of the test statistic is on the left of the critical value. 
         Similarly, it should be 0.1 if the acceptance region of the test statistic is on the right of the critical value. 
-        Must be in the range `(0, 1)`.
+        Must be in the range `(0, 1)`. NOTE: There is currently no explicit way of avoiding quantile crossings when estimating multiple quantiles simultaneously.
     param_dim: int
         Dimensionality of the parameter.
     algorithm_kwargs : Union[Dict[str, Any], Dict[str, Dict[str, Any]]], optional
         Keyword arguments for the desired algorithm, by default {}.
         If algorithm == 'nn', then 'hidden_layer_shapes', 'epochs' and 'batch_size' must be present.
         If algorithm == 'cat-gb', pass {'cv': hp_dist} to do a randomized search over the hyperparameters in hp_dist (a `Dict`) via 5-fold cross validation. 
-        Include 'n_iter' as a key to decide how many hyperparameter setting to sample for randomized search. Defaults to 25.
+        Include 'n_iter' as a key to decide how many hyperparameter setting to sample for randomized search. Defaults to 10.
     verbose: bool, optional
         Whether to print information on the hyper-parameter search for quantile regression, by default True.
     n_jobs : int, optional
@@ -62,7 +61,10 @@ def train_qr_algorithm(
     ValueError
         Only one of 'cat-gb', 'nn' or an instantiated custom quantile regressor (Any) is currently accepted as algorithm.
     """
-    assert not isinstance(alpha, Sequence)
+    if isinstance(alpha, Sequence):
+        warnings.warn('You passed a sequence of levels alpha. Note that there is currently no explicit way of avoiding quantile crossings when estimating multiple quantiles simultaneously.')
+    if isinstance(alpha, Sequence) and (algorithm == "cat-gb"):
+        raise NotImplementedError('Support for multi-quantile loss will be added soon')
     n_jobs = select_n_jobs(n_jobs)
 
     if isinstance(algorithm, str):
@@ -74,7 +76,7 @@ def train_qr_algorithm(
                         silent=True
                     ),
                     param_distributions=algorithm_kwargs['cv'],
-                    n_iter=25 if 'n_iter' not in algorithm_kwargs else algorithm_kwargs['n_iter'],
+                    n_iter=10 if 'n_iter' not in algorithm_kwargs else algorithm_kwargs['n_iter'],
                     scoring=make_scorer(mean_pinball_loss, alpha=alpha, greater_is_better=False),
                     n_jobs=n_jobs,
                     refit=True,
