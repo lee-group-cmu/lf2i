@@ -12,6 +12,17 @@ from lf2i.utils.calibration_diagnostics_inputs import preprocess_train_quantile_
 from lf2i.utils.miscellanea import select_n_jobs
 
 
+def multi_quantile_mean_pinball_loss(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    alpha: Union[float, Sequence[float]]
+) -> float:
+    if isinstance(alpha, float):
+        return mean_pinball_loss(y_true=y_true, y_pred=y_pred, alpha=alpha)
+    else:
+        return np.mean([mean_pinball_loss(y_true=y_true, y_pred=y_pred, alpha=a) for a in alpha])
+
+
 def train_qr_algorithm(
     test_statistics: Union[np.ndarray, torch.Tensor],
     parameters: Union[np.ndarray, torch.Tensor],
@@ -63,21 +74,21 @@ def train_qr_algorithm(
     """
     if isinstance(alpha, Sequence):
         warnings.warn('You passed a sequence of levels alpha. Note that there is currently no explicit way of avoiding quantile crossings when estimating multiple quantiles simultaneously.')
-    if isinstance(alpha, Sequence) and (algorithm == "cat-gb"):
-        raise NotImplementedError('Support for multi-quantile loss will be added soon')
     n_jobs = select_n_jobs(n_jobs)
 
     if isinstance(algorithm, str):
         if algorithm == "cat-gb":
+            if isinstance(alpha, Sequence):
+                alpha_string = str(alpha).replace('[', '').replace(']', '').replace(' ', '')
             if 'cv' in algorithm_kwargs:
                 algorithm = RandomizedSearchCV(
                     estimator=CatBoostRegressor(
-                        loss_function=f'Quantile:alpha={alpha}',
+                        loss_function=f'Quantile:alpha={alpha}' if isinstance(alpha, float) else f'MultiQuantile:alpha={alpha_string}',
                         silent=True
                     ),
                     param_distributions=algorithm_kwargs['cv'],
                     n_iter=10 if 'n_iter' not in algorithm_kwargs else algorithm_kwargs['n_iter'],
-                    scoring=make_scorer(mean_pinball_loss, alpha=alpha, greater_is_better=False),
+                    scoring=make_scorer(multi_quantile_mean_pinball_loss, alpha=alpha, greater_is_better=False),
                     n_jobs=n_jobs,
                     refit=True,
                     cv=5,
@@ -85,7 +96,7 @@ def train_qr_algorithm(
                 )
             else:
                 algorithm = CatBoostRegressor(
-                    loss_function=f'Quantile:alpha={alpha}',
+                    loss_function=f'Quantile:alpha={alpha}' if isinstance(alpha, float) else f'MultiQuantile:alpha={alpha_string}',
                     **algorithm_kwargs
                 )
             test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)
