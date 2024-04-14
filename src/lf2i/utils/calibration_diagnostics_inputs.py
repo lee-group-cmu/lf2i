@@ -82,21 +82,21 @@ def preprocess_predict_p_values(
     if isinstance(rejection_probs_model, torch.nn.Module) or (hasattr(rejection_probs_model, 'model') and isinstance(rejection_probs_model.model, torch.nn.Module)):
         # PyTorch models
         if isinstance(test_stats, np.ndarray):
-            test_stats = torch.from_numpy(test_stats).reshape(-1, 1)
+            test_stats = torch.from_numpy(test_stats)
         if isinstance(poi, np.ndarray):
             poi = torch.from_numpy(poi)
         if poi.ndim == 1:
             poi = poi.unsqueeze(1)
-        stacked_inp = torch.hstack((test_stats, poi))
+        stacked_inp = torch.hstack((test_stats.reshape(-1, 1), poi))
     else:  # assume anything else works with numpy arrays
         # Scikit-Learn, XGBoost, CatBoost, etc...
         if isinstance(test_stats, torch.Tensor):
-            test_stats = test_stats.numpy().reshape(-1, 1)
+            test_stats = test_stats.numpy()
         if isinstance(poi, torch.Tensor):
             poi = poi.numpy()
         if poi.ndim == 1:
             poi = np.expand_dims(poi, axis=1)
-        stacked_inp = np.hstack((test_stats, poi))
+        stacked_inp = np.hstack((test_stats.reshape(-1, 1), poi))
     return stacked_inp
 
 
