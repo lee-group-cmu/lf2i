@@ -111,10 +111,10 @@ def preprocess_neyman_inversion(
     parameter_grid = parameter_grid.reshape(-1, param_dim)
     parameter_grid = to_np_if_torch(parameter_grid)
 
-    if critical_values:
+    if critical_values is not None:
         check_for_nans(critical_values)
         critical_values = to_np_if_torch(critical_values).reshape(1, parameter_grid.shape[0])
-    if p_values:
+    if p_values is not None:
         check_for_nans(p_values)
         p_values = to_np_if_torch(p_values).reshape(-1, parameter_grid.shape[0])
     
@@ -153,9 +153,9 @@ def preprocess_indicators_lf2i(
     param_dim: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     check_for_nans(test_statistics)
-    if critical_values:
+    if critical_values is not None:
         check_for_nans(critical_values)
-    if p_values:
+    if p_values is not None:
         check_for_nans(p_values)
     check_for_nans(parameters)
     return test_statistics.reshape(-1, ), critical_values.reshape(-1, ), p_values.reshape(-1, ), parameters.reshape(-1, param_dim)
