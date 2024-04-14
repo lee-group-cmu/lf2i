@@ -196,9 +196,9 @@ class LF2I:
         test_statistics_x = self.test_statistic.evaluate(evaluation_grid, x, mode='confidence_sets')
         if calibration_method == 'critical-values':
             # TODO: what if multiple levels? Do we allow this when using critical values?
-            critical_values = to_np_if_torch(self.calibration_model[calib_dict_key].predict(
+            critical_values = self.calibration_model[calib_dict_key].predict(
                 X=preprocess_predict_quantile_regression(evaluation_grid, self.calibration_model[calib_dict_key], self.test_statistic.poi_dim)
-            ))
+            )
             p_values = None
         else:
             
@@ -207,9 +207,9 @@ class LF2I:
             evaluation_grid = to_np_if_torch(evaluation_grid)
             if evaluation_grid.ndim == 1:
                 evaluation_grid = np.expand_dims(evaluation_grid, axis=1)
-            p_values = to_np_if_torch(self.calibration_model[calib_dict_key].predict(
+            p_values = self.calibration_model[calib_dict_key].predict(
                 X=preprocess_predict_p_values(test_statistics_x.reshape(-1, ), np.tile(evaluation_grid, reps=(test_statistics_x.shape[0], 1)), self.calibration_model[calib_dict_key])
-            ).reshape(test_statistics_x.shape[0], evaluation_grid.shape[0]))
+            ).reshape(test_statistics_x.shape[0], evaluation_grid.shape[0])
 
         if isinstance(confidence_level, float):
             alpha = [1-confidence_level]

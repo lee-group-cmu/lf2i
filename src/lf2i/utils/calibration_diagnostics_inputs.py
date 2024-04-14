@@ -102,20 +102,26 @@ def preprocess_predict_p_values(
 
 def preprocess_neyman_inversion(
     test_statistics: np.ndarray,
-    critical_values: np.ndarray,
+    critical_values: Optional[np.ndarray],
+    p_values: Optional[np.ndarray],
     parameter_grid: Union[np.ndarray, torch.Tensor],
     param_dim: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    check_for_nans(test_statistics)
-    check_for_nans(critical_values)
     check_for_nans(parameter_grid)
-    
-    test_statistics = to_np_if_torch(test_statistics)
-    parameter_grid = to_np_if_torch(parameter_grid)
-    critical_values = to_np_if_torch(critical_values)
-
     parameter_grid = parameter_grid.reshape(-1, param_dim)
-    return test_statistics.reshape(-1, parameter_grid.shape[0]), critical_values.reshape(1, parameter_grid.shape[0]), parameter_grid
+    parameter_grid = to_np_if_torch(parameter_grid)
+
+    if critical_values:
+        check_for_nans(critical_values)
+        critical_values = to_np_if_torch(critical_values).reshape(1, parameter_grid.shape[0])
+    if p_values:
+        check_for_nans(p_values)
+        p_values = to_np_if_torch(p_values).reshape(-1, parameter_grid.shape[0])
+    
+    check_for_nans(test_statistics)
+    test_statistics = to_np_if_torch(test_statistics).reshape(-1, parameter_grid.shape[0])
+    
+    return test_statistics, critical_values, p_values, parameter_grid
 
 
 def preprocess_diagnostics(
