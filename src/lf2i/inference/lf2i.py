@@ -194,7 +194,7 @@ class LF2I:
         if verbose:
             print('\nConstructing confidence regions ...', flush=True)
         test_statistics_x = self.test_statistic.evaluate(evaluation_grid, x, mode='confidence_sets')
-        if calibration_method == 'critical_values':
+        if calibration_method == 'critical-values':
             # TODO: what if multiple levels? Do we allow this when using critical values?
             critical_values = to_np_if_torch(self.calibration_model[calib_dict_key].predict(
                 X=preprocess_predict_quantile_regression(evaluation_grid, self.calibration_model[calib_dict_key], self.test_statistic.poi_dim)
