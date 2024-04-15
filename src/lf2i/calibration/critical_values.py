@@ -20,7 +20,7 @@ def multi_quantile_mean_pinball_loss(
     if isinstance(alpha, float):
         return mean_pinball_loss(y_true=y_true, y_pred=y_pred, alpha=alpha)
     else:
-        return np.mean([mean_pinball_loss(y_true=y_true, y_pred=y_pred, alpha=a) for a in alpha])
+        return np.mean([mean_pinball_loss(y_true=y_true, y_pred=y_pred[:, i], alpha=a) for i, a in enumerate(alpha)])
 
 
 def train_qr_algorithm(
