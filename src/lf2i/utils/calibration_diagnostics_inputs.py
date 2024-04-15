@@ -89,7 +89,7 @@ def preprocess_predict_p_values(
         if poi.ndim == 1:
             poi = poi.unsqueeze(1)
         if mode == 'confidence_sets':
-            poi = torch.tile(poi, dims=(test_stats.shape[0], 1))
+            poi = torch.tile(poi, dims=(test_stats.reshape(-1, poi.shape[0]).shape[0], 1))
         stacked_inp = torch.hstack((test_stats.reshape(-1, 1), poi))
     else:  # assume anything else works with numpy arrays
         # Scikit-Learn, XGBoost, CatBoost, etc...
@@ -100,7 +100,7 @@ def preprocess_predict_p_values(
         if poi.ndim == 1:
             poi = np.expand_dims(poi, axis=1)
         if mode == 'confidence_sets':
-            poi = np.tile(poi, reps=(test_stats.shape[0], 1))
+            poi = np.tile(poi, reps=(test_stats.reshape(-1, poi.shape[0]).shape[0], 1))
         stacked_inp = np.hstack((test_stats.reshape(-1, 1), poi))
     return stacked_inp
 

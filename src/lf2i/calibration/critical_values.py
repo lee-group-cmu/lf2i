@@ -73,7 +73,7 @@ def train_qr_algorithm(
         Only one of 'cat-gb', 'nn' or an instantiated custom quantile regressor (Any) is currently accepted as algorithm.
     """
     if isinstance(alpha, Sequence):
-        warnings.warn('You passed a sequence of levels alpha. Note that there is currently no explicit way of avoiding quantile crossings when estimating multiple quantiles simultaneously.')
+        warnings.warn('You passed a sequence of levels alpha. Note that the current implementation cannot ensure quantile crossings will not happen.')
     n_jobs = select_n_jobs(n_jobs)
 
     if isinstance(algorithm, str):
