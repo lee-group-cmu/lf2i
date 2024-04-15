@@ -204,7 +204,7 @@ class LF2I:
             critical_values = None
             # p-values are amortized with respect to levels. Output is always a matrix of dims (num_observations, eval_grid.shape[0])
             p_values = self.calibration_model[calib_dict_key].predict_proba(
-                X=preprocess_predict_p_values('confidence_sets', test_statistics_x.reshape(-1, ), evaluation_grid, self.calibration_model[calib_dict_key])
+                X=preprocess_predict_p_values('confidence_sets', test_statistics_x, evaluation_grid, self.calibration_model[calib_dict_key])
             )[:, 1]
 
         alpha = [1-confidence_level] if isinstance(confidence_level, float) else [1-cl for cl in confidence_level]
