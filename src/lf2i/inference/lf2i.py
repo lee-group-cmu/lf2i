@@ -185,6 +185,7 @@ class LF2I:
                     inputs=augmented_inputs,
                     rejection_indicators=rejection_indicators,
                     algorithm=calibration_model,
+                    acceptance_region=self.test_statistic.acceptance_region,
                     algorithm_kwargs=self.calibration_model_kwargs,
                     verbose=verbose,
                     n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2
