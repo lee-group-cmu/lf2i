@@ -74,6 +74,7 @@ def estimate_rejection_proba(
     inputs: np.ndarray, 
     rejection_indicators: np.ndarray, 
     algorithm: Union[str, Any],
+    acceptance_region: str,
     algorithm_kwargs: Union[Dict[str, Any], Dict[str, Dict[str, Any]]] = {},
     cat_poi_idxs: Optional[List[int]] = None,
     verbose: bool = True,
@@ -90,6 +91,9 @@ def estimate_rejection_proba(
     algorithm : str
         Either 'cat-gb' for gradient boosted trees, 'nn' for a feed-forward neural network, or a custom algorithm (Any).
         The latter must implement the `fit(X=..., y=...)` method.
+    acceptance_region : str
+        Whether the acceptance region for the test statistic is defined to be on the right or on the left of the cutoff. 
+        Must be either `left` or `right`. 
     algorithm_kwargs : Union[Dict[str, Any], Dict[str, Dict[str, Any]]], optional
         Keyword arguments for the desired algorithm, by default {}.
         If algorithm == 'nn', then 'hidden_layer_shapes', 'epochs' and 'batch_size' must be present.
@@ -134,14 +138,15 @@ def estimate_rejection_proba(
                 estimator=CatBoostClassifier(
                     loss_function='CrossEntropy',
                     silent=True,
-                    monotone_constraints="0:1",  # 1 means non-decreasing function of cutoffs (always 0-th column of inputs),
+                    # 1 (-1) means non-decreasing (non-increasing) function of cutoffs (always 0-th column of inputs)
+                    monotone_constraints="0:1" if acceptance_region == 'right' else "0:-1",
                     **(algorithm.best_params_ if 'cv' in algorithm_kwargs else algorithm_kwargs)
                 ),
                 method='isotonic',
                 cv=5,
                 n_jobs=n_jobs
             )
-            algorithm.fit(X=inputs, y=rejection_indicators)
+            algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
         elif algorithm == 'nn':
             raise NotImplementedError
             # TODO: need to enforce monotonicity in the cutoffs, otherwise unreliable
