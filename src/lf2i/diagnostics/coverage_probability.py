@@ -8,6 +8,7 @@ import rpy2.robjects as robj
 import rpy2.robjects.numpy2ri
 import numpy as np
 from sklearn.model_selection import RandomizedSearchCV
+from sklearn.calibration import CalibratedClassifierCV
 from catboost import CatBoostClassifier
 import torch
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
@@ -95,6 +96,19 @@ def estimate_coverage_proba(
             n_jobs=-2,
             refit=True,
             cv=5
+        )
+        estimator.fit(X=parameters, y=indicators)
+        best_params = estimator.best_params_
+
+        estimator = CalibratedClassifierCV(
+            estimator=CatBoostClassifier(
+                loss_function='CrossEntropy',
+                silent=True,
+                **best_params
+            ),
+            method='isotonic',
+            cv=5,
+            n_jobs=-2
         )
         estimator.fit(X=parameters, y=indicators)
         mean_proba, upper_proba, lower_proba = estimator.predict(X=parameters if new_parameters is None else new_parameters), None, None
