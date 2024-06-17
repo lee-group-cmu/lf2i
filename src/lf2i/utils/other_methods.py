@@ -8,49 +8,23 @@ from torch.distributions import Distribution
 
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
 from sbi.utils.kde import KDEWrapper
+from bayesflow.amortizers import AmortizedPosterior
+
+from lf2i.test_statistics import TestStatistic
 
 
 def hpd_region(
-    posterior: Union[NeuralPosterior, KDEWrapper, Distribution],
-    param_grid: torch.Tensor, 
-    x: torch.Tensor, 
+    posterior: Union[NeuralPosterior, KDEWrapper, Distribution, AmortizedPosterior],
+    param_grid: np.ndarray, 
+    x: np.ndarray, 
     credible_level: float, 
     num_level_sets: int = 100_000,
     norm_posterior_samples: Optional[int] = None, 
     tol: float = 0.01
-) -> Tuple[float, torch.Tensor]:
-    """
-    Compute a high-posterior-density region at the desired credibility level.
+) -> Tuple[float, np.ndarray]:
+    param_grid = torch.tensor(param_grid)
+    x = torch.tensor(x) if (len(x.shape) > 1) else torch.tensor(x).unsqueeze(0)
 
-    Parameters
-    ----------
-    posterior : Union[NeuralPosterior, KDEWrapper, Distribution]
-        Estimated posterior distribution. Must implement `log_prob(...)` method.
-    param_grid : torch.Tensor
-        Grid of evaluation points to be considered for the construction of the HPD region.
-    x : torch.Tensor
-        Observed sample given which the posterior :math:`p(\theta|x)` is evaluated.
-    credible_level : float
-        Desired credible level for the HPD region. Must be in (0, 1).
-    num_level_sets : int, optional
-        Number of level sets to examine, by default 100_000. A high number of level sets ensures the actual credible level is as close as possible to the specified one.
-    norm_posterior_samples : int, optional
-        Number of samples to use to estimate the leakage correction factor, by default None. More samples lead to better estimates of the normalization constant when returning a normalized posterior.
-        If `None`, uses the un-normalized posterior (but note that the density is already being explicitly normalized over the `param_grid`).
-    tol : float, optional
-        Actual credible levels within `tol` of the specified `credible_level` will be considered acceptable, by default 0.01.
-        NOTE: this is used as a stopping criterion, but if the closest actual credible level is not within `tol` of `credible_level`, a warning is raised but the HPD region is still returned.
-
-    Returns
-    -------
-    Tuple[float, torch.Tensor]
-        Actual credible level and HPD region.
-
-    Raises
-    ------
-    ValueError
-        If posterior is not an instance of NeuralPosterior or KDEWrapper from the `sbi` package, or torch.Distribution.
-    """
     # evaluate posterior over grid of values
     if isinstance(posterior, NeuralPosterior):
         with warnings.catch_warnings():
@@ -62,6 +36,12 @@ def hpd_region(
             ).double()).double()
     elif isinstance(posterior, (KDEWrapper, Distribution)):
         posterior_probs = torch.exp(posterior.log_prob(param_grid).double()).double()
+    if isinstance(posterior, AmortizedPosterior):
+        posterior_probs = torch.exp(torch.tensor(posterior.log_prob(
+            input_dict={'summary_conditions': x.expand(len(param_grid), x.shape[-1]). reshape(-1, 1, x.shape[-1]).numpy(),
+                        'direct_conditions': None,
+                        'parameters': param_grid.reshape(-1, 1, param_grid.shape[-1]).numpy()},
+        ))).double()
     else:
         raise ValueError
     posterior_probs /= torch.sum(posterior_probs)  # normalize
@@ -71,18 +51,73 @@ def hpd_region(
     credible_levels_trajectory = []
     idx = 0
     current_credible_level, current_level_set_idx = 0, idx
-    while abs(current_credible_level - credible_level) > tol:
-        if idx == (num_level_sets-1):  # no more to examine
-            warnings.warn(f'All level sets analyzed. Actual credible level: {current_credible_level}. Actual tolerance: {current_credible_level - credible_level}')
-            break
-        new_credible_level = torch.sum(posterior_probs[posterior_probs >= level_sets[idx]])
+
+    # Binary search
+    left = 0
+    right = num_level_sets - 1
+    while left <= right:
+        mid = (left + right) // 2
+        new_credible_level = torch.sum(posterior_probs[posterior_probs >= level_sets[mid]])
         credible_levels_trajectory.append(new_credible_level)
         if abs(new_credible_level - credible_level) < abs(current_credible_level - credible_level):
             current_credible_level = new_credible_level
-            current_level_set_idx = idx
-        idx += 1
+            current_level_set_idx = mid
+        if new_credible_level < credible_level:
+            right = mid - 1
+        else:
+            left = mid + 1
+
     # all params such that p(params|x) > level_set, where level_set is the last chosen one
-    return current_credible_level, param_grid[posterior_probs >= level_sets[current_level_set_idx], :]
+    accepted = (posterior_probs >= level_sets[current_level_set_idx]).flatten().numpy()
+    return current_credible_level, param_grid[accepted, :]
+
+
+def monte_carlo_confidence_region(
+    test_statistic: TestStatistic,
+    simulator,
+    test_param: torch.Tensor,
+    param_grid: torch.Tensor, 
+    x: torch.Tensor, 
+    confidence_level: float, 
+    monte_carlo_size: int = 2_000,
+    critical_values: torch.Tensor=None,
+):
+    # evaluate posterior over grid of values
+    if isinstance(test_statistic, TestStatistic):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ... when using NSF
+            ts_values = test_statistic.evaluate(parameters=param_grid, samples=x, mode='confidence_sets').reshape(-1)
+    else:
+        raise ValueError
+
+    if critical_values is None:
+        critical_values = monte_carlo_critical_values(test_statistic, simulator, param_grid, confidence_level, monte_carlo_size)
+    critical_values = np.array(critical_values)
+
+    if test_statistic.acceptance_region == 'left':
+        return param_grid[ts_values < critical_values, :]
+    else:
+        return param_grid[ts_values > critical_values, :]
+
+
+def monte_carlo_critical_values(
+    test_statistic: TestStatistic,
+    simulator,
+    param_grid: torch.Tensor,
+    confidence_level: float,
+    monte_carlo_size: int,
+):
+    confidence_level = confidence_level if test_statistic.acceptance_region == 'left' else 1-confidence_level
+
+    parameters_mc = param_grid.repeat_interleave(monte_carlo_size, dim=0)
+    samples_mc = simulator(parameters_mc)
+    ts_values_mc = test_statistic.evaluate(
+        parameters=parameters_mc,
+        samples=samples_mc,
+        mode='critical_values'
+    ).reshape(-1, monte_carlo_size)
+    mc_critical_values = np.quantile(ts_values_mc, confidence_level, axis=1)
+    return mc_critical_values
 
 
 def gaussian_prediction_sets(

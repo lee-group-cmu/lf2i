@@ -12,6 +12,7 @@ REQUIRES_PYTHON = ">=3.9.0, <3.12"
 
 REQUIRED = [
     "alphashape",
+    "bayesflow"
     "catboost",
     "click",
     "descartes",
