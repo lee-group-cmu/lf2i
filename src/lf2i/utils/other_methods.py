@@ -11,19 +11,21 @@ from sbi.utils.kde import KDEWrapper
 from bayesflow.amortizers import AmortizedPosterior
 
 from lf2i.test_statistics import TestStatistic
+from lf2i.utils.miscellanea import to_torch_if_np
 
 
 def hpd_region(
     posterior: Union[NeuralPosterior, KDEWrapper, Distribution, AmortizedPosterior],
-    param_grid: np.ndarray, 
-    x: np.ndarray, 
+    param_grid: Union[np.ndarray, torch.Tensor], 
+    x: Union[np.ndarray, torch.Tensor], 
     credible_level: float, 
     num_level_sets: int = 100_000,
     norm_posterior_samples: Optional[int] = None, 
     tol: float = 0.01
 ) -> Tuple[float, np.ndarray]:
-    param_grid = torch.tensor(param_grid)
-    x = torch.tensor(x) if (len(x.shape) > 1) else torch.tensor(x).unsqueeze(0)
+    param_grid = to_torch_if_np(param_grid)
+    x = to_torch_if_np(x)
+    x = x if (len(x.shape) > 1) else x.unsqueeze(0)
 
     # evaluate posterior over grid of values
     if isinstance(posterior, NeuralPosterior):
