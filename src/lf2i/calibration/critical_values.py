@@ -2,12 +2,10 @@ from typing import Union, Dict, Any, Sequence
 import warnings
 
 import numpy as np
-import pandas as pd
 import torch
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import make_scorer, mean_pinball_loss
 from catboost import CatBoostRegressor
-from autogluon.tabular import TabularDataset, TabularPredictor
 
 from lf2i.calibration.torch_utils import QuantileLoss, FeedForwardNN, LearnerRegression
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_train_quantile_regression
@@ -123,10 +121,6 @@ def train_qr_algorithm(
             test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)
             learner_kwargs = {arg: algorithm_kwargs[arg] for arg in ['epochs', 'batch_size']}
             algorithm.fit(X=parameters, y=test_statistics, **learner_kwargs)
-        elif algorithm == 'autogluon':
-            algorithm = TabularPredictor(label='target', problem_type='quantile', quantile_levels=[alpha] if isinstance(alpha, float) else alpha)
-            dataset = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)
-            algorithm.fit(dataset, **algorithm_kwargs)
         else:
             raise ValueError(f"Only 'cat-gb', 'nn' or custom algorithm (Any) are currently supported, got {algorithm}")
     else:

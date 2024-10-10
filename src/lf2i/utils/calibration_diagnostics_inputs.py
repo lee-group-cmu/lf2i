@@ -3,9 +3,7 @@ import warnings
 
 import itertools
 import numpy as np
-import pandas as pd
 import torch
-from autogluon.tabular import TabularPredictor, TabularDataset
 
 from lf2i.utils.miscellanea import check_for_nans, to_np_if_torch
 
@@ -15,56 +13,42 @@ def preprocess_train_quantile_regression(
     parameters: Union[np.ndarray, torch.Tensor],
     param_dim: int,
     estimator: Any
-) -> Union[Tuple[Union[np.ndarray, torch.Tensor]], TabularDataset]:
+) -> Tuple[Union[np.ndarray, torch.Tensor]]:
     check_for_nans(test_statistics)
     check_for_nans(parameters)
 
-    if isinstance(estimator, TabularPredictor):
-        if isinstance(test_statistics, torch.Tensor):
-            test_statistics = test_statistics.numpy().reshape(-1, )
-        if isinstance(parameters, torch.Tensor):
-            parameters = parameters.numpy().reshape(-1, param_dim)
-        test_statistics = pd.Series(test_statistics, name='target')
-        parameters = pd.DataFrame(parameters, columns=[f'feature{i+1}' for i in range(parameters.shape[1])])
-        dataset = TabularDataset(data=pd.concat([test_statistics, parameters], axis=1))
-        return dataset
+    if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
+        # PyTorch models
+        if isinstance(test_statistics, np.ndarray):
+            test_statistics = torch.from_numpy(test_statistics)
+        if isinstance(parameters, np.ndarray):
+            parameters = torch.from_numpy(parameters)
     else:
-        if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
-            # PyTorch models
-            if isinstance(test_statistics, np.ndarray):
-                test_statistics = torch.from_numpy(test_statistics).reshape(-1, )
-            if isinstance(parameters, np.ndarray):
-                parameters = torch.from_numpy(parameters).reshape(-1, param_dim)
-        else:
-            # numpy-based models
-            if isinstance(test_statistics, torch.Tensor):
-                test_statistics = test_statistics.numpy().reshape(-1, )
-            if isinstance(parameters, torch.Tensor):
-                parameters = parameters.numpy().reshape(-1, param_dim)
+        # numpy-based models
+        if isinstance(test_statistics, torch.Tensor):
+            test_statistics = test_statistics.numpy()
+        if isinstance(parameters, torch.Tensor):
+            parameters = parameters.numpy()
 
-        return test_statistics, parameters
+    return test_statistics.reshape(-1, ), parameters.reshape(-1, param_dim)
 
 
 def preprocess_predict_quantile_regression(
     parameters: Union[np.ndarray, torch.Tensor],
     estimator: Any,
     param_dim: int
-) -> Union[np.ndarray, torch.Tensor, TabularDataset]:
+) -> Union[np.ndarray, torch.Tensor]:
     check_for_nans(parameters)
     
     if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
         # PyTorch models
         if isinstance(parameters, np.ndarray):
-            parameters = torch.from_numpy(parameters).reshape(-1, param_dim)
-    elif isinstance(estimator, TabularPredictor):
-        if isinstance(parameters, torch.Tensor):
-            parameters = parameters.numpy().reshape(-1, param_dim)
-        parameters = TabularDataset(data=pd.DataFrame(parameters, columns=[f'feature{i+1}' for i in range(parameters.shape[1])]))
+            parameters = torch.from_numpy(parameters)
     else:
         # numpy-based models
         if isinstance(parameters, torch.Tensor):
-            parameters = parameters.numpy().reshape(-1, param_dim)
-    return parameters
+            parameters = parameters.numpy()
+    return parameters.reshape(-1, param_dim)
 
 
 def preprocess_fit_p_values(

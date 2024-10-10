@@ -155,10 +155,6 @@ class LF2I:
                     'cv': {'iterations': [100, 300, 500, 700, 1000], 'depth': [1, 3, 5, 7, 10]},
                     'n_iter': 25
                 }
-            elif (calibration_model == 'autogluon') and (calibration_model_kwargs == {}):
-                self.calibration_model_kwargs = {
-                    'presets': ['high_quality'], 'verbosity': 1
-                }
             else:
                 self.calibration_model_kwargs = calibration_model_kwargs
 

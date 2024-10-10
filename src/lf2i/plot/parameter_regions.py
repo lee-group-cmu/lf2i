@@ -173,7 +173,8 @@ def plot_parameter_region_2D(
         ax.tick_params(labelsize=30)
 
         legend = ax.legend(prop={'size': 25})
-        legend.legendHandles[0]._sizes = [40]
+        for handle in legend.legend_handles:
+            handle.set_sizes([30])
         for axis in ['top', 'bottom', 'left', 'right']:
             ax.spines[axis].set_linewidth(3)
             ax.spines[axis].set_color('black')
