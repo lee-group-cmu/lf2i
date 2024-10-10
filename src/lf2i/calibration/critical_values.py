@@ -126,7 +126,7 @@ def train_qr_algorithm(
         elif algorithm == 'autogluon':
             algorithm = TabularPredictor(label='target', problem_type='quantile', quantile_levels=[alpha] if isinstance(alpha, float) else alpha)
             dataset = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)
-            algorithm.fit(dataset)
+            algorithm.fit(dataset, **algorithm_kwargs)
         else:
             raise ValueError(f"Only 'cat-gb', 'nn' or custom algorithm (Any) are currently supported, got {algorithm}")
     else:

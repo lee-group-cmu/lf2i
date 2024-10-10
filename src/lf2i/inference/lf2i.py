@@ -155,6 +155,10 @@ class LF2I:
                     'cv': {'iterations': [100, 300, 500, 700, 1000], 'depth': [1, 3, 5, 7, 10]},
                     'n_iter': 25
                 }
+            elif (calibration_model == 'autogluon') and (calibration_model_kwargs == {}):
+                self.calibration_model_kwargs = {
+                    'presets': ['high_quality'], 'verbosity': 1
+                }
             else:
                 self.calibration_model_kwargs = calibration_model_kwargs
 
@@ -208,6 +212,7 @@ class LF2I:
                 X=preprocess_predict_p_values('confidence_sets', test_statistics_x, evaluation_grid, self.calibration_model[calib_dict_key])
             )[:, 1]
 
+        # this alpha is used only if calibration_method == 'p-values'
         alpha = [1-confidence_level] if isinstance(confidence_level, float) else [1-cl for cl in confidence_level]
         confidence_regions = []
         for idx, a in enumerate(alpha):
