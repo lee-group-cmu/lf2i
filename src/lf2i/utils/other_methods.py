@@ -10,6 +10,7 @@ from sbi.inference.posteriors.base_posterior import NeuralPosterior
 from sbi.utils.kde import KDEWrapper
 from bayesflow.amortizers import AmortizedPosterior
 
+from lf2i.estimators import PosteriorEstimator
 from lf2i.test_statistics import TestStatistic
 from lf2i.utils.miscellanea import to_torch_if_np
 
@@ -28,7 +29,7 @@ def hpd_region(
     x = x if (len(x.shape) > 1) else x.unsqueeze(0)
 
     # evaluate posterior over grid of values
-    if isinstance(posterior, NeuralPosterior):
+    if isinstance(posterior, (NeuralPosterior, PosteriorEstimator)):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ... when using NSF
             posterior_probs = torch.exp(posterior.log_prob(
@@ -36,9 +37,14 @@ def hpd_region(
                 norm_posterior=True if norm_posterior_samples else False,
                 leakage_correction_params={'num_rejection_samples': norm_posterior_samples}
             ).double()).double()
+    elif isinstance(posterior, dict):
+        posterior_load = PosteriorEstimator.from_params(posterior)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', UserWarning)
+            posterior_probs = torch.exp(posterior_load.log_prob(theta=param_grid, x=x).double()).double()
     elif isinstance(posterior, (KDEWrapper, Distribution)):
         posterior_probs = torch.exp(posterior.log_prob(param_grid).double()).double()
-    if isinstance(posterior, AmortizedPosterior):
+    elif isinstance(posterior, AmortizedPosterior):
         posterior_probs = torch.exp(torch.tensor(posterior.log_prob(
             input_dict={'summary_conditions': x.expand(len(param_grid), x.shape[-1]). reshape(-1, 1, x.shape[-1]).numpy(),
                         'direct_conditions': None,

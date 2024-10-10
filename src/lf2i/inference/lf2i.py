@@ -240,6 +240,7 @@ class LF2I:
         evaluation_grid: Union[np.ndarray, torch.Tensor] = None,
         num_level_sets: Optional[int] = 10_000,
         norm_posterior_samples: Optional[int] = None,
+        n_jobs: Optional[int] = -2,
         verbose: bool = True
     ) -> Tuple[Any, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Independent diagnostics check for the empirical coverage of a desired uncertainty quantification method across the whole parameter space.
@@ -289,6 +290,8 @@ class LF2I:
         norm_posterior_samples : int, optional
             Number of samples to use to estimate the leakage correction factor, by default None. More samples lead to better estimates of the normalization constant when using a normalized posterior.
             If `None`, uses the un-normalized posterior (but note that the density is already being explicitly normalized over the `evaluation_grid` to compute the HPD region).
+        n_jobs : int, optional
+            Number of parallel jobs to run, by default -2. If -1, all CPUs are used. If 1, no parallel computing code is used at all, which is useful for debugging.
         verbose: bool, optional
             Whether to print checkpoints and progress bars or not, by default True.
             
@@ -345,7 +348,8 @@ class LF2I:
                     param_dim=evaluation_grid.shape[1] if evaluation_grid.ndim > 1 else 1,
                     batch_size=self.test_statistic.batch_size if hasattr(self.test_statistic, "batch_size") else 1,
                     num_level_sets=num_level_sets,
-                    norm_posterior_samples=norm_posterior_samples
+                    norm_posterior_samples=norm_posterior_samples,
+                    n_jobs=n_jobs
                 )
             elif region_type == 'prediction':
                 assert isinstance(self.test_statistic, Waldo), \
