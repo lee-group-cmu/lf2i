@@ -3,9 +3,9 @@ import warnings
 
 import itertools
 import numpy as np
+import pandas as pd
 import torch
-from sklearn.base import BaseEstimator
-from xgboost.sklearn import XGBModel
+from autogluon.tabular import TabularPredictor, TabularDataset
 
 from lf2i.utils.miscellanea import check_for_nans, to_np_if_torch
 
@@ -15,41 +15,56 @@ def preprocess_train_quantile_regression(
     parameters: Union[np.ndarray, torch.Tensor],
     param_dim: int,
     estimator: Any
-) -> Tuple[Union[np.ndarray, torch.Tensor]]:
+) -> Union[Tuple[Union[np.ndarray, torch.Tensor]], TabularDataset]:
     check_for_nans(test_statistics)
     check_for_nans(parameters)
 
-    if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
-        # PyTorch models
-        if isinstance(test_statistics, np.ndarray):
-            test_statistics = torch.from_numpy(test_statistics)
-        if isinstance(parameters, np.ndarray):
-            parameters = torch.from_numpy(parameters)
-    else:
-        # numpy-based models
+    if isinstance(estimator, TabularPredictor):
         if isinstance(test_statistics, torch.Tensor):
-            test_statistics = test_statistics.numpy()
+            test_statistics = test_statistics.numpy().reshape(-1, )
         if isinstance(parameters, torch.Tensor):
-            parameters = parameters.numpy()
+            parameters = parameters.numpy().reshape(-1, param_dim)
+        test_statistics = pd.Series(test_statistics, name='target')
+        parameters = pd.DataFrame(parameters, columns=[f'feature{i+1}' for i in range(parameters.shape[1])])
+        dataset = TabularDataset(data=pd.concat([test_statistics, parameters], axis=1))
+        return dataset
+    else:
+        if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
+            # PyTorch models
+            if isinstance(test_statistics, np.ndarray):
+                test_statistics = torch.from_numpy(test_statistics).reshape(-1, )
+            if isinstance(parameters, np.ndarray):
+                parameters = torch.from_numpy(parameters).reshape(-1, param_dim)
+        else:
+            # numpy-based models
+            if isinstance(test_statistics, torch.Tensor):
+                test_statistics = test_statistics.numpy().reshape(-1, )
+            if isinstance(parameters, torch.Tensor):
+                parameters = parameters.numpy().reshape(-1, param_dim)
 
-    return test_statistics.reshape(-1, ), parameters.reshape(-1, param_dim)
+        return test_statistics, parameters
 
 
 def preprocess_predict_quantile_regression(
     parameters: Union[np.ndarray, torch.Tensor],
     estimator: Any,
     param_dim: int
-) -> Union[np.ndarray, torch.Tensor]:
+) -> Union[np.ndarray, torch.Tensor, TabularDataset]:
     check_for_nans(parameters)
+    
     if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
         # PyTorch models
         if isinstance(parameters, np.ndarray):
-            parameters = torch.from_numpy(parameters)
-    if isinstance(estimator, (BaseEstimator, XGBModel)):
-        # Scikit-Learn or XGBoost models
+            parameters = torch.from_numpy(parameters).reshape(-1, param_dim)
+    elif isinstance(estimator, TabularPredictor):
         if isinstance(parameters, torch.Tensor):
-            parameters = parameters.numpy()
-    return parameters.reshape(-1, param_dim)
+            parameters = parameters.numpy().reshape(-1, param_dim)
+        parameters = TabularDataset(data=pd.DataFrame(parameters, columns=[f'feature{i+1}' for i in range(parameters.shape[1])]))
+    else:
+        # numpy-based models
+        if isinstance(parameters, torch.Tensor):
+            parameters = parameters.numpy().reshape(-1, param_dim)
+    return parameters
 
 
 def preprocess_fit_p_values(
@@ -129,11 +144,13 @@ def preprocess_neyman_inversion(
         p_values = to_np_if_torch(p_values).reshape(-1, parameter_grid.shape[0])
         num_obs = p_values.shape[0]
     
-    return (num_obs,
-            test_statistics if test_statistics is not None else None,
-            critical_values if critical_values is not None else None,
-            p_values if p_values is not None else None,
-            parameter_grid)
+    return (
+        num_obs, 
+        test_statistics if test_statistics is not None else None,
+        critical_values if critical_values is not None else None,
+        p_values if p_values is not None else None,
+        parameter_grid
+    )
 
 
 def preprocess_diagnostics(
@@ -170,10 +187,12 @@ def preprocess_indicators_lf2i(
     if p_values is not None:
         check_for_nans(p_values)
     check_for_nans(parameters)
-    return (test_statistics.reshape(-1, ),
-            critical_values.reshape(-1, ) if critical_values is not None else None,
-            p_values.reshape(-1, ) if p_values is not None else None,
-            parameters.reshape(-1, param_dim))
+    return (
+        test_statistics.reshape(-1, ),
+        critical_values.reshape(-1, ) if critical_values is not None else None,
+        p_values.reshape(-1, ) if p_values is not None else None,
+        parameters.reshape(-1, param_dim)
+    )
 
 
 def preprocess_indicators_posterior(

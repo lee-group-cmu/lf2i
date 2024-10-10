@@ -88,7 +88,7 @@ class LF2I:
             Either `critical-values` (via quantile regression) or `p-values` (via monotonic probabilistic classification).
         calibration_model : Union[str, Any], optional
             If `str`, it is an identifier for the model used for calibration, by default 'cat-gb'.
-            If `Any`, must be an object implementing the `.fit(X=..., y=...)` and `.predict(X=...)` methods.
+            If `Any`, must be an object implementing the `.fit(X=..., y=...)` and `.predict(...)` methods.
             Currently available: ['cat-gb', 'nn'] or a pre-instantiated object.
         calibration_model_kwargs : Dict, optional
             Settings for the chosen calibration model, by default {}. See modules in `lf2i.calibration` for more details.
@@ -198,7 +198,7 @@ class LF2I:
         if calibration_method == 'critical-values':
             # if estimating for multiple levels, this should return a matrix with dims (eval_grid.shape[0], num_levels)
             critical_values = self.calibration_model[calib_dict_key].predict(
-                X=preprocess_predict_quantile_regression(evaluation_grid, self.calibration_model[calib_dict_key], self.test_statistic.poi_dim)
+                preprocess_predict_quantile_regression(evaluation_grid, self.calibration_model[calib_dict_key], self.test_statistic.poi_dim)
             )
             p_values = None
         else:
@@ -316,7 +316,7 @@ class LF2I:
                 test_statistics = self.test_statistic.evaluate(parameters, samples, mode='diagnostics')
                 if calibration_method == 'critical-values':
                     critical_values = to_np_if_torch(self.calibration_model[calib_dict_key].predict(
-                        X=preprocess_predict_quantile_regression(parameters, self.calibration_model[calib_dict_key], parameters.shape[1] if parameters.ndim > 1 else 1)
+                        preprocess_predict_quantile_regression(parameters, self.calibration_model[calib_dict_key], parameters.shape[1] if parameters.ndim > 1 else 1)
                     ))
                     p_values = None
                 else:
