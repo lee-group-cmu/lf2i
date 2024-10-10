@@ -15,7 +15,7 @@ from lf2i.diagnostics.coverage_probability import (
     compute_indicators_prediction
 )
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_predict_quantile_regression, preprocess_predict_p_values
-from lf2i.utils.miscellanea import to_np_if_torch, to_torch_if_np
+from lf2i.utils.miscellanea import to_np_if_torch, to_torch_if_np, to_np_if_pd
 
 
 class LF2I:
@@ -201,9 +201,9 @@ class LF2I:
         test_statistics_x = self.test_statistic.evaluate(evaluation_grid, x, mode='confidence_sets')
         if calibration_method == 'critical-values':
             # if estimating for multiple levels, this should return a matrix with dims (eval_grid.shape[0], num_levels)
-            critical_values = self.calibration_model[calib_dict_key].predict(
+            critical_values = to_np_if_pd(self.calibration_model[calib_dict_key].predict(
                 preprocess_predict_quantile_regression(evaluation_grid, self.calibration_model[calib_dict_key], self.test_statistic.poi_dim)
-            )
+            ))
             p_values = None
         else:
             critical_values = None
@@ -323,9 +323,9 @@ class LF2I:
                 calib_dict_key = f'{confidence_level:.2f}' if isinstance(confidence_level, float) else 'multiple_levels'
                 test_statistics = self.test_statistic.evaluate(parameters, samples, mode='diagnostics')
                 if calibration_method == 'critical-values':
-                    critical_values = to_np_if_torch(self.calibration_model[calib_dict_key].predict(
+                    critical_values = to_np_if_torch(to_np_if_pd(self.calibration_model[calib_dict_key].predict(
                         preprocess_predict_quantile_regression(parameters, self.calibration_model[calib_dict_key], parameters.shape[1] if parameters.ndim > 1 else 1)
-                    ))
+                    )))
                     p_values = None
                 else:
                     critical_values = None
