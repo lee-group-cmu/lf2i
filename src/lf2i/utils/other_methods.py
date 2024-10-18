@@ -55,7 +55,7 @@ def hpd_region(
     posterior_probs /= torch.sum(posterior_probs)  # normalize
 
     # descend the level sets of the posterior and stop when the area above a level equals credible level (up to tolerance)
-    level_sets = torch.linspace(torch.max(posterior_probs).item(), 0, num_level_sets)  # thresholds to include or not parameters
+    level_sets = torch.linspace(0, torch.max(posterior_probs).item(), num_level_sets)  # thresholds to include or not parameters
     credible_levels_trajectory = []
     idx = 0
     current_credible_level, current_level_set_idx = 0, idx
