@@ -49,7 +49,7 @@ class PosteriorEstimator:
             self.history = None
 
 
-    def estimate(self, parameters, samples):
+    def estimate(self, parameters, samples, optimizer:Optional[tf.keras.optimizers.Optimizer]=None):
         if tf.compat.v1.train.checkpoint_exists(f'{self.checkpoint_path}/checkpoint'):
             self.trainer.load_pretrained_network()
             print("Test statistic already trained.\n")
@@ -68,6 +68,7 @@ class PosteriorEstimator:
                 epochs=self.epochs,
                 batch_size=self.batch_size,
                 save_checkpoint=True,
+                optimizer=optimizer,
             )
 
             try:
