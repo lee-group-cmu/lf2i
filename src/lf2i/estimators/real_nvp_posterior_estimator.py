@@ -26,7 +26,7 @@ class PosteriorEstimator:
         self.inference_net = bf.networks.InvertibleNetwork(
             num_params=self.poi_dim,
             num_coupling_layers=estimator_kwargs['num_coupling_layers'],
-            coupling_settings={"dense_args": dict(kernel_regularizer=None), "dropout": False},
+            coupling_settings={"mc_dropout": True, "dense_args": dict(units=12, activation="elu")},
         )
         self.summary_net = bf.networks.DeepSet(summary_dim=estimator_kwargs['summary_dim'])
 
@@ -59,9 +59,15 @@ class PosteriorEstimator:
             parameters = np.array(parameters).reshape(-1, 1, self.poi_dim)
             samples = np.array(samples).reshape(-1, 1, self.x_dim)
 
+            n_points = len(parameters)
+            n_val = int(n_points * 0.01)
             simulations_dict = {
-                'sim_data' : samples,
-                'prior_draws' : parameters,
+                'sim_data' : samples[:-n_val],
+                'prior_draws' : parameters[:-n_val],
+            }
+            validation_dict = {
+                'sim_data' : samples[-n_val:],
+                'prior_draws' : parameters[-n_val:],
             }
             _ = self.trainer.train_offline(
                 simulations_dict=simulations_dict,
@@ -69,6 +75,8 @@ class PosteriorEstimator:
                 batch_size=self.batch_size,
                 save_checkpoint=True,
                 optimizer=optimizer,
+                early_stopping=True,
+                validation_sims=validation_dict,
             )
 
             try:
