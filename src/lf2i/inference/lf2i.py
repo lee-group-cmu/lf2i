@@ -306,7 +306,8 @@ class LF2I:
         ValueError
             If `region_type` is not among those supported and `indicators is None`
         """
-        assert calibration_method in ['critical-values', 'p-values']
+        if region_type == 'lf2i':
+            assert calibration_method in ['critical-values', 'p-values']
         self.test_statistic.verbose = verbose  # lf2i verbosity takes precedence
         
         if indicators is None:
