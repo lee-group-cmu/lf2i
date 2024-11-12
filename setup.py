@@ -19,7 +19,7 @@ REQUIRED = [
     "joblib",
     "matplotlib>=3.6.0",
     "numpy",
-    "rpy2>=3.5.4",
+    "rpy2==3.5.4",
     "sbi>=0.19.2",
     "scikit-learn",
     "scipy",
