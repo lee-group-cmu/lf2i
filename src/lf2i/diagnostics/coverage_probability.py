@@ -250,7 +250,7 @@ def compute_indicators_posterior(
         _, credible_region = hpd_region(
             posterior=next(posterior),
             param_grid=torch.cat((parameter_grid, parameters[idx, :].reshape(1, param_dim))),
-            x=samples[idx, :, :],
+            x=samples[idx, ...],
             credible_level=credible_level,
             num_level_sets=num_level_sets, tol=tol,
             norm_posterior_samples=norm_posterior_samples

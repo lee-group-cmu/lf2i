@@ -194,7 +194,10 @@ def preprocess_indicators_posterior(
         posterior = iter(posterior)
     else:
         posterior = itertools.cycle([posterior])
-    return parameters.reshape(-1, param_dim), samples.reshape(parameters.shape[0], batch_size, -1), parameter_grid.reshape(-1, param_dim), posterior
+    if samples.ndim == 1:
+        assert batch_size == 1
+        samples = samples.reshape(-1, 1)
+    return parameters.reshape(-1, param_dim), samples, parameter_grid.reshape(-1, param_dim), posterior
 
 
 def preprocess_indicators_prediction(

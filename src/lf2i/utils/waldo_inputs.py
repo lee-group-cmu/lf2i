@@ -39,13 +39,13 @@ def preprocess_waldo_estimation(
         if isinstance(samples, np.ndarray):
             samples = torch.from_numpy(samples)
     
-    if (len(samples.shape) == 3) and (samples.shape[1] > 1):
-        warnings.warn(f"You provided a simulated set with single-sample size = {samples.shape[1]}. This dimension will be flattened for estimation or evaluation. Is this the desired behaviour?")
     if (param_dim == 1) and (estimation_method == 'prediction'):
         parameters = parameters.reshape(-1, )
     else:
         parameters = parameters.reshape(-1, param_dim)
-    return parameters, samples.reshape(-1, samples.shape[-1])
+    if samples.ndim == 1:
+        samples = samples.reshape(-1, 1)
+    return parameters, samples
 
 
 def preprocess_waldo_evaluation(

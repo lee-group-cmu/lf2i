@@ -53,7 +53,7 @@ class Posterior(TestStatistic):
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
                     log_posterior = self.estimator.log_prob(
-                        theta=parameters[idx, :], x=samples[idx, :],
+                        theta=parameters[idx, :], x=samples[idx, ...],
                         norm_posterior=True if self.norm_posterior_samples else False,
                         leakage_correction_params={'num_rejection_samples': self.norm_posterior_samples}  # ignored if norm_posterior=False
                     ).double()
@@ -66,7 +66,7 @@ class Posterior(TestStatistic):
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
                     log_posterior = self.estimator.log_prob(
-                        theta=parameters, x=samples[idx, :], 
+                        theta=parameters, x=samples[idx, ...], 
                         norm_posterior=True if self.norm_posterior_samples else False,
                         leakage_correction_params={'num_rejection_samples': self.norm_posterior_samples}  # ignored if norm_posterior=False
                     ).double().reshape(1, parameters.shape[0])
