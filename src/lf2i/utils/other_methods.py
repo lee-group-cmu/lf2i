@@ -12,7 +12,7 @@ from bayesflow.amortizers import AmortizedPosterior
 
 from lf2i.estimators import PosteriorEstimator
 from lf2i.test_statistics import TestStatistic
-from lf2i.utils.miscellanea import to_torch_if_np
+from lf2i.utils.miscellanea import to_torch_if_np, to_np_if_torch
 
 
 def hpd_region(
@@ -24,6 +24,42 @@ def hpd_region(
     norm_posterior_samples: Optional[int] = None, 
     tol: float = 0.01
 ) -> Tuple[float, np.ndarray]:
+    r"""
+    Compute the highest posterior density (HPD) region for an estimated posterior distribution. Currently compatible with the posterior estimators commonly seen in the `sbi` and `bayesflow` software libraries.
+
+    Parameters
+    ----------
+    posterior : Union[NeuralPosterior, KDEWrapper, Distribution, AmortizedPosterior]
+        The estimated posterior distribution from which to compute the HPD region. These types of objects are typically returned by the `sbi` and `bayesflow` software libraries:
+        - `NeuralPosterior` from `sbi` methods involving underlying neural networks, e.g. `SNPE`, `FMPE`.
+        - `KDEWrapper` from `sbi` methods involving kernel density estimation, e.g. `SBCABC`.
+        - `Distribution` from `torch.distributions` or other libraries.
+        - `AmortizedPosterior` from `bayesflow` methods involving amortized inference.
+    param_grid : Union[np.ndarray, torch.Tensor]
+        Grid of parameter values over which to evaluate the posterior.
+    x : Union[np.ndarray, torch.Tensor]
+        Observed data or summary statistics.
+    credible_level : float
+        The desired credible level for the HPD region (e.g., 0.95 for a 95% credible region).
+    num_level_sets : int, optional
+        Number of level sets to consider when descending the posterior vis a vis a binary search, by default 100_000.
+    norm_posterior_samples : Optional[int], optional
+        Number of samples for normalizing the posterior, by default None.
+    tol : float, optional
+        Tolerance for the credible level, by default 0.01.
+
+    Returns
+    -------
+    Tuple[float, np.ndarray]
+        The achieved credible level and the parameter values within the HPD region.
+
+    Raises
+    ------
+    ValueError
+        If the posterior type is not recognized.
+    """
+    assert 0 < credible_level < 1, "Credible level must be in (0, 1)."
+
     param_grid = to_torch_if_np(param_grid)
     x = to_torch_if_np(x)
     x = x if (len(x.shape) > 1) else x.unsqueeze(0)
@@ -49,7 +85,7 @@ def hpd_region(
             input_dict={'summary_conditions': x.expand(len(param_grid), x.shape[-1]). reshape(-1, 1, x.shape[-1]).numpy(),
                         'direct_conditions': None,
                         'parameters': param_grid.reshape(-1, 1, param_grid.shape[-1]).numpy()},
-        ))).double()
+        )).double()).double()
     else:
         raise ValueError
     posterior_probs /= torch.sum(posterior_probs)  # normalize
@@ -60,7 +96,7 @@ def hpd_region(
     idx = 0
     current_credible_level, current_level_set_idx = 0, idx
 
-    # Binary search
+    # Binary search to find the level set that gives the credible level
     left = 0
     right = num_level_sets - 1
     while left <= right:
@@ -76,7 +112,11 @@ def hpd_region(
             left = mid + 1
 
     # all params such that p(params|x) > level_set, where level_set is the last chosen one
-    accepted = (posterior_probs >= level_sets[current_level_set_idx]).flatten().numpy()
+    accepted = to_np_if_torch((posterior_probs >= level_sets[current_level_set_idx]).flatten())
+
+    # guarantee value types
+    current_credible_level = float(current_credible_level)
+    param_grid = to_np_if_torch(param_grid)
     return current_credible_level, param_grid[accepted, :]
 
 
