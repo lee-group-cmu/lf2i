@@ -34,6 +34,31 @@ def check_for_nans(inp: Union[np.ndarray, pd.Series, pd.DataFrame, torch.Tensor]
             raise ValueError("Input contains NaN values")
 
 
+def check_for_infs(inp: Union[np.ndarray, pd.Series, pd.DataFrame, torch.Tensor]) -> Union[np.ndarray, pd.Series, pd.DataFrame, torch.Tensor]:
+    if isinstance(inp, np.ndarray):
+        if np.isinf(inp).sum() > 0:
+            raise ValueError("Input contains Inf values")
+    elif isinstance(inp, (pd.Series, pd.DataFrame)):
+        if np.isinf(inp.values).any():
+            raise ValueError("Input contains Inf values")
+    else:
+        if torch.isinf(inp).sum() > 0:
+            raise ValueError("Input contains Inf values")
+
+
+def find_nans_and_infs(inp: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+    if inp.ndim == 1:
+        if isinstance(inp, np.ndarray):
+            return (np.isnan(inp) | np.isinf(inp))
+        else:
+            return (torch.isnan(inp) | torch.isinf(inp))
+    else:
+        if isinstance(inp, np.ndarray):
+            return (np.isnan(inp).any(axis=1) | np.isinf(inp).any(axis=1))
+        else:
+            return (torch.isnan(inp).any(axis=1) | torch.isinf(inp).any(axis=1))
+
+
 def select_n_jobs(n_jobs: int):
     if n_jobs < -1:
         n_jobs = max(1, os.cpu_count()+1+n_jobs)

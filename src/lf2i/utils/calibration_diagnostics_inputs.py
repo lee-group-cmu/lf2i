@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 import torch
 
-from lf2i.utils.miscellanea import check_for_nans, to_np_if_torch
+from lf2i.utils.miscellanea import check_for_nans, check_for_infs, find_nans_and_infs, to_np_if_torch
 
 
 def preprocess_train_quantile_regression(
@@ -14,8 +14,17 @@ def preprocess_train_quantile_regression(
     param_dim: int,
     estimator: Any
 ) -> Tuple[Union[np.ndarray, torch.Tensor]]:
-    check_for_nans(test_statistics)
-    check_for_nans(parameters)
+    try:
+        check_for_nans(test_statistics)
+        check_for_infs(test_statistics)
+        check_for_nans(parameters)
+        check_for_infs(parameters)
+        drop_nans_and_infs = False
+    except ValueError as e:
+        warnings.warn(f"An error occurred while checking for NaNs and Infs: {e}")
+        drop_nans_and_infs = True
+    except:
+        raise ValueError("An error occurred while checking for NaNs and Infs")
 
     if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
         # PyTorch models
@@ -29,6 +38,12 @@ def preprocess_train_quantile_regression(
             test_statistics = test_statistics.numpy()
         if isinstance(parameters, torch.Tensor):
             parameters = parameters.numpy()
+
+    if drop_nans_and_infs:
+        nans_and_infs = find_nans_and_infs(test_statistics) | find_nans_and_infs(parameters)
+        assert len(nans_and_infs) - sum(nans_and_infs) >= 2, "There are at least 2 finite values in the input"
+        test_statistics = test_statistics[~nans_and_infs]
+        parameters = parameters[~nans_and_infs]
 
     return test_statistics.reshape(-1, ), parameters.reshape(-1, param_dim)
 
