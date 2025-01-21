@@ -12,11 +12,72 @@ from lf2i.utils.calibration_diagnostics_inputs import preprocess_fit_p_values
 from lf2i.utils.miscellanea import select_n_jobs
 
 
+def conditional_sampling(
+    poi: np.ndarray,
+    test_statistics: np.ndarray,
+    num_augment: int, 
+    min_points_per_bin: int = 50
+) -> np.ndarray:
+    """
+    Perform conditional sampling of test statistics based on the parameters of interest (POI). 
+    This method divides the POI space into multidimensional bins, associates each bin with the 
+    corresponding test statistics, and resamples conditionally from the empirical distribution 
+    of test statistics within each bin.
+
+    Parameters
+    ----------
+    poi : np.ndarray
+        A 2D array where each row represents a parameter of interest (POI) and each column corresponds 
+        to a dimension in the parameter space. Shape: (num_samples, num_dimensions).
+    test_statistics : np.ndarray
+        A 1D array of test statistics evaluated for each parameter of interest. Shape: (num_samples,).
+    num_augment : int
+        Number of samples to draw from the conditional distribution of test statistics for each POI bin.
+    min_points_per_bin : int, optional
+        Minimum number of points required per bin for constructing the POI bins. The POI space will 
+        be divided into bins such that each bin contains at least this number of points. Default is 50.
+
+    Returns
+    -------
+    np.ndarray
+        A 2D array of resampled test statistics. Shape: (num_samples, num_augment), where `num_samples` 
+        corresponds to the number of rows in `poi`.
+
+    Raises
+    ------
+    AssertionError
+        If bin assignments fail or there is no data available for a specific bin.
+    """
+    # Define bins for each dimension of POI
+    def equal_size_bin_edges(poi_onedim, min_points_per_bin):
+        n_bins = max(1, len(poi_onedim) // min_points_per_bin)
+        return np.percentile(poi_onedim, np.linspace(0, 100, n_bins + 1))  # there are n_bins+1 edges
+    poi_bin_edges = [equal_size_bin_edges(poi[:, dim], min_points_per_bin=min_points_per_bin) for dim in range(poi.shape[1])]
+
+    # Assign each poi to a multidimensional bin
+    poi_bin_indices = np.stack([np.digitize(poi[:, dim], poi_bin_edges[dim], right=True) - 1 for dim in range(poi.shape[1])], axis=1)
+    poi_bin_indices = np.clip(poi_bin_indices, 0, [len(poi_bin_edges[dim]) - 2 for dim in range(poi.shape[1])])  # Clip to valid ranges
+    assert (poi_bin_indices.min() >= 0) and (poi_bin_indices.max() < len(poi_bin_edges[0]) - 1), "Bin assignment failed"  # Ensure no alignment issues
+    
+    # Vectorized sampling from p(ts|poi)
+    unique_bins, inverse_indices = np.unique(poi_bin_indices, axis=0, return_inverse=True)
+    samples = []
+    for bin_idx in unique_bins:
+        ts_in_bin = test_statistics.reshape(-1, )[(inverse_indices == bin_idx)]
+        assert len(ts_in_bin) > 0, f"No data available for b in bin {bin_idx}."
+        mask = np.all(poi_bin_indices == bin_idx, axis=1)
+        samples.extend(np.random.choice(ts_in_bin, size=num_augment * mask.sum(), replace=True))
+
+    return np.array(samples).reshape(len(poi), num_augment)
+
+
 def augment_calibration_set(
     test_statistics: Union[np.ndarray, torch.Tensor],
     poi: Union[np.ndarray, torch.Tensor],
     num_augment: int,
-    acceptance_region: str
+    acceptance_region: str,
+    conditional_resampling: bool = True,
+    min_points_per_bin: int = 50
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Augment the calibration set by resampling cutoffs from the empirical distribution of the test statistics. 
     This allows to estimate p-values that are amortized with respect to all levels :math:`\alpha`.
@@ -33,6 +94,13 @@ def augment_calibration_set(
     acceptance_region : str
         Whether the acceptance region for the test statistic is defined to be on the right or on the left of the cutoff. 
         Must be either `left` or `right`. 
+    conditional_resampling: bool, optional
+        Whether to re-sample cutoffs for augmentation from :math:`p(\tau \mid \theta)` or from the marginal :math:`p(\tau)`. Default is True. 
+        Conditional sampling should yield better estimates of p-values since it is designed to better represent the tails of each conditional distribution, but
+        it could be impractical with a high-dimensional parameter.
+    min_points_per_bin : int, optional
+        Minimum number of points required per bin for constructing the POI bins. The POI space will 
+        be divided into bins such that each bin contains at least this number of points. Default is 50.
 
     Returns
     -------
@@ -54,19 +122,22 @@ def augment_calibration_set(
     if poi.ndim == 1:
         poi = np.expand_dims(poi, axis=1)
     rep_poi = np.repeat(poi, repeats=num_augment, axis=0)
-    resampled_cutoffs = np.random.choice(a=test_statistics.reshape(-1, ), size=num_augment*poi.shape[0], replace=True).reshape(-1, 1)
+    if conditional_resampling:
+        resampled_cutoffs = conditional_sampling(poi, test_statistics, num_augment, min_points_per_bin).reshape(-1, 1)
+    else:
+        resampled_cutoffs = np.random.choice(a=test_statistics.reshape(-1, ), size=num_augment*poi.shape[0], replace=True).reshape(-1, 1)
     rep_test_statistics = np.repeat(test_statistics.reshape(-1, ), repeats=num_augment).reshape(-1, 1)
     
     # compute rejection indicators
     if acceptance_region == 'left':
-        rejection_indicators = (rep_test_statistics >= resampled_cutoffs).astype(int).reshape(-1, )  # output of probs classifier usually 1-dim
+        rejection_indicators = (rep_test_statistics >= resampled_cutoffs).astype(int).reshape(-1, )  # output of probs classifier usually expected to be 1-dim
     elif acceptance_region == 'right':
         rejection_indicators = (rep_test_statistics <= resampled_cutoffs).astype(int).reshape(-1, )
     else:
         raise ValueError(f'Acceptance region must be either `left` or `right`, got {acceptance_region}.')
     assert resampled_cutoffs.shape[0] == rep_test_statistics.shape[0] == rejection_indicators.shape[0] == rep_poi.shape[0] == num_augment*poi.shape[0]
     
-    shuffle_idx = np.random.choice(range(l:=(num_augment*poi.shape[0])), size=l, replace=False)
+    shuffle_idx = np.random.permutation(num_augment * poi.shape[0])
     return np.hstack((resampled_cutoffs, rep_poi))[shuffle_idx, :], rejection_indicators[shuffle_idx]
 
 

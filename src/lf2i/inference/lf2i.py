@@ -203,7 +203,7 @@ class LF2I:
             p_values = None
         else:
             critical_values = None
-            # p-values are amortized with respect to levels. Output is always a matrix of dims (num_observations, eval_grid.shape[0])
+            # p-values are amortized with respect to levels. Output is always a matrix of dims (num_observations X eval_grid.shape[0], 1)
             p_values = self.calibration_model[calib_dict_key].predict_proba(
                 X=preprocess_predict_p_values('confidence_sets', test_statistics_x, evaluation_grid, self.calibration_model[calib_dict_key])
             )[:, 1]
@@ -261,7 +261,7 @@ class LF2I:
             If `region_type = 'lf2i', either `critical-values` or `p-values`, ignored otherwise.
         confidence_level : float
             If `region_type in [`posterior`, `prediction`]` and `indicators` are not provided, must give the confidence level to construct credible regions or 
-            prediction intervals and compute indicators. If `region_type == `lf2i`, needed to evaluate the calibration method. Must be in (0, 1).
+            prediction intervals and compute indicators. If `region_type == `lf2i`, needed to evaluate the calibration method. Must be in :math:`(0, 1)`.
         coverage_estimator : str, optional
             Probabilistic classifier to use to estimate coverage probabilities, by default 'splines'. Currently supported: ['splines', 'cat-gb'].
         coverage_estimator_kwargs : Dict, optional
@@ -317,7 +317,7 @@ class LF2I:
                 parameters, samples = T_double_prime[0], T_double_prime[1]
         
             if region_type == 'lf2i':
-                calib_dict_key = f'{confidence_level:.2f}' if isinstance(confidence_level, float) else 'multiple_levels'
+                calib_dict_key = f'{confidence_level:.2f}' if 'multiple_levels' not in self.calibration_model else 'multiple_levels'
                 test_statistics = self.test_statistic.evaluate(parameters, samples, mode='diagnostics')
                 if calibration_method == 'critical-values':
                     critical_values = to_np_if_torch(to_np_if_pd(self.calibration_model[calib_dict_key].predict(

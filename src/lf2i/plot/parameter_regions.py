@@ -187,7 +187,7 @@ def plot_parameter_region_2D(
 def parameter_regions_pairplot(
     *parameter_regions: np.ndarray,
     true_parameter: np.ndarray,  # can plot multiple regions for the same true parameter, not different
-    parameter_space_bounds: Optional[Dict[str, Dict[str, float]]] = None,
+    parameter_space_bounds: Optional[Dict[str, Tuple[float]]] = None,
     labels: Optional[np.ndarray] = None,
     param_names: Optional[np.ndarray] = None,
     colors: Optional[Sequence[str]] = None,
