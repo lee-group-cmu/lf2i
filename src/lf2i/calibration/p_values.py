@@ -60,12 +60,12 @@ def conditional_sampling(
     assert (poi_bin_indices.min() >= 0) and (poi_bin_indices.max() < len(poi_bin_edges[0]) - 1), "Bin assignment failed"  # Ensure no alignment issues
     
     # Vectorized sampling from p(ts|poi)
-    unique_bins, inverse_indices = np.unique(poi_bin_indices, axis=0, return_inverse=True)
+    unique_bins = np.unique(poi_bin_indices, axis=0)
     samples = []
     for bin_idx in unique_bins:
-        ts_in_bin = test_statistics.reshape(-1, )[(inverse_indices == bin_idx)]
-        assert len(ts_in_bin) > 0, f"No data available for b in bin {bin_idx}."
         mask = np.all(poi_bin_indices == bin_idx, axis=1)
+        ts_in_bin = test_statistics[mask]
+        assert len(ts_in_bin) > 0, f"No data available for b in bin {bin_idx}."
         samples.extend(np.random.choice(ts_in_bin, size=num_augment * mask.sum(), replace=True))
 
     return np.array(samples).reshape(len(poi), num_augment)
