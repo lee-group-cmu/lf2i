@@ -73,7 +73,7 @@ def plot_parameter_regions(
             )
         legend = fig.legend(leg_handles, leg_labels)
         if alpha_shape:
-            legend.legendHandles[0]._sizes = [40]
+            legend.legend_handles[0]._sizes = [40]
         
         ax.set_xlabel(r'$\theta_0$' if labels is None else labels[0], fontsize=20)
         ax.tick_params(axis='x', labelsize=12)
