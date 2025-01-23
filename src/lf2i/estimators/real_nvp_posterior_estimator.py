@@ -3,7 +3,6 @@ import warnings
 from tqdm import tqdm
 from joblib import Parallel, delayed
 
-import sbibm
 import numpy as np
 import pandas as pd
 import torch
