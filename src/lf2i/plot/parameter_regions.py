@@ -238,7 +238,7 @@ def parameter_regions_pairplot(
     
     legend = fig.legend(leg_handles, leg_labels, bbox_to_anchor=(0.5, 0.5))
     if alpha_shape:
-        legend.legendHandles[0]._sizes = [40]
+        legend.legend_handles[0]._sizes = [40]
     
     if save_fig_path is not None:
         plt.savefig(save_fig_path, bbox_inches='tight')
