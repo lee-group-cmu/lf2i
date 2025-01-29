@@ -55,6 +55,7 @@ def plot_parameter_regions(
         ax.set_title(title, fontsize=15)
     elif param_dim == 2:
         colors = colors or cm.rainbow(np.linspace(0, 1, len(region_names)))
+        linestyles = cycle(linestyles) if linestyles else cycle(['-', '--', '-.', ':'])
         assert len(region_names) == len(colors) == len(parameter_regions)
         fig, ax = plt.subplots(1, 1, figsize=figsize)
         for i, param_reg in enumerate(parameter_regions):
@@ -65,6 +66,7 @@ def plot_parameter_regions(
                 labels=labels,
                 param_names=param_names,
                 color=colors[i],
+                linestyle=next(linestyles),
                 region_name=region_names[i],
                 alpha_shape=alpha_shape,
                 alpha=alpha,
@@ -139,6 +141,7 @@ def plot_parameter_region_2D(
     alpha: Optional[float] = None,
     scatter: bool = True,
     color: Optional[str] = 'green',
+    linestyle: Optional[str] = '-',
     region_name: Optional[str] = "Parameter region",
     custom_ax: Optional[Axes] = None
 ) -> None:
@@ -157,7 +160,7 @@ def plot_parameter_region_2D(
         ax.scatter(x=parameter_region[:, 0], y=parameter_region[:, 1], s=3.5, color=to_rgba(color, 1), zorder=1, label=region_name)
     if alpha_shape:
         alpha_shape = alphashape.alphashape(parameter_region, alpha=alpha)
-        patch = PolygonPatchFixed(alpha_shape, fc=to_rgba(color, 0.2), ec=to_rgba(color, 1), lw=2, label=region_name)
+        patch = PolygonPatchFixed(alpha_shape, fc=to_rgba(color, 0.2), ec=to_rgba(color, 1), lw=2, label=region_name, linestyle=linestyle)
         ax.add_patch(patch)
     if true_parameter is not None:
         ax.scatter(x=true_parameter.reshape(-1,)[0], y=true_parameter.reshape(-1,)[1], alpha=1, color="red", marker="*", s=250, zorder=10)
