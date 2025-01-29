@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from torch.distributions import Distribution
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
+from sbi.inference.posteriors.score_posterior import ScorePosterior
 from sbi.simulators.simutils import tqdm_joblib
 from lf2i.utils.posterior_ts_inputs import preprocess_estimation_evaluation
 from lf2i.test_statistics import TestStatistic
@@ -47,35 +48,63 @@ class Posterior(TestStatistic):
     ) -> np.ndarray:
         assert self._check_is_trained(), "Estimator is not trained"
         parameters, samples = preprocess_estimation_evaluation(parameters, samples, self.poi_dim)
-                
-        if mode in ['critical_values', 'diagnostics']:
-            def eval_one(idx):
-                with warnings.catch_warnings():
-                    warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
-                    log_posterior = self.estimator.log_prob(
-                        theta=parameters[idx, :], x=samples[idx, ...],
-                        norm_posterior=True if self.norm_posterior_samples else False,
-                        leakage_correction_params={'num_rejection_samples': self.norm_posterior_samples}  # ignored if norm_posterior=False
-                    ).double()
-                return log_posterior.numpy()
-            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating posterior for {samples.shape[0]} points ...", total=len(it))) as _:
-                posterior_ts = np.array(Parallel(n_jobs=self.n_jobs)(delayed(eval_one)(idx) for idx in it))
-            return posterior_ts.reshape(parameters.shape[0], )
-        elif mode == 'confidence_sets':
-            def eval_one(idx):
-                with warnings.catch_warnings():
-                    warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
-                    log_posterior = self.estimator.log_prob(
-                        theta=parameters, x=samples[idx, ...], 
-                        norm_posterior=True if self.norm_posterior_samples else False,
-                        leakage_correction_params={'num_rejection_samples': self.norm_posterior_samples}  # ignored if norm_posterior=False
-                    ).double().reshape(1, parameters.shape[0])
-                return log_posterior.numpy()
-            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating posterior for {samples.shape[0]} points ...", total=len(it))) as _:
-                posterior_ts = np.vstack(Parallel(n_jobs=self.n_jobs)(delayed(eval_one)(idx) for idx in it))
-            return posterior_ts.reshape(samples.shape[0], parameters.shape[0])
+
+        if isinstance(self.estimator, ScorePosterior):
+            if mode in ['critical_values', 'diagnostics']:
+                def eval_one(idx):
+                    with warnings.catch_warnings():
+                        warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
+                        log_posterior = self.estimator.log_prob(
+                            theta=parameters[idx, :], x=samples[idx, ...],
+                            exact=True if self.norm_posterior_samples else False, # TODO: This doesn't really use norm_posterior_samples in principle but it's a knob for a similar speed vs accuracy tradeoff
+                        ).double()
+                    return log_posterior.numpy()
+                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating posterior for {samples.shape[0]} points ...", total=len(it))) as _:
+                    posterior_ts = np.array(Parallel(n_jobs=self.n_jobs)(delayed(eval_one)(idx) for idx in it))
+                return posterior_ts.reshape(parameters.shape[0], )
+            elif mode == 'confidence_sets':
+                def eval_one(idx):
+                    with warnings.catch_warnings():
+                        warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
+                        log_posterior = self.estimator.log_prob(
+                            theta=parameters, x=samples[idx, ...], 
+                            exact=True if self.norm_posterior_samples else False, # TODO: This doesn't really use norm_posterior_samples in principle but it's a knob for a similar speed vs accuracy tradeoff
+                        ).double().reshape(1, parameters.shape[0])
+                    return log_posterior.numpy()
+                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating posterior for {samples.shape[0]} points ...", total=len(it))) as _:
+                    posterior_ts = np.vstack(Parallel(n_jobs=self.n_jobs)(delayed(eval_one)(idx) for idx in it))
+                return posterior_ts.reshape(samples.shape[0], parameters.shape[0])
+            else:
+                raise ValueError(f"Only `critical_values`, `confidence_sets`, and `diagnostics` are supported, got {mode}")
         else:
-            raise ValueError(f"Only `critical_values`, `confidence_sets`, and `diagnostics` are supported, got {mode}")
+            if mode in ['critical_values', 'diagnostics']:
+                def eval_one(idx):
+                    with warnings.catch_warnings():
+                        warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
+                        log_posterior = self.estimator.log_prob(
+                            theta=parameters[idx, :], x=samples[idx, ...],
+                            norm_posterior=True if self.norm_posterior_samples else False,
+                            leakage_correction_params={'num_rejection_samples': self.norm_posterior_samples}  # ignored if norm_posterior=False
+                        ).double()
+                    return log_posterior.numpy()
+                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating posterior for {samples.shape[0]} points ...", total=len(it))) as _:
+                    posterior_ts = np.array(Parallel(n_jobs=self.n_jobs)(delayed(eval_one)(idx) for idx in it))
+                return posterior_ts.reshape(parameters.shape[0], )
+            elif mode == 'confidence_sets':
+                def eval_one(idx):
+                    with warnings.catch_warnings():
+                        warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
+                        log_posterior = self.estimator.log_prob(
+                            theta=parameters, x=samples[idx, ...], 
+                            norm_posterior=True if self.norm_posterior_samples else False,
+                            leakage_correction_params={'num_rejection_samples': self.norm_posterior_samples}  # ignored if norm_posterior=False
+                        ).double().reshape(1, parameters.shape[0])
+                    return log_posterior.numpy()
+                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating posterior for {samples.shape[0]} points ...", total=len(it))) as _:
+                    posterior_ts = np.vstack(Parallel(n_jobs=self.n_jobs)(delayed(eval_one)(idx) for idx in it))
+                return posterior_ts.reshape(samples.shape[0], parameters.shape[0])
+            else:
+                raise ValueError(f"Only `critical_values`, `confidence_sets`, and `diagnostics` are supported, got {mode}")
         
 
 class PosteriorPriorRatio(TestStatistic):
