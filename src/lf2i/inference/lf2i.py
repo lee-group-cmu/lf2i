@@ -293,7 +293,8 @@ class LF2I:
         verbose: bool, optional
             Whether to print checkpoints and progress bars or not, by default True.
         **posterior_kwargs: Any
-            Any keyword argument needed when calling the `log_prob` method of the `posterior`.
+            Any keyword argument needed when calling the `log_prob` method of the `posterior`. 
+            If none is given, it automatically inherits those specified in the test statistic if any, otherwise it is left empty.
             
         Returns
         -------
@@ -340,6 +341,11 @@ class LF2I:
                     param_dim=parameters.shape[1] if parameters.ndim > 1 else 1
                 )
             elif region_type == 'posterior':
+                if not posterior_kwargs:
+                    if hasattr(self.test_statistic, 'posterior_kwargs'):
+                        posterior_kwargs = self.test_statistic.posterior_kwargs
+                    else:
+                        posterior_kwargs = {}
                 indicators = compute_indicators_posterior(
                     posterior=posterior_estimator,
                     parameters=parameters,  # TODO: what if we want to do diagnostics against both POIs and nuisances?
