@@ -1,4 +1,4 @@
-from typing import Union, Any, Dict, Optional
+from typing import Union, Any, Dict
 import warnings
 from tqdm import tqdm
 from joblib import Parallel, delayed
@@ -7,7 +7,6 @@ import numpy as np
 import torch
 from torch.distributions import Distribution
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
-from sbi.inference.posteriors.score_posterior import ScorePosterior
 from sbi.simulators.simutils import tqdm_joblib
 from lf2i.utils.posterior_ts_inputs import preprocess_estimation_evaluation
 from lf2i.test_statistics import TestStatistic
@@ -54,9 +53,7 @@ class Posterior(TestStatistic):
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
                     log_posterior = self.estimator.log_prob(
-                        theta=parameters[idx, :], x=samples[idx, ...],
-                        norm_posterior=True if self.norm_posterior_samples else False,
-                        leakage_correction_params={'num_rejection_samples': self.norm_posterior_samples}  # ignored if norm_posterior=False
+                        theta=parameters[idx, :], x=samples[idx, ...], **self.posterior_kwargs
                     ).double()
                 return log_posterior.numpy()
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating posterior for {samples.shape[0]} points ...", total=len(it))) as _:
@@ -67,9 +64,7 @@ class Posterior(TestStatistic):
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
                     log_posterior = self.estimator.log_prob(
-                        theta=parameters, x=samples[idx, ...], 
-                        norm_posterior=True if self.norm_posterior_samples else False,
-                        leakage_correction_params={'num_rejection_samples': self.norm_posterior_samples}  # ignored if norm_posterior=False
+                        theta=parameters, x=samples[idx, ...], **self.posterior_kwargs
                     ).double().reshape(1, parameters.shape[0])
                 return log_posterior.numpy()
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating posterior for {samples.shape[0]} points ...", total=len(it))) as _:

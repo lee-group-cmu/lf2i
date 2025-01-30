@@ -7,7 +7,6 @@ import torch
 from torch.distributions import Distribution
 
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
-from sbi.inference.posteriors.score_posterior import ScorePosterior
 from sbi.utils.kde import KDEWrapper
 from bayesflow.amortizers import AmortizedPosterior
 
@@ -65,15 +64,7 @@ def hpd_region(
     x = to_torch_if_np(x)
     x = x if (len(x.shape) > 1) else x.unsqueeze(0)
 
-    # evaluate posterior over grid of values
-    if isinstance(posterior, ScorePosterior):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', UserWarning)
-            posterior_probs = torch.exp(posterior.log_prob(
-                theta=param_grid, x=x,
-                exact=True if norm_posterior_samples else False, # TODO: This doesn't really use norm_posterior_samples in principle but it's a knob for a similar speed vs accuracy tradeoff
-            ).double()).double()
-    elif isinstance(posterior, (NeuralPosterior, PosteriorEstimator)):
+    if isinstance(posterior, (NeuralPosterior, PosteriorEstimator)):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ... when using NSF
             posterior_probs = torch.exp(posterior.log_prob(
