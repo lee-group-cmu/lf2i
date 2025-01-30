@@ -196,10 +196,10 @@ def compute_indicators_posterior(
     batch_size: int,
     num_level_sets: int = 10_000,
     tol: float = 0.01,
-    norm_posterior_samples: Optional[int] = None,
     return_credible_regions: bool = False,
     verbose: bool = True,
-    n_jobs: int = -2
+    n_jobs: int = -2,
+    **posterior_kwargs
 ) -> Union[np.ndarray, Tuple[np.ndarray, Sequence[np.ndarray]]]:
     """Construct an array of indicators which mark whether each value in `parameters` is included or not in the corresponding posterior credible region.
 
@@ -227,15 +227,14 @@ def compute_indicators_posterior(
     tol : float, optional
         Actual credible levels within `tol` of the specified `credible_level` will be considered acceptable, by default 0.01.
         NOTE: this is used as a stopping criterion, but if the closest actual credible level is not within `tol` of `credible_level`, a warning is raised but the HPD region is still used.
-    norm_posterior_samples : int, optional
-        Number of samples to use to estimate the leakage correction factor, by default None. More samples lead to better estimates of the normalization constant when returning a normalized posterior.
-        If `None`, uses the un-normalized posterior (but note that the density is already being explicitly normalized over the `param_grid`).
     return_credible_regions: bool, optional
         Whether to return the credible regions computed along the way or not.
     verbose: bool, optional
         Whether to print progress bars or not, by default True.
     n_jobs : int, optional
         Number of workers to use when computing indicators over a sequence of inputs. By default -2, which uses all cores minus one.
+    **posterior_kwargs
+        Any keyword argument needed when calling the `log_prob` method of the `posterior`.
 
     Returns
     -------
@@ -252,10 +251,11 @@ def compute_indicators_posterior(
             param_grid=torch.cat((parameter_grid, parameters[idx, :].reshape(1, param_dim))),
             x=samples[idx, ...],
             credible_level=credible_level,
-            num_level_sets=num_level_sets, tol=tol,
-            norm_posterior_samples=norm_posterior_samples
+            num_level_sets=num_level_sets, 
+            tol=tol,
+            **posterior_kwargs
         )
-        # TODO: this is not safe. Better to return an array of bools and check if True
+        # TODO: this is not safe, need to find a better solution to check membership
         indicator = 1 if parameters[idx, :] in credible_region else 0
         return credible_region, indicator
 

@@ -1,4 +1,4 @@
-from typing import Union, Tuple, Any, Optional
+from typing import Union, Tuple, Any
 import warnings
 
 import numpy as np
@@ -22,8 +22,8 @@ def hpd_region(
     x: Union[np.ndarray, torch.Tensor], 
     credible_level: float, 
     num_level_sets: int = 100_000,
-    norm_posterior_samples: Optional[int] = None, 
-    tol: float = 0.01
+    tol: float = 0.01,
+    **posterior_kwargs
 ) -> Tuple[float, np.ndarray]:
     r"""
     Compute the highest posterior density (HPD) region for an estimated posterior distribution. Currently compatible with the posterior estimators commonly seen in the `sbi` and `bayesflow` software libraries.
@@ -44,10 +44,10 @@ def hpd_region(
         The desired credible level for the HPD region (e.g., 0.95 for a 95% credible region).
     num_level_sets : int, optional
         Number of level sets to consider when descending the posterior vis a vis a binary search, by default 100_000.
-    norm_posterior_samples : Optional[int], optional
-        Number of samples for normalizing the posterior, by default None.
     tol : float, optional
         Tolerance for the credible level, by default 0.01.
+    **posterior_kwargs: Any
+        Any keyword argument needed when calling the `log_prob` method of the `posterior`.
 
     Returns
     -------
@@ -77,22 +77,23 @@ def hpd_region(
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ... when using NSF
             posterior_probs = torch.exp(posterior.log_prob(
-                theta=param_grid, x=x, 
-                norm_posterior=True if norm_posterior_samples else False,
-                leakage_correction_params={'num_rejection_samples': norm_posterior_samples}
+                theta=param_grid, x=x, **posterior_kwargs
             ).double()).double()
     elif isinstance(posterior, dict):
         posterior_load = PosteriorEstimator.from_params(posterior)
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', UserWarning)
-            posterior_probs = torch.exp(posterior_load.log_prob(theta=param_grid, x=x).double()).double()
+            posterior_probs = torch.exp(posterior_load.log_prob(theta=param_grid, x=x, **posterior_kwargs).double()).double()
     elif isinstance(posterior, (KDEWrapper, Distribution)):
         posterior_probs = torch.exp(posterior.log_prob(param_grid).double()).double()
     elif isinstance(posterior, AmortizedPosterior):
         posterior_probs = torch.exp(torch.tensor(posterior.log_prob(
-            input_dict={'summary_conditions': x.expand(len(param_grid), x.shape[-1]). reshape(-1, 1, x.shape[-1]).numpy(),
-                        'direct_conditions': None,
-                        'parameters': param_grid.reshape(-1, 1, param_grid.shape[-1]).numpy()},
+            input_dict={
+                'summary_conditions': x.expand(len(param_grid), x.shape[-1]). reshape(-1, 1, x.shape[-1]).numpy(),
+                'direct_conditions': None,
+                'parameters': param_grid.reshape(-1, 1, param_grid.shape[-1]).numpy()
+            },
+            **posterior_kwargs
         )).double()).double()
     else:
         raise ValueError
