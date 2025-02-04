@@ -324,6 +324,13 @@ class LF2I:
                         preprocess_predict_quantile_regression(parameters, self.calibration_model[calib_dict_key], parameters.shape[1] if parameters.ndim > 1 else 1)
                     )))
                     p_values = None
+                    if calib_dict_key == 'multiple_levels':
+                        # get idx of confidence level to access correct column in critical_values when multiple levels are estimated at once
+                        # TODO: this is a bit hacky. We should either 1) allow diagnostics only for all levels simultaneously that were specified inference; or 2) find a better way of doing what below, if any
+                        idx_cl = np.argmin(np.abs(
+                            confidence_level-(1-np.array(self.calibration_model['multiple_levels'].estimator.get_params()['loss_function'].split('=')[1].split(',')).astype(float))
+                        ))
+                        critical_values = critical_values[:, idx_cl]
                 else:
                     critical_values = None
                     p_values = to_np_if_torch(self.calibration_model[calib_dict_key].predict_proba(
