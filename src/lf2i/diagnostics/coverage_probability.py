@@ -111,7 +111,7 @@ def estimate_coverage_proba(
             n_jobs=-2
         )
         estimator.fit(X=parameters, y=indicators)
-        mean_proba, upper_proba, lower_proba = estimator.predict(X=parameters if new_parameters is None else new_parameters), None, None
+        mean_proba, upper_proba, lower_proba = estimator.predict_proba(X=parameters if new_parameters is None else new_parameters)[:, 1], None, None
     else:
         # TODO: additional methods?
         raise ValueError(f"Estimators currently supported: [`splines`, `cat-gb`]; got {estimator}")
