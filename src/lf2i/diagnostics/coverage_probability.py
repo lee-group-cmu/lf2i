@@ -186,6 +186,10 @@ def compute_indicators_lf2i(
     return indicators
 
 
+def isin_with_tol(a, B, atol=1e-6):
+    return torch.any(torch.all(torch.isclose(B, a, atol=atol), dim=1))
+
+
 def compute_indicators_posterior(
     posterior: Union[NeuralPosterior, KDEWrapper, Sequence[Union[NeuralPosterior, KDEWrapper]]],
     parameters: torch.Tensor,
@@ -200,7 +204,7 @@ def compute_indicators_posterior(
     verbose: bool = True,
     n_jobs: int = -2,
     **posterior_kwargs
-) -> Union[np.ndarray, Tuple[np.ndarray, Sequence[np.ndarray]]]:
+) -> Union[np.ndarray, Tuple[np.ndarray, Sequence[torch.Tensor]]]:
     """Construct an array of indicators which mark whether each value in `parameters` is included or not in the corresponding posterior credible region.
 
     Parameters
@@ -238,7 +242,7 @@ def compute_indicators_posterior(
 
     Returns
     -------
-    Union[np.ndarray, Tuple[np.ndarray, Sequence[np.ndarray]]]
+    Union[np.ndarray, Tuple[np.ndarray, Sequence[torch.Tensor]]]:
         Array of zeros and ones that indicates whether the corresponding value in `parameters` is included or not in the credible region.
         If `return_credible_regions`, then return a tuple whose second element is a sequence of credible regions (one for each parameter/sample).
     """
@@ -255,8 +259,7 @@ def compute_indicators_posterior(
             tol=tol,
             **posterior_kwargs
         )
-        # TODO: this is not safe, need to find a better solution to check membership
-        indicator = 1 if parameters[idx, :] in credible_region else 0
+        indicator = 1 if isin_with_tol(parameters[idx, :], credible_region) else 0
         return credible_region, indicator
 
     with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing indicators for {len(it)} credible regions", total=len(it), disable=not verbose)) as _:

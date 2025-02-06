@@ -17,13 +17,13 @@ from lf2i.utils.miscellanea import to_torch_if_np, to_np_if_torch
 
 def hpd_region(
     posterior: Union[NeuralPosterior, KDEWrapper, Distribution, AmortizedPosterior],
-    param_grid: Union[np.ndarray, torch.Tensor], 
-    x: Union[np.ndarray, torch.Tensor], 
+    param_grid: torch.Tensor, 
+    x: torch.Tensor, 
     credible_level: float, 
     num_level_sets: int = 100_000,
     tol: float = 0.01,
     **posterior_kwargs
-) -> Tuple[float, np.ndarray]:
+) -> Tuple[float, torch.Tensor]:
     r"""
     Compute the highest posterior density (HPD) region for an estimated posterior distribution. Currently compatible with the posterior estimators commonly seen in the `sbi` and `bayesflow` software libraries.
 
@@ -35,9 +35,9 @@ def hpd_region(
         - `KDEWrapper` from `sbi` methods involving kernel density estimation, e.g. `SBCABC`.
         - `Distribution` from `torch.distributions` or other libraries.
         - `AmortizedPosterior` from `bayesflow` methods involving amortized inference.
-    param_grid : Union[np.ndarray, torch.Tensor]
+    param_grid : torch.Tensor
         Grid of parameter values over which to evaluate the posterior.
-    x : Union[np.ndarray, torch.Tensor]
+    x : torch.Tensor
         Observed data or summary statistics.
     credible_level : float
         The desired credible level for the HPD region (e.g., 0.95 for a 95% credible region).
@@ -50,7 +50,7 @@ def hpd_region(
 
     Returns
     -------
-    Tuple[float, np.ndarray]
+    Tuple[float, torch.Tensor]
         The achieved credible level and the parameter values within the HPD region.
 
     Raises
@@ -59,9 +59,6 @@ def hpd_region(
         If the posterior type is not recognized.
     """
     assert 0 < credible_level < 1, "Credible level must be in (0, 1)."
-
-    param_grid = to_torch_if_np(param_grid)
-    x = to_torch_if_np(x)
     x = x if (len(x.shape) > 1) else x.unsqueeze(0)
 
     if isinstance(posterior, (NeuralPosterior, PosteriorEstimator)):
@@ -112,12 +109,9 @@ def hpd_region(
             left = mid + 1
 
     # all params such that p(params|x) > level_set, where level_set is the last chosen one
-    accepted = to_np_if_torch((posterior_probs >= level_sets[current_level_set_idx]).flatten())
+    accepted = (posterior_probs >= level_sets[current_level_set_idx]).flatten()
 
-    # guarantee value types
-    current_credible_level = float(current_credible_level)
-    param_grid = to_np_if_torch(param_grid)
-    return current_credible_level, param_grid[accepted, :]
+    return float(current_credible_level), param_grid[accepted, :]
 
 
 def monte_carlo_confidence_region(
