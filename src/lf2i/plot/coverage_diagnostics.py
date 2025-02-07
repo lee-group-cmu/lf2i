@@ -22,7 +22,8 @@ def coverage_probability_plot(
     lower_proba: Optional[np.ndarray] = None,
     save_fig_path: Optional[str] = None,
     figsize: Tuple = (10, 8),
-    ylims: Tuple = (0, 1),
+    xlims: Optional[Tuple[float]] = None,
+    ylims: Optional[Tuple[float]] = None,
     params_labels: Optional[Union[Tuple[str], List[str]]] = None,
     vmin_vmax: Optional[Union[Tuple, List]] = None,
     custom_ax: Optional[Axes] = None,  # if passing custom ax for pairplot
@@ -50,7 +51,7 @@ def coverage_probability_plot(
         else:
             ax.set_xlabel(params_labels[0], fontsize=45)
         ax.set_ylabel("Coverage", fontsize=45)
-        ax.set_ylim(*ylims)
+        ax.set_ylim(*ylims if ylims is not None else (0, 1))
         ax.legend()
     else:
         vmin_vmax = vmin_vmax or (0, 100)
@@ -60,39 +61,57 @@ def coverage_probability_plot(
 
             x_bins = np.histogram_bin_edges(parameters[:, 0], bins='auto')
             y_bins = np.histogram_bin_edges(parameters[:, 1], bins='auto')
-            binned_sum_proba, xedges, yedges = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins], weights=np.round(coverage_probability*100, 2))
-            bin_counts, xedges, yedges = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins]) 
-            heatmap_values = binned_sum_proba/bin_counts
-            heatmap = ax.imshow(heatmap_values.T[::-1, :], cmap='inferno', aspect='auto', extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], vmin=vmin_vmax[0], vmax=vmin_vmax[1])
+            binned_sum_proba, xedges, yedges = np.histogram2d(
+                parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins], weights=np.round(coverage_probability*100, 2)
+            )
+            bin_counts, _, _ = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins]) 
+            heatmap_values = binned_sum_proba / bin_counts
+
+            levels = np.linspace(vmin_vmax[0], vmin_vmax[1], num=10)
+            contour_filled = ax.contourf(xedges[:-1], yedges[:-1], heatmap_values.T[::-1], levels=levels, cmap='inferno', extend='both')
+            contour_lines = ax.contour(xedges[:-1], yedges[:-1], heatmap_values.T[::-1], levels=levels, colors="white", linewidths=0.8)
+            clabels = ax.clabel(contour_lines, levels[::2], inline=True, fontsize=15, fmt="%1.1f%%")
+            for txt in clabels:
+                txt.set_color("black")
+                txt.set_bbox(dict(facecolor="white", edgecolor="black", boxstyle="square,pad=0.1"))
+
             if show_text:
-                # Add the text
-                jump_x = (xedges[-1] - xedges[0]) / (2.0 * len(x_bins))
-                jump_y = (yedges[-1] - yedges[0]) / (2.0 * len(y_bins))
-                x_positions = np.linspace(start=xedges[0], stop=xedges[-1], num=len(x_bins)-1, endpoint=False)
-                y_positions = np.linspace(start=yedges[0], stop=yedges[-1], num=len(y_bins)-1, endpoint=False)
-                for y_index, y in enumerate(y_positions):
-                    for x_index, x in enumerate(x_positions):
+                # Add numerical labels at contour centroids
+                for y_index in range(len(yedges)-1):
+                    for x_index in range(len(xedges)-1):
                         label = heatmap_values.T[::-1, :][y_index, x_index]
-                        text_x = x + jump_x
-                        text_y = y + jump_y
-                        ax.text(text_x, text_y, f'{label:.1f}', color='black', ha='center', va='center', fontsize=7)
+                        if not np.isnan(label):
+                            ax.text(xedges[x_index] + 0.5*(xedges[1]-xedges[0]), 
+                                    yedges[y_index] + 0.5*(yedges[1]-yedges[0]), 
+                                    f'{label:.1f}', color='black', ha='center', va='center', fontsize=7)
+
             if show_undercoverage:
-                binned_sum_upper_proba, _, _ = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins], weights=np.round(upper_proba*100, 2))
+                binned_sum_upper_proba, _, _ = np.histogram2d(
+                    parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins], weights=np.round(upper_proba*100, 2)
+                )
                 bin_counts_upper, _, _ = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins]) 
-                heatmap_upper_values = binned_sum_upper_proba/bin_counts_upper
-                jump_x = (xedges[-1] - xedges[0]) / (2.0 * len(x_bins))
-                jump_y = (yedges[-1] - yedges[0]) / (2.0 * len(y_bins))
-                x_positions = np.linspace(start=xedges[0], stop=xedges[-1], num=len(x_bins)-1, endpoint=False)
-                y_positions = np.linspace(start=yedges[0], stop=yedges[-1], num=len(y_bins)-1, endpoint=False)
-                for y_index, y in enumerate(y_positions):
-                    for x_index, x in enumerate(x_positions):
-                        if heatmap_upper_values.T[::-1, :][y_index, x_index] < confidence_level*100:
-                            plt.scatter(x + jump_x, y + jump_y, marker='X', color='red', s=200)
+                heatmap_upper_values = binned_sum_upper_proba / bin_counts_upper
+
+                for y_index in range(len(yedges)-1):
+                    for x_index in range(len(xedges)-1):
+                        if heatmap_upper_values.T[::-1, :][y_index, x_index] < confidence_level * 100:
+                            ax.scatter(xedges[x_index] + 0.5*(xedges[1]-xedges[0]), 
+                                       yedges[y_index] + 0.5*(yedges[1]-yedges[0]), 
+                                       marker='X', color='red', s=200)
+
             if custom_ax is None:
-                # use one commmon colorbar on main figure
-                cbar = fig.colorbar(heatmap, format='%1.2f')
-                cbar.ax.yaxis.set_ticks(np.round(np.linspace(vmin_vmax[0], vmin_vmax[1], num=5), 1))
-                cbar.ax.yaxis.set_ticklabels([str(label)+"%" for label in np.round(np.linspace(vmin_vmax[0], vmin_vmax[1], num=5), 1)])
+                # Use a common colorbar
+                cbar = fig.colorbar(contour_filled, format='%1.2f')
+                standard_ticks = np.round(np.linspace(vmin_vmax[0], vmin_vmax[1], num=6), 1)
+                all_ticks = np.unique(np.sort(np.append(standard_ticks, confidence_level * 100)))
+                cbar.ax.yaxis.set_ticks(all_ticks)
+                tick_labels = [f"{label:.1f}\%" for label in all_ticks]
+                for i, label in enumerate(all_ticks):
+                    if abs(label - confidence_level*100) <= 1e-6:
+
+                        tick_labels[i] = r"$\mathbf{{{label}}}$ \textbf{{\%}}".format(label=round(label, 1))
+                cbar.ax.set_yticklabels(tick_labels, fontsize=12)
+                cbar.ax.axhline(y=confidence_level*100, xmin=0, xmax=1, color="black", linestyle="--", linewidth=2.5)
         elif param_dim == 3:
             fig = plt.figure(figsize=figsize)
             ax = fig.add_subplot(projection='3d')
@@ -100,8 +119,8 @@ def coverage_probability_plot(
             scatter = ax.scatter(parameters[:, 0], parameters[:, 1], parameters[:, 2], c=np.round(coverage_probability*100, 2), 
                                 cmap=cm.get_cmap(name='inferno'), vmin=vmin_vmax[0], vmax=vmin_vmax[1], alpha=1)
             cbar = fig.colorbar(scatter, format='%1.2f', location='top', orientation='horizontal', pad=-0.05)
-            cbar.ax.xaxis.set_ticks(np.linspace(0, 100, num=11, dtype=int))
-            cbar.ax.xaxis.set_ticklabels([str(label)+"%" for label in np.linspace(0, 100, num=11, dtype=int)])
+            cbar.ax.xaxis.set_ticks(np.linspace(0, 100, num=6, dtype=int))
+            cbar.ax.xaxis.set_ticklabels([str(label)+r"$\%$" for label in np.linspace(0, 100, num=6, dtype=int)])
         else:
             raise ValueError("Impossible to plot coverage for a parameter with more than three dimensions")
 
@@ -113,15 +132,22 @@ def coverage_probability_plot(
         
             ax.tick_params(axis='both', labelsize=20)
             if params_labels is None:
-                ax.set_xlabel(r"$\theta^{{(1)}}$", fontsize=45, labelpad=30)
-                ax.set_ylabel(r"$\theta^{{(2)}}$", fontsize=45, rotation=0, labelpad=30)
+                ax.set_xlabel(r"$\theta^{{(1)}}$", fontsize=25, labelpad=3)
+                ax.set_ylabel(r"$\theta^{{(2)}}$", fontsize=25, rotation=0, labelpad=3)
                 if param_dim == 3:
-                    ax.set_zlabel(r"$\theta^{{(3)}}$", fontsize=45, rotation=180, labelpad=30)
+                    ax.set_zlabel(r"$\theta^{{(3)}}$", fontsize=25, rotation=180, labelpad=3)
             else:
-                ax.set_xlabel(params_labels[0], fontsize=45, labelpad=30)
-                ax.set_ylabel(params_labels[1], fontsize=45, rotation=0, labelpad=30)
+                ax.set_xlabel(params_labels[0], fontsize=25, labelpad=3)
+                ax.set_ylabel(params_labels[1], fontsize=25, rotation=0, labelpad=3)
                 if param_dim == 3:
-                    ax.set_zlabel(params_labels[2], fontsize=45, rotation=180, labelpad=30)
+                    ax.set_zlabel(params_labels[2], fontsize=25, rotation=180, labelpad=3)
+            if xlims is not None:
+                ax.set_xticks(np.linspace(xlims[0], xlims[1], 5))
+                ax.set_xticklabels(np.linspace(xlims[0], xlims[1], 5))
+            if ylims is not None:
+                ax.set_yticks(np.linspace(ylims[0], ylims[1], 5))
+                ax.set_yticklabels(np.linspace(ylims[0], ylims[1], 5))
+            ax.tick_params(labelsize=18)
     
     if custom_ax is None:
         # save and show only if this is the primary figure. Used only for `param_dim == 2`
@@ -132,7 +158,7 @@ def coverage_probability_plot(
         # avoid showing subfigure separately from main plot when calling plt.show()
         plt.close()
         # return to attach global colorbar
-        return heatmap
+        return contour_filled
     
 
 def coverage_regions_plot(
