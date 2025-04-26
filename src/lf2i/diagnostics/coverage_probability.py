@@ -201,10 +201,11 @@ def compute_indicators_posterior(
     num_level_sets: int = 10_000,
     tol: float = 0.01,
     return_credible_regions: bool = False,
+    return_size: bool = False,
     verbose: bool = True,
     n_jobs: int = -2,
     **posterior_kwargs
-) -> Union[np.ndarray, Tuple[np.ndarray, Sequence[torch.Tensor]]]:
+) -> Union[np.ndarray, Tuple[np.ndarray, Sequence[torch.Tensor]], Tuple[np.ndarray, np.ndarray]]:
     """Construct an array of indicators which mark whether each value in `parameters` is included or not in the corresponding posterior credible region.
 
     Parameters
@@ -233,6 +234,8 @@ def compute_indicators_posterior(
         NOTE: this is used as a stopping criterion, but if the closest actual credible level is not within `tol` of `credible_level`, a warning is raised but the HPD region is still used.
     return_credible_regions: bool, optional
         Whether to return the credible regions computed along the way or not.
+    return_size: bool, optional
+        Whether to return the size (%points retained from the parameter grid) of each credible region.
     verbose: bool, optional
         Whether to print progress bars or not, by default True.
     n_jobs : int, optional
@@ -269,7 +272,10 @@ def compute_indicators_posterior(
     if return_credible_regions:
         return indicators, credible_regions
     else:
-        return indicators
+        if return_size:
+            return indicators, np.array([100*cr.shape[0]/parameter_grid.numpy().shape[0] for cr in credible_regions])
+        else:
+            return indicators
 
 
 def compute_indicators_prediction(

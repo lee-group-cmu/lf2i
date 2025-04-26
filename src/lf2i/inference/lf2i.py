@@ -353,7 +353,7 @@ class LF2I:
                         posterior_kwargs = self.test_statistic.posterior_kwargs
                     else:
                         posterior_kwargs = {}
-                indicators = compute_indicators_posterior(
+                indicators, sizes = compute_indicators_posterior(
                     posterior=posterior_estimator,
                     parameters=parameters,  # TODO: what if we want to do diagnostics against both POIs and nuisances?
                     samples=samples,
@@ -363,6 +363,7 @@ class LF2I:
                     batch_size=self.test_statistic.batch_size if hasattr(self.test_statistic, "batch_size") else 1,
                     num_level_sets=num_level_sets,
                     n_jobs=n_jobs,
+                    return_size=True,
                     **posterior_kwargs
                 )
             elif region_type == 'prediction':
@@ -389,4 +390,7 @@ class LF2I:
             param_dim=parameters.shape[1] if parameters.ndim > 1 else 1,
             new_parameters=new_parameters
         )
-        return diagnostics_estimator, out_parameters, mean_proba, upper_proba, lower_proba
+        if region_type == 'posterior':
+            return diagnostics_estimator, out_parameters, mean_proba, upper_proba, lower_proba, sizes
+        else:
+            return diagnostics_estimator, out_parameters, mean_proba, upper_proba, lower_proba

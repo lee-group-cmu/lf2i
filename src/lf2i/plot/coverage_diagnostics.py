@@ -8,6 +8,7 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.axes._axes import Axes
+import matplotlib.colors as mcolors
 import seaborn as sns
 
 from lf2i.diagnostics.coverage_probability import predict_r_estimator
@@ -28,7 +29,8 @@ def coverage_probability_plot(
     vmin_vmax: Optional[Union[Tuple, List]] = None,
     custom_ax: Optional[Axes] = None,  # if passing custom ax for pairplot
     show_text: bool = False,
-    show_undercoverage: bool = False
+    show_undercoverage: bool = False,
+    title: Optional[str] = None
 ) -> None:
     if param_dim == 1:
         df_plot = pd.DataFrame({
@@ -38,7 +40,7 @@ def coverage_probability_plot(
             "upper_proba": upper_proba.reshape(-1,)
         }).sort_values(by="parameters")
 
-        _, ax = plt.subplots(1, 1, figsize=figsize)
+        _, ax = plt.subplots(1, 1)
         ax.plot(df_plot.parameters, df_plot.mean_proba, color='crimson', label='Estimated Coverage')
         ax.plot(df_plot.parameters, df_plot.lower_proba, color='crimson')
         ax.plot(df_plot.parameters, df_plot.upper_proba, color='crimson')
@@ -56,7 +58,8 @@ def coverage_probability_plot(
     else:
         vmin_vmax = vmin_vmax or (0, 100)
         if param_dim == 2:
-            fig = plt.figure(figsize=figsize)
+            if custom_ax is None:
+                fig = plt.figure()
             ax = custom_ax or plt.gca()
 
             x_bins = np.histogram_bin_edges(parameters[:, 0], bins='auto')
@@ -67,10 +70,11 @@ def coverage_probability_plot(
             bin_counts, _, _ = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins]) 
             heatmap_values = binned_sum_proba / bin_counts
 
-            levels = np.linspace(vmin_vmax[0], vmin_vmax[1], num=10)
-            contour_filled = ax.contourf(xedges[:-1], yedges[:-1], heatmap_values.T[::-1], levels=levels, cmap='inferno', extend='both')
+            levels = np.linspace(vmin_vmax[0], vmin_vmax[1], num=15)
+            cmap, norm = create_jetr_cmap(confidence_level=confidence_level*100)
+            contour_filled = ax.contourf(xedges[:-1], yedges[:-1], heatmap_values.T[::-1], levels=levels, cmap=cmap, norm=norm, extend='both')
             contour_lines = ax.contour(xedges[:-1], yedges[:-1], heatmap_values.T[::-1], levels=levels, colors="white", linewidths=0.8)
-            clabels = ax.clabel(contour_lines, levels[::2], inline=True, fontsize=15, fmt="%1.1f%%")
+            clabels = ax.clabel(contour_lines, levels[::2], inline=True, fontsize=25, fmt="%1.1f%%")
             for txt in clabels:
                 txt.set_color("black")
                 txt.set_bbox(dict(facecolor="white", edgecolor="black", boxstyle="square,pad=0.1"))
@@ -103,31 +107,30 @@ def coverage_probability_plot(
                 # Use a common colorbar
                 cbar = fig.colorbar(contour_filled, format='%1.2f')
                 standard_ticks = np.round(np.linspace(vmin_vmax[0], vmin_vmax[1], num=6), 1)
-                all_ticks = np.unique(np.sort(np.append(standard_ticks, confidence_level * 100)))
-                cbar.ax.yaxis.set_ticks(all_ticks)
-                tick_labels = [f"{label:.1f}\%" for label in all_ticks]
+                all_ticks = np.unique(np.sort(np.append(standard_ticks[:-1], confidence_level * 100)))
+                tick_labels = [f"{label:.0f}\%" for label in all_ticks]
                 for i, label in enumerate(all_ticks):
                     if abs(label - confidence_level*100) <= 1e-6:
-
-                        tick_labels[i] = r"$\mathbf{{{label}}}$ \textbf{{\%}}".format(label=round(label, 1))
-                cbar.ax.set_yticklabels(tick_labels, fontsize=12)
+                        tick_labels[i] = r"$\mathbf{{{label}}}$\textbf{{\%}}".format(label=int(label))
+                cbar.ax.yaxis.set_ticks(all_ticks)
+                cbar.ax.set_yticklabels(tick_labels, fontsize=30)
                 cbar.ax.axhline(y=confidence_level*100, xmin=0, xmax=1, color="black", linestyle="--", linewidth=2.5)
         elif param_dim == 3:
-            fig = plt.figure(figsize=figsize)
+            fig = plt.figure()
             ax = fig.add_subplot(projection='3d')
             ax.set_box_aspect(aspect=None, zoom=0.85)
             scatter = ax.scatter(parameters[:, 0], parameters[:, 1], parameters[:, 2], c=np.round(coverage_probability*100, 2), 
                                 cmap=cm.get_cmap(name='inferno'), vmin=vmin_vmax[0], vmax=vmin_vmax[1], alpha=1)
             cbar = fig.colorbar(scatter, format='%1.2f', location='top', orientation='horizontal', pad=-0.05)
             cbar.ax.xaxis.set_ticks(np.linspace(0, 100, num=6, dtype=int))
-            cbar.ax.xaxis.set_ticklabels([str(label)+r"$\%$" for label in np.linspace(0, 100, num=6, dtype=int)])
+            cbar.ax.xaxis.set_ticklabels([str(label)+r"$\%$" for label in np.linspace(0, 100, num=6, dtype=int)], fontsize=30)
         else:
             raise ValueError("Impossible to plot coverage for a parameter with more than three dimensions")
 
         if custom_ax is None:
             # handle formatting within function passing custom ax. Used only for `param_dim == 2`
-            cbar.set_label('Estimated Coverage', fontsize=30, labelpad=10)
-            cbar.ax.tick_params(labelsize=15)
+            cbar.set_label('Estimated Coverage', fontsize=40, labelpad=10)
+            cbar.ax.tick_params(labelsize=30)
             simplefilter(action="ignore", category=UserWarning)
         
             ax.tick_params(axis='both', labelsize=20)
@@ -137,17 +140,19 @@ def coverage_probability_plot(
                 if param_dim == 3:
                     ax.set_zlabel(r"$\theta^{{(3)}}$", fontsize=25, rotation=180, labelpad=3)
             else:
-                ax.set_xlabel(params_labels[0], fontsize=25, labelpad=3)
-                ax.set_ylabel(params_labels[1], fontsize=25, rotation=0, labelpad=3)
+                ax.set_xlabel(params_labels[0], fontsize=40, labelpad=3)
+                ax.set_ylabel(params_labels[1], fontsize=40, rotation=0, labelpad=10)
                 if param_dim == 3:
                     ax.set_zlabel(params_labels[2], fontsize=25, rotation=180, labelpad=3)
             if xlims is not None:
                 ax.set_xticks(np.linspace(xlims[0], xlims[1], 5))
-                ax.set_xticklabels(np.linspace(xlims[0], xlims[1], 5))
+                ax.set_xticklabels(np.linspace(xlims[0], xlims[1], 5), fontsize=30)
             if ylims is not None:
                 ax.set_yticks(np.linspace(ylims[0], ylims[1], 5))
-                ax.set_yticklabels(np.linspace(ylims[0], ylims[1], 5))
-            ax.tick_params(labelsize=18)
+                ax.set_yticklabels(np.linspace(ylims[0], ylims[1], 5), fontsize=30)
+            ax.tick_params(labelsize=30)
+            if title is not None:
+                ax.set_title(title, size=45, pad=20)
     
     if custom_ax is None:
         # save and show only if this is the primary figure. Used only for `param_dim == 2`
@@ -156,7 +161,7 @@ def coverage_probability_plot(
         plt.show()
     else:
         # avoid showing subfigure separately from main plot when calling plt.show()
-        plt.close()
+        # plt.close()
         # return to attach global colorbar
         return contour_filled
     
@@ -418,3 +423,46 @@ def coverage_boxplot(
     if save_fig_path is not None:
         plt.savefig(save_fig_path, bbox_inches='tight')
     plt.show()
+
+
+class PinGreenNormalize(mcolors.Normalize):
+    def __init__(self, vmin=0, vmax=100, vcenter=40, green_index=0.35, clip=False):
+        super().__init__(vmin, vmax, clip)
+        self.vcenter = vcenter
+        self.green_index = green_index
+
+    def __call__(self, value, clip=None):
+        x = np.ma.masked_array(value, np.isnan(value))
+        result = np.ma.empty(x.shape, dtype=float)
+
+        # below the confidence level
+        idx_below = x <= self.vcenter
+        if self.vmin < self.vcenter:
+            result[idx_below] = (x[idx_below] - self.vmin) / (self.vcenter - self.vmin) * self.green_index
+        else:
+            # vmin == vcenter
+            result[idx_below] = 0.0
+        
+        # above the confidence level
+        idx_above = x > self.vcenter
+        if self.vcenter < self.vmax:
+            result[idx_above] = self.green_index + (
+                (x[idx_above] - self.vcenter) / (self.vmax - self.vcenter)
+                * (1.0 - self.green_index)
+            )
+        else:
+            # vcenter == vmax
+            result[idx_above] = 1.0
+        
+        return result
+
+def create_jetr_cmap(confidence_level=40):
+    """
+    Returns a reversed jet colormap plus a custom normalization that pins 
+    'confidence_level' to a bright green region.
+    """
+    green_index = 0.35  # 0.35 in jet_r is roughly bright green
+    
+    cmap = plt.get_cmap('jet_r')
+    norm = PinGreenNormalize(vmin=0, vmax=100, vcenter=confidence_level, green_index=green_index)
+    return cmap, norm

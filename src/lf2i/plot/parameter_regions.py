@@ -8,6 +8,11 @@ from matplotlib.pyplot import cm
 from matplotlib.colors import to_rgba
 from matplotlib.axes._axes import Axes
 import alphashape
+from scipy.stats import gaussian_kde
+import seaborn as sns
+import matplotlib.ticker as ticker
+import matplotlib.patches as  mpatches
+from matplotlib.legend_handler import HandlerPatch
 
 from lf2i.plot.miscellanea import PolygonPatchFixed
 
@@ -16,6 +21,7 @@ def plot_parameter_regions(
     *parameter_regions: np.ndarray, 
     param_dim: int,
     true_parameter: Optional[np.ndarray] = None,  # can plot multiple regions for the same true parameter, not different
+    prior_samples: Optional[np.ndarray] = None,
     parameter_space_bounds: Optional[Dict[str, float]] = None,
     colors: Optional[Sequence[str]] = None,
     region_names: Optional[Sequence[str]] = None,
@@ -26,9 +32,11 @@ def plot_parameter_regions(
     alpha: Optional[float] = None,
     scatter: bool = True,
     log_scale: bool = False,
-    title: str = 'Parameter Regions',
+    title: Optional[str] = None,
     figsize: Optional[Sequence[int]] = (15, 15),
-    save_fig_path: Optional[str] = None
+    save_fig_path: Optional[str] = None,
+    remove_legend: bool = False,
+    custom_ax: Optional[Axes] = None
 ) -> None:
     """Dispatcher to plot parameter regions of different dimensionality.
     """
@@ -57,9 +65,24 @@ def plot_parameter_regions(
         colors = colors or cm.rainbow(np.linspace(0, 1, len(region_names)))
         linestyles = cycle(linestyles) if linestyles else cycle(['-', '--', '-.', ':'])
         assert len(region_names) == len(colors) == len(parameter_regions)
-        fig, ax = plt.subplots(1, 1, figsize=figsize)
+        if custom_ax is None:
+            fig, ax = plt.subplots(1, 1, figsize=figsize)
+        else:
+            ax = custom_ax
+
+        if prior_samples is not None:
+            kde = gaussian_kde(prior_samples.T)
+            x = np.linspace(*parameter_space_bounds[param_names[0]].values(), 100)
+            y = np.linspace(*parameter_space_bounds[param_names[1]].values(), 100)
+            xx, yy = np.meshgrid(x, y)
+            grid_coords = np.vstack([xx.ravel(), yy.ravel()])
+            density = kde(grid_coords).reshape(xx.shape)
+            contour_levels = [lvl for lvl in np.linspace(density.min(), density.max(), 9) if lvl > 1e-10]
+            ax.contourf(xx, yy, density, levels=contour_levels, cmap=sns.color_palette('Greys', as_cmap=True), alpha=0.8, zorder=1, locator=ticker.MaxNLocator(prune = 'lower'))
+            ax.contour(xx, yy, density, levels=contour_levels, colors='darkgrey', linewidths=0.5, linestyles='-', zorder=1)
+
         for i, param_reg in enumerate(parameter_regions):
-            leg_handles, leg_labels = plot_parameter_region_2D(
+            leg_handles, _ = plot_parameter_region_2D(
                 parameter_region=param_reg, 
                 true_parameter=true_parameter, 
                 parameter_space_bounds=parameter_space_bounds, 
@@ -73,14 +96,33 @@ def plot_parameter_regions(
                 scatter=scatter,
                 custom_ax=ax
             )
-        legend = fig.legend(leg_handles, leg_labels)
+            merged_handle = mpatches.Patch()
+            merged_handle.patches = leg_handles
+            leg_handles = [merged_handle]
+            leg_labels = [region_names[0].split(' ')[0] + ' ' + '-'.join([rn.split(' ')[1][:-2] for rn in region_names]) + '\%']
+
+        if prior_samples is not None and 'FreB' not in region_names[0]:
+            leg_handles += [mpatches.Patch(edgecolor='darkgrey', facecolor=plt.cm.Greys(80), linewidth=2, label='Prior')]
+            leg_labels += ['Prior']
+        legend = ax.legend(
+            leg_handles, leg_labels, handler_map={leg_handles[0]: MergedPatchHandler(num_patches=len(parameter_regions), gap_ratio=0.1)}, 
+            prop={'size': 25}, loc='lower left', handlelength=3
+        )
         if alpha_shape:
             legend.legend_handles[0]._sizes = [40]
+        if remove_legend:
+            ax.get_legend().remove()
         
-        ax.set_xlabel(r'$\theta_0$' if labels is None else labels[0], fontsize=20)
-        ax.tick_params(axis='x', labelsize=12)
-        ax.set_ylabel(r'$\theta_1$' if labels is None else labels[1], fontsize=20, labelpad=3, rotation=0)
-        ax.tick_params(axis='y', labelsize=12)
+        ax.set_xlabel(r'$\theta_0$' if labels is None else labels[0], fontsize=25)
+        ax.tick_params(axis='x', labelsize=18)
+        ax.set_ylabel(r'$\theta_1$' if labels is None else labels[1], fontsize=25, labelpad=3, rotation=0)
+        ax.tick_params(axis='y', labelsize=18)
+        ax.set_xticks(np.linspace(-10, 10, 5).astype(int))
+        ax.set_xticklabels(np.linspace(-10, 10, 5).astype(int))
+        ax.set_yticks(np.linspace(-10, 10, 5).astype(int))
+        ax.set_yticklabels(np.linspace(-10, 10, 5).astype(int))
+        if title is not None:
+            ax.set_title(title, size=25, pad=20)
     elif param_dim == 3:
         raise NotImplementedError
     else:
@@ -88,7 +130,8 @@ def plot_parameter_regions(
 
     if save_fig_path is not None:
         plt.savefig(save_fig_path, bbox_inches='tight')
-    plt.show()
+    if custom_ax is None:
+        plt.show()
 
 
 def plot_parameter_region_1D(
@@ -160,10 +203,11 @@ def plot_parameter_region_2D(
         ax.scatter(x=parameter_region[:, 0], y=parameter_region[:, 1], s=3.5, color=to_rgba(color, 1), zorder=1, label=region_name)
     if alpha_shape:
         alpha_shape = alphashape.alphashape(parameter_region, alpha=alpha)
-        patch = PolygonPatchFixed(alpha_shape, fc=to_rgba(color, 0.2), ec=to_rgba(color, 1), lw=2, label=region_name, linestyle=linestyle)
+        patch = PolygonPatchFixed(alpha_shape, fc=to_rgba(color, 0.2), ec=to_rgba(color, 1), lw=5, label=region_name, linestyle=linestyle)
         ax.add_patch(patch)
     if true_parameter is not None:
-        ax.scatter(x=true_parameter.reshape(-1,)[0], y=true_parameter.reshape(-1,)[1], alpha=1, color="red", marker="*", s=250, zorder=10)
+        ax.scatter(x=true_parameter.reshape(-1,)[0], y=true_parameter.reshape(-1,)[1], alpha=1, marker='*', facecolor='white', edgecolor='white', s=300, linewidth=2, zorder=10)
+        ax.scatter(x=true_parameter.reshape(-1,)[0], y=true_parameter.reshape(-1,)[1], alpha=1, marker='*', facecolor='none', edgecolor='red', s=300, linewidth=2, zorder=10)
     
     if parameter_space_bounds is not None:
         param_names = labels if param_names is None else param_names  # TODO: if none of them is supplied this throws an error
@@ -246,3 +290,28 @@ def parameter_regions_pairplot(
     if save_fig_path is not None:
         plt.savefig(save_fig_path, bbox_inches='tight')
     plt.show()
+
+
+class MergedPatchHandler(HandlerPatch):
+    def __init__(self, num_patches, gap_ratio=0.05, **kwargs):
+        self.num_patches = num_patches
+        self.gap_ratio = gap_ratio
+        super().__init__(**kwargs)
+
+    def create_artists(self, legend, orig_handle, xdescent, ydescent, width, height, fontsize, trans):
+        gap = width * self.gap_ratio  
+        rect_width = (width - (self.num_patches - 1) * gap) / self.num_patches
+
+        patches = []
+        for i, patch in enumerate(orig_handle.patches):
+            new_patch = mpatches.Rectangle(
+                [xdescent + i * (rect_width + gap), ydescent],
+                rect_width, height, transform=trans,
+                edgecolor=patch.get_edgecolor(), 
+                facecolor=patch.get_facecolor(),
+                linewidth=patch.get_linewidth(),
+                linestyle=patch.get_linestyle(),
+            )
+            patches.append(new_patch)
+
+        return patches
