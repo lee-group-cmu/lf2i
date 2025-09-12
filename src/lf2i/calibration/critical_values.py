@@ -84,7 +84,8 @@ def train_qr_algorithm(
                 algorithm = RandomizedSearchCV(
                     estimator=CatBoostRegressor(
                         loss_function=f'Quantile:alpha={alpha}' if isinstance(alpha, float) else f'MultiQuantile:alpha={alpha_string}',
-                        silent=True
+                        silent=True,
+                        allow_writing_files=True if verbose else False
                     ),
                     param_distributions=algorithm_kwargs['cv'],
                     n_iter=10 if 'n_iter' not in algorithm_kwargs else algorithm_kwargs['n_iter'],
