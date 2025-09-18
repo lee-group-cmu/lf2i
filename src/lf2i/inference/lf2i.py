@@ -306,6 +306,9 @@ class LF2I:
         ValueError
             If `region_type` is not among those supported and `indicators is None`
         """
+        # TODO: Allow for `sizes` to be passed to diagnostics methods and remove this statement
+        sizes = None
+
         if region_type == 'lf2i':
             assert calibration_method in ['critical-values', 'p-values']
         self.test_statistic.verbose = verbose  # lf2i verbosity takes precedence
@@ -390,7 +393,8 @@ class LF2I:
             param_dim=parameters.shape[1] if parameters.ndim > 1 else 1,
             new_parameters=new_parameters
         )
-        if region_type == 'posterior':
+
+        if region_type == 'posterior' and sizes is not None:
             return diagnostics_estimator, out_parameters, mean_proba, upper_proba, lower_proba, sizes
         else:
             return diagnostics_estimator, out_parameters, mean_proba, upper_proba, lower_proba
