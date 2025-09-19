@@ -269,6 +269,7 @@ def compute_indicators_posterior(
         out = list(zip(*Parallel(n_jobs=n_jobs)(delayed(single_hpd_region)(idx) for idx in it)))
     credible_regions, indicators = out[0], np.array(out[1])
     
+    # TODO: handle additional cases where sizes, indicators, and credible_regions can be passed
     if return_credible_regions:
         return indicators, credible_regions
     else:
