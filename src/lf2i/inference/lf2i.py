@@ -133,6 +133,8 @@ class LF2I:
             self.test_statistic.estimate(*T)  # TODO: control verbosity when estimating
             
         # estimate critical values or p-values
+        if calibration_model is not None and isinstance(calibration_model, dict):
+            self.calibration_model = calibration_model
         if not self.calibration_model:  # need to evaluate test statistic for calibration only the first time the procedure is run
             if verbose:
                 print('\nCalibration ...', flush=True)
@@ -143,6 +145,9 @@ class LF2I:
             else:
                 self.parameters_calib, samples_calib = T_prime[0], T_prime[1]
             self.test_statistics_calib = self.test_statistic.evaluate(self.parameters_calib, samples_calib, mode='critical_values')
+        else:
+            if verbose:
+                print('\nCalibration already complete', flush=True)
         
         # TODO: calib_dict_key is necessary if training multiple quantile regressors separately at different levels alpha.
         # Eventually it should be removed because 
@@ -150,6 +155,8 @@ class LF2I:
         #   2) better and cheaper to estimate quantiles jointly anyway (although still no guarantee of avoiding crossings)
         calib_dict_key = f'{confidence_level:.2f}' if isinstance(confidence_level, float) else 'multiple_levels'
         if (calib_dict_key not in self.calibration_model) or retrain_calibration:
+            if verbose:
+                print('\nRetraining calibration...')
             if (calibration_model == 'cat-gb') and (calibration_model_kwargs == {}):
                 self.calibration_model_kwargs = { # random search over max depth and number of trees via 5-fold CV
                     'cv': {'iterations': [100, 300, 500, 700, 1000], 'depth': [1, 3, 5, 7, 10]},
@@ -202,6 +209,8 @@ class LF2I:
             ))
             p_values = None
         else:
+            if verbose:
+                print('\nComputing p-values...')
             critical_values = None
             # p-values are amortized with respect to levels. Output is always a matrix of dims (num_observations X eval_grid.shape[0], 1)
             p_values = self.calibration_model[calib_dict_key].predict_proba(
@@ -212,6 +221,8 @@ class LF2I:
         alpha = [1-confidence_level] if isinstance(confidence_level, float) else [1-cl for cl in confidence_level]
         confidence_regions = []
         for idx, a in enumerate(alpha):
+            if verbose:
+                print(f'\nCreating set {idx}...')
             confidence_regions.append(compute_confidence_regions(
                 calibration_method=calibration_method,
                 test_statistic=test_statistics_x,
