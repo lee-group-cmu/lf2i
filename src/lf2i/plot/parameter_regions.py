@@ -15,12 +15,13 @@ import matplotlib.patches as  mpatches
 from matplotlib.legend_handler import HandlerPatch
 
 from lf2i.plot.miscellanea import PolygonPatchFixed
+from lf2i.utils.miscellanea import to_np_if_torch
 
 
 def plot_parameter_regions(
     *parameter_regions: np.ndarray, 
     param_dim: int,
-    true_parameter: Optional[np.ndarray] = None,  # can plot multiple regions for the same true parameter, not different
+    true_parameter: Optional[np.ndarray] = None,
     prior_samples: Optional[np.ndarray] = None,
     parameter_space_bounds: Optional[Dict[str, float]] = None,
     colors: Optional[Sequence[str]] = None,
@@ -36,14 +37,19 @@ def plot_parameter_regions(
     figsize: Optional[Sequence[int]] = (15, 15),
     save_fig_path: Optional[str] = None,
     remove_legend: bool = False,
-    custom_ax: Optional[Axes] = None
+    custom_ax: Optional[Axes] = None,
+    show_diagonal: Optional[bool] = False,
+    diagonal_type: Optional[str] = 'hist',  # 'hist', 'kde', or 'none'
+    filter_subset: Optional[bool] = False,
+    subset_threshold: Optional[float] = 1.0
 ) -> None:
     """Dispatcher to plot parameter regions of different dimensionality.
+    
+    For param_dim > 2, creates a pairplot showing all 2D projections.
     """
     if param_dim == 1:
         fig, ax = plt.subplots(1, 1, figsize=figsize if figsize is not None else (3, 9))
 
-        # TODO: adapt to plot multiples as for 2D
         linestyles = cycle(linestyles) if linestyles else cycle(['-', '--', '-.', ':'])
         colors = colors or cm.rainbow(np.linspace(0, 1, len(region_names)))
         assert len(region_names) == len(colors) == len(parameter_regions)
@@ -61,6 +67,7 @@ def plot_parameter_regions(
         ax.tick_params(labelsize=20)
         ax.legend(prop={'size': 12})
         ax.set_title(title, fontsize=15)
+        
     elif param_dim == 2:
         colors = colors or cm.rainbow(np.linspace(0, 1, len(region_names)))
         linestyles = cycle(linestyles) if linestyles else cycle(['-', '--', '-.', ':'])
@@ -123,10 +130,159 @@ def plot_parameter_regions(
         ax.set_yticklabels(np.linspace(-10, 10, 5).astype(int))
         if title is not None:
             ax.set_title(title, size=25, pad=20)
-    elif param_dim == 3:
-        raise NotImplementedError
+            
+    elif param_dim >= 3:
+        # Create pairplot for higher dimensions
+        colors = colors or cm.rainbow(np.linspace(0, 1, len(region_names)))
+        linestyles_list = linestyles or ['-', '--', '-.', ':']
+        assert len(region_names) == len(colors) == len(parameter_regions)
+        
+        # Determine figure size
+        if figsize is None:
+            figsize = (4 * param_dim, 4 * param_dim)
+        
+        fig, axes = plt.subplots(param_dim, param_dim, figsize=figsize)
+        
+        # Generate parameter labels if not provided
+        if labels is None:
+            labels = [rf'$\theta_{{{i}}}$' for i in range(param_dim)]
+        
+        # Helper function to filter points based on distance from true_parameter
+        def filter_by_proximity(param_reg, dims_to_plot, threshold=1.0, true_parameter=true_parameter):
+            """
+            Filter parameter region to only include points within threshold distance
+            from true_parameter in all dimensions except those being plotted.
+            
+            Parameters:
+            -----------
+            param_reg : array
+                Parameter region to filter
+            dims_to_plot : list
+                Dimensions being plotted (to exclude from filtering)
+            threshold : float
+                Maximum distance from true_parameter in non-plotted dimensions
+            
+            Returns:
+            --------
+            filtered_reg : array
+                Filtered parameter region
+            """
+            if not filter_subset or true_parameter is None:
+                return param_reg
+            
+            # Get dimensions to filter on (all except those being plotted)
+            dims_to_filter = [d for d in range(param_dim) if d not in dims_to_plot]
+            
+            if len(dims_to_filter) == 0:
+                return param_reg
+            
+            # Calculate distance in non-plotted dimensions
+            true_parameter = to_np_if_torch(true_parameter)
+            param_reg = to_np_if_torch(param_reg)
+            mask = np.ones(len(param_reg), dtype=bool)
+            for d in dims_to_filter:
+                mask &= np.abs(param_reg[:, d] - true_parameter[d]) <= threshold
+            
+            return param_reg[mask]
+        
+        # Iterate over all pairs of dimensions
+        for i in range(param_dim):
+            for j in range(param_dim):
+                ax = axes[i, j] if param_dim > 1 else axes
+                
+                if i == j and show_diagonal:
+                    # Diagonal: show 1D distribution
+                    if diagonal_type == 'hist':
+                        for k, param_reg in enumerate(parameter_regions):
+                            # Filter to subset if enabled
+                            filtered_reg = filter_by_proximity(param_reg, [i])
+                            if len(filtered_reg) > 0:
+                                ax.hist(filtered_reg[:, i], bins=30, alpha=0.5, color=colors[k], 
+                                       label=region_names[k] if i == 0 else None, density=True)
+                        if true_parameter is not None:
+                            ax.axvline(true_parameter[i], color='red', linestyle='--', linewidth=2, label='True' if i == 0 else None)
+                    elif diagonal_type == 'kde':
+                        for k, param_reg in enumerate(parameter_regions):
+                            # Filter to subset if enabled
+                            filtered_reg = filter_by_proximity(param_reg, [i])
+                            if len(filtered_reg) > 0:
+                                kde = gaussian_kde(filtered_reg[:, i])
+                                x_range = np.linspace(filtered_reg[:, i].min(), filtered_reg[:, i].max(), 100)
+                                ax.plot(x_range, kde(x_range), color=colors[k], 
+                                       linestyle=linestyles_list[k % len(linestyles_list)],
+                                       label=region_names[k] if i == 0 else None)
+                        if true_parameter is not None:
+                            ax.axvline(true_parameter[i], color='red', linestyle='--', linewidth=2, label='True' if i == 0 else None)
+                    
+                    ax.set_ylabel('Density', fontsize=12)
+                    if i == 0 and diagonal_type != 'none':
+                        ax.legend(prop={'size': 10}, loc='upper right')
+                    
+                elif i > j:
+                    # Lower triangle: scatter plots with 2D regions
+                    # Plot prior samples if provided
+                    if prior_samples is not None:
+                        kde = gaussian_kde(prior_samples[:, [j, i]].T)
+                        if param_names is not None and parameter_space_bounds is not None:
+                            x = np.linspace(*parameter_space_bounds[param_names[j]].values(), 100)
+                            y = np.linspace(*parameter_space_bounds[param_names[i]].values(), 100)
+                        else:
+                            x = np.linspace(prior_samples[:, j].min(), prior_samples[:, j].max(), 100)
+                            y = np.linspace(prior_samples[:, i].min(), prior_samples[:, i].max(), 100)
+                        xx, yy = np.meshgrid(x, y)
+                        grid_coords = np.vstack([xx.ravel(), yy.ravel()])
+                        density = kde(grid_coords).reshape(xx.shape)
+                        contour_levels = [lvl for lvl in np.linspace(density.min(), density.max(), 9) if lvl > 1e-10]
+                        ax.contourf(xx, yy, density, levels=contour_levels, cmap=sns.color_palette('Greys', as_cmap=True), 
+                                   alpha=0.5, zorder=1, locator=ticker.MaxNLocator(prune='lower'))
+                    
+                    # Plot parameter regions
+                    linestyles_cycle = cycle(linestyles_list)
+                    for k, param_reg in enumerate(parameter_regions):
+                        # Filter to subset if enabled
+                        filtered_reg = filter_by_proximity(param_reg, [j, i])
+                        
+                        if len(filtered_reg) > 0:
+                            # Extract 2D projection
+                            param_reg_2d = filtered_reg[:, [j, i]]
+                            true_param_2d = true_parameter[[j, i]] if true_parameter is not None else None
+                            param_names_2d = [param_names[j], param_names[i]] if param_names is not None else None
+                            labels_2d = [labels[j], labels[i]]
+                            
+                            plot_parameter_region_2D(
+                                parameter_region=param_reg_2d,
+                                true_parameter=true_param_2d,
+                                parameter_space_bounds=parameter_space_bounds,
+                                labels=labels_2d,
+                                param_names=param_names_2d,
+                                color=colors[k],
+                                linestyle=next(linestyles_cycle),
+                                region_name=region_names[k],
+                                alpha_shape=alpha_shape,
+                                alpha=alpha,
+                                scatter=scatter,
+                                custom_ax=ax
+                            )
+                else:
+                    # Upper triangle: hide or show correlation/info
+                    ax.axis('off')
+                
+                # Set labels only on edges
+                if i == param_dim - 1:
+                    ax.set_xlabel(labels[j], fontsize=14)
+                else:
+                    ax.set_xticklabels([])
+                
+                if j == 0 and i != j:
+                    ax.set_ylabel(labels[i], fontsize=14, rotation=0, labelpad=20)
+                elif i != j:
+                    ax.set_yticklabels([])
+        
+        plt.tight_layout()
+        if title is not None:
+            fig.suptitle(title, fontsize=20, y=1.02)
     else:
-        raise ValueError("Impossible to plot a confidence region for parameters with more than 3 dimensions. Use 'parameter_regions_pairplot'.")
+        raise ValueError("param_dim must be a positive integer")
 
     if save_fig_path is not None:
         plt.savefig(save_fig_path, bbox_inches='tight')
@@ -304,13 +460,25 @@ class MergedPatchHandler(HandlerPatch):
 
         patches = []
         for i, patch in enumerate(orig_handle.patches):
+            # Get the linestyle and handle dash patterns
+            linestyle = patch.get_linestyle()
+
+            # Map dash patterns to standard linestyle strings
+            if isinstance(linestyle, (list, tuple)):
+                # Common dash pattern mappings
+                dash_map = {
+                    (0.0, None): '-',      # solid
+                    (None, None): '-',     # solid
+                }
+                linestyle = dash_map.get(tuple(linestyle) if isinstance(linestyle, list) else linestyle, '-')
+
             new_patch = mpatches.Rectangle(
                 [xdescent + i * (rect_width + gap), ydescent],
                 rect_width, height, transform=trans,
                 edgecolor=patch.get_edgecolor(), 
                 facecolor=patch.get_facecolor(),
                 linewidth=patch.get_linewidth(),
-                linestyle=patch.get_linestyle(),
+                linestyle=linestyle,
             )
             patches.append(new_patch)
 
