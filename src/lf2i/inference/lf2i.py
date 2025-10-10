@@ -135,6 +135,10 @@ class LF2I:
         # estimate critical values or p-values
         if calibration_model is not None and isinstance(calibration_model, dict):
             self.calibration_model = calibration_model
+
+            if T_prime is not None:
+                self.parameters_calib, samples_calib = T_prime[0], T_prime[1]
+                self.test_statistics_calib = self.test_statistic.evaluate(self.parameters_calib, samples_calib, mode='critical_values')
         if not self.calibration_model:  # need to evaluate test statistic for calibration only the first time the procedure is run
             if verbose:
                 print('\nCalibration ...', flush=True)
@@ -426,6 +430,8 @@ class LF2I:
             calibration_model=self.calibration_model,
             verbose=True
         )
+        if len(confidence_level) > 1:
+            confidence_sets = confidence_sets[0]
         b_double_prime_sizes = np.array([cs.shape[0] / evaluation_grid.shape[0] for cs in confidence_sets])
 
         self.power_model = train_qr_algorithm(
