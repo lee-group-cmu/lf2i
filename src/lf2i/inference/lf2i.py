@@ -409,3 +409,36 @@ class LF2I:
             return diagnostics_estimator, out_parameters, mean_proba, upper_proba, lower_proba, sizes
         else:
             return diagnostics_estimator, out_parameters, mean_proba, upper_proba, lower_proba
+
+    def power(
+        self,
+        T_double_prime,
+        evaluation_grid,
+        confidence_level,
+        calibration_method='critical-values'
+    ):
+        b_double_prime_params, b_double_prime_samples = T_double_prime
+        confidence_sets = self.inference(
+            x=b_double_prime_samples,
+            evaluation_grid=evaluation_grid,
+            confidence_level=confidence_level,
+            calibration_method=calibration_method,
+            calibration_model=self.calibration_model,
+            verbose=True
+        )
+        b_double_prime_sizes = np.array([cs.shape[0] / evaluation_grid.shape[0] for cs in confidence_sets])
+
+        self.power_model = train_qr_algorithm(
+            test_statistics=b_double_prime_sizes,
+            parameters=b_double_prime_params,
+            algorithm='cat-gb',
+            algorithm_kwargs={
+                'iterations': 100, 'depth': 3
+            },
+            alpha=0.5,
+            param_dim=self.parameters_calib.shape[1] if self.parameters_calib.ndim > 1 else 1,
+            verbose=True,
+            n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2  # all cores minus 1
+        )
+
+        return b_double_prime_sizes
