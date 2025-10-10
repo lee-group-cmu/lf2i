@@ -69,28 +69,67 @@ class BFF(TestStatistic):
 
     def estimate(
         self,
-        labels: Union[np.ndarray, torch.Tensor], 
         parameters: Union[np.ndarray, torch.Tensor], 
         samples: Union[np.ndarray, torch.Tensor],
     ) -> None:
         r"""Train the estimator for odds (i.e. likelihood up to a normalization constant).
-        The training dataset should contain two classes:
-            - label 1, with pairs :math:`(\theta, X)` where :math:`X \sim p(\cdot;\theta)` is drawn from the likelihood/simulator.
-            - label 0, with pairs :math:`(\theta, X)` where :math:`X \sim G` is drawn from a dominating reference distribution (e.g., empirical marginal).
-        To goal is to train a classifier that is able to distinguish whether a sample comes from the likelihood or not.
+        
+        The training dataset is created by:
+            - label 1: pairs :math:`(\theta, X)` where :math:`X \sim p(\cdot;\theta)` 
+            from the true joint distribution (original matched pairs).
+            - label 0: pairs :math:`(\theta', X)` where :math:`\theta'` is a permuted 
+            parameter vector, ensuring no overlap with the positive class pairs.
+        
+        This creates a classifier that distinguishes true parameter-sample pairs from 
+        mismatched pairs, effectively learning the likelihood ratio.
+        
         See https://arxiv.org/abs/2107.03920 for a more detailed explanation.
 
         Parameters
         ----------
-        labels : Union[np.ndarray, torch.Tensor]
-            Class labels 0/1.
         parameters : Union[np.ndarray, torch.Tensor]
-            Simulated parameters to be used for training.
+            Simulated parameters from the true joint distribution (n_samples, param_dim).
         samples : Union[np.ndarray, torch.Tensor]
-            Simulated samples to be used for training.
+            Simulated samples from the true joint distribution (n_samples, sample_dim).
         """
-        labels, params_samples = preprocess_odds_estimation(labels, parameters, samples, self.param_dim, self.estimator)
-        self.estimator.fit(X=params_samples, y=labels)
+        # Convert to numpy for easier manipulation
+        if isinstance(parameters, torch.Tensor):
+            parameters = parameters.cpu().numpy()
+        if isinstance(samples, torch.Tensor):
+            samples = samples.cpu().numpy()
+        
+        n_samples = len(parameters)
+        
+        # Create positive class (label=1): original matched pairs
+        params_pos = parameters.copy()
+        samples_pos = samples.copy()
+        labels_pos = np.ones(n_samples, dtype=np.int64)
+        
+        # Create negative class (label=0): permuted pairs
+        # For each index i, sample from all indices except i (derangement)
+        permutation = np.array([np.random.choice(np.delete(np.arange(n_samples), i)) 
+                            for i in range(n_samples)])
+        
+        params_neg = parameters[permutation].copy()
+        samples_neg = samples.copy()  # Keep samples the same, permute parameters
+        labels_neg = np.zeros(n_samples, dtype=np.int64)
+        
+        # Combine positive and negative classes
+        all_parameters = np.vstack([params_pos, params_neg])
+        all_samples = np.vstack([samples_pos, samples_neg])
+        all_labels = np.concatenate([labels_pos, labels_neg])
+        
+        # Shuffle the combined dataset
+        shuffle_idx = np.random.permutation(2 * n_samples)
+        all_parameters = all_parameters[shuffle_idx]
+        all_samples = all_samples[shuffle_idx]
+        all_labels = all_labels[shuffle_idx]
+        
+        # Preprocess and train the sklearn MLPClassifier
+        labels_tensor, params_samples = preprocess_odds_estimation(
+            all_labels, all_parameters, all_samples, self.param_dim, self.estimator
+        )
+        self.estimator.fit(X=params_samples, y=labels_tensor)
         self._estimator_trained['odds'] = True
 
     def evaluate(
@@ -141,6 +180,7 @@ class BFF(TestStatistic):
         probs: Union[np.ndarray, torch.Tensor]
     ) -> np.ndarray:
         probs = to_np_if_torch(probs)
+        probs = np.clip(probs, 1e-4, 1e4)
         return np.prod((probs[:, 1] / probs[:, 0]).reshape(-1, self.batch_size), axis=1)
 
     def _integrate_odds(
