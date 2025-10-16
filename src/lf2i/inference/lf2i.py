@@ -419,21 +419,58 @@ class LF2I:
         T_double_prime,
         evaluation_grid,
         confidence_level,
-        calibration_method='critical-values'
+        calibration_method='critical-values',
+        batch_size=1000
     ):
         b_double_prime_params, b_double_prime_samples = T_double_prime
-        confidence_sets = self.inference(
-            x=b_double_prime_samples,
-            evaluation_grid=evaluation_grid,
-            confidence_level=confidence_level,
-            calibration_method=calibration_method,
-            calibration_model=self.calibration_model,
-            verbose=True
-        )
-        if len(confidence_level) > 1:
-            confidence_sets = confidence_sets[0]
-        b_double_prime_sizes = np.array([cs.shape[0] / evaluation_grid.shape[0] for cs in confidence_sets])
-
+        n_samples = len(b_double_prime_samples)
+        n_batches = int(np.ceil(n_samples / batch_size))
+        
+        print(f"Processing {n_samples} samples in {n_batches} batches of size {batch_size}")
+        
+        b_double_prime_sizes = []
+        
+        for i in range(n_batches):
+            start_idx = i * batch_size
+            end_idx = min((i + 1) * batch_size, n_samples)
+            
+            print(f"Batch {i+1}/{n_batches}: samples {start_idx} to {end_idx}")
+            
+            # Process batch
+            batch_samples = b_double_prime_samples[start_idx:end_idx]
+            
+            confidence_sets_batch = self.inference(
+                x=batch_samples,
+                evaluation_grid=evaluation_grid,
+                confidence_level=confidence_level,
+                calibration_method=calibration_method,
+                calibration_model=self.calibration_model,
+                verbose=False  # Reduce verbosity in loop
+            )
+            
+            if len(confidence_level) > 1:
+                confidence_sets_batch = confidence_sets_batch[0]
+            
+            # Compute sizes for this batch
+            batch_sizes = np.array([
+                cs.shape[0] / evaluation_grid.shape[0] 
+                for cs in confidence_sets_batch
+            ])
+            b_double_prime_sizes.append(batch_sizes)
+            
+            # Clean up immediately
+            del confidence_sets_batch, batch_samples, batch_sizes
+            import gc
+            gc.collect()
+            
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        
+        # Concatenate all batch results
+        b_double_prime_sizes = np.concatenate(b_double_prime_sizes)
+        
+        print(f"Training power model on {len(b_double_prime_sizes)} samples...")
+        
         self.power_model = train_qr_algorithm(
             test_statistics=b_double_prime_sizes,
             parameters=b_double_prime_params,
@@ -444,7 +481,7 @@ class LF2I:
             alpha=0.5,
             param_dim=self.parameters_calib.shape[1] if self.parameters_calib.ndim > 1 else 1,
             verbose=True,
-            n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2  # all cores minus 1
+            n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2
         )
 
         return b_double_prime_sizes
