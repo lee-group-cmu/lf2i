@@ -124,10 +124,26 @@ def plot_parameter_regions(
         ax.tick_params(axis='x', labelsize=18)
         ax.set_ylabel(r'$\theta_1$' if labels is None else labels[1], fontsize=25, labelpad=3, rotation=0)
         ax.tick_params(axis='y', labelsize=18)
-        ax.set_xticks(np.linspace(-10, 10, 5).astype(int))
-        ax.set_xticklabels(np.linspace(-10, 10, 5).astype(int))
-        ax.set_yticks(np.linspace(-10, 10, 5).astype(int))
-        ax.set_yticklabels(np.linspace(-10, 10, 5).astype(int))
+        
+        if parameter_space_bounds is not None and param_names is not None:
+            # Set limits based on parameter_space_bounds
+            x_low, x_high = parameter_space_bounds[param_names[0]].values()
+            y_low, y_high = parameter_space_bounds[param_names[1]].values()
+            ax.set_xlim(x_low, x_high)
+            ax.set_ylim(y_low, y_high)
+            
+            # Set ticks based on the actual bounds
+            ax.set_xticks(np.linspace(x_low, x_high, 5))
+            ax.set_xticklabels(np.linspace(x_low, x_high, 5).astype(int))
+            ax.set_yticks(np.linspace(y_low, y_high, 5))
+            ax.set_yticklabels(np.linspace(y_low, y_high, 5).astype(int))
+        else:
+            # Fallback to hardcoded values
+            ax.set_xticks(np.linspace(-10, 10, 5).astype(int))
+            ax.set_xticklabels(np.linspace(-10, 10, 5).astype(int))
+            ax.set_yticks(np.linspace(-10, 10, 5).astype(int))
+            ax.set_yticklabels(np.linspace(-10, 10, 5).astype(int))
+
         if title is not None:
             ax.set_title(title, size=25, pad=20)
             
@@ -286,6 +302,7 @@ def plot_parameter_regions(
 
     if save_fig_path is not None:
         plt.savefig(save_fig_path, bbox_inches='tight')
+        plt.close()
     if custom_ax is None:
         plt.show()
 
