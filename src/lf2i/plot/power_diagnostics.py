@@ -104,15 +104,34 @@ def set_size_plot(
         ax.tick_params(axis='both', labelsize=20)
         if params_labels is None:
             ax.set_xlabel(r"$\theta^{{(1)}}$", fontsize=25, labelpad=3)
-            ax.set_ylabel(r"$\theta^{{(2)}}$", fontsize=25, labelpad=3)
+            ax.set_ylabel(r"$\theta^{{(2)}}$", fontsize=25, labelpad=10, rotation=0)
         else:
             ax.set_xlabel(params_labels[0], fontsize=25, labelpad=3)
-            ax.set_ylabel(params_labels[1], fontsize=25, labelpad=10)
+            ax.set_ylabel(params_labels[1], fontsize=25, labelpad=10, rotation=0)
         
         if xlims is not None:
             ax.set_xlim(*xlims)
         if ylims is not None:
             ax.set_ylim(*ylims)
+
+        if xlims is not None and ylims is not None:
+            # Set limits based on parameter_space_bounds
+            x_low, x_high = xlims
+            y_low, y_high = ylims
+            ax.set_xlim(x_low, x_high)
+            ax.set_ylim(y_low, y_high)
+            
+            # Set ticks based on the actual bounds
+            ax.set_xticks(np.linspace(x_low, x_high, 5))
+            ax.set_xticklabels(np.linspace(x_low, x_high, 5))
+            ax.set_yticks(np.linspace(y_low, y_high, 5))
+            ax.set_yticklabels(np.linspace(y_low, y_high, 5))
+        else:
+            # Fallback to hardcoded values
+            ax.set_xticks(np.linspace(-10, 10, 5))
+            ax.set_xticklabels(np.linspace(-10, 10, 5))
+            ax.set_yticks(np.linspace(-10, 10, 5))
+            ax.set_yticklabels(np.linspace(-10, 10, 5))
             
     elif param_dim == 3:
         fig = plt.figure(figsize=figsize)
@@ -151,7 +170,9 @@ def set_size_plot(
     if custom_ax is None:
         if save_fig_path is not None:
             plt.savefig(save_fig_path, bbox_inches='tight')
-        plt.show()
+            plt.close()
+        else:
+            plt.show()
     else:
         return contour_filled if param_dim == 2 else None
 
