@@ -3,6 +3,7 @@ from typing import Union, Tuple, Any, Optional, List, Dict
 import numpy as np
 import torch
 from torch.nn import BCEWithLogitsLoss
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV
 from catboost import CatBoostClassifier
@@ -160,8 +161,9 @@ def estimate_rejection_proba(
     rejection_indicators : np.ndarray
         Rejection indicators as provided by `lf2i.calibration.p_values.augment_calibration_set`.
     algorithm : str
-        Either 'cat-gb' for gradient boosted trees, 'nn' for a feed-forward neural network, or a custom algorithm (Any).
-        The latter must implement the `fit(X=..., y=...)` method.
+        Either 'cat-gb' for gradient boosted trees, 'nn' for a feed-forward neural network, 
+        'logistic' for logistic regression, 'gam' for a radially symmetric generalized additive model, 
+        or a custom algorithm (Any). The latter must implement the `fit(X=..., y=...)` method.
     acceptance_region : str
         Whether the acceptance region for the test statistic is defined to be on the right or on the left of the cutoff. 
         Must be either `left` or `right`. 
@@ -170,6 +172,7 @@ def estimate_rejection_proba(
         If algorithm == 'nn', then 'hidden_layer_shapes', 'epochs' and 'batch_size' must be present.
         If algorithm == 'cat-gb', pass {'cv': hp_dist} to do a randomized search over the hyperparameters in hp_dist (a `Dict`) via 5-fold cross validation. 
         Include 'n_iter' as a key to decide how many hyperparameter setting to sample for randomized search. Defaults to 10.
+        If algorithm == 'logistic', any valid LogisticRegression parameters can be passed.
     cat_poi_idxs : Optional[List[int]], optional
         If `algorithm == 'cat-gb'`, sequence of indexes to indicate the columns of `inputs` containing categorical POIs, by default None.
         Note that the first column of `inputs` is always the resampled cutoffs, hence this should be treated as a 1-indexed array (i.e. col 0 of POIs has index 1).
@@ -204,7 +207,7 @@ def estimate_rejection_proba(
                 )
                 algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
             
-            # TODO: not sure this is “kosher“, because the best params are chosen via CV on the same data. Maybe we should leave out a subset for CLF calib.
+            # TODO: not sure this is "kosher", because the best params are chosen via CV on the same data. Maybe we should leave out a subset for CLF calib.
             algorithm = CalibratedClassifierCV(
                 estimator=CatBoostClassifier(
                     loss_function='CrossEntropy',
@@ -218,6 +221,87 @@ def estimate_rejection_proba(
                 n_jobs=n_jobs
             )
             algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
+        elif algorithm == 'logistic':
+            inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm).reshape(-1, )
+            
+            # Use calibrated classifier for better probability estimates
+            algorithm = CalibratedClassifierCV(
+                estimator=LogisticRegression(
+                    max_iter=1000,
+                    n_jobs=n_jobs,
+                    **algorithm_kwargs
+                ),
+                method='sigmoid',
+                cv=5,
+                n_jobs=n_jobs
+            )
+            algorithm.fit(X=inputs, y=rejection_indicators)
+        elif algorithm == 'gam':
+            # raise NotImplemented
+            inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm).reshape(-1, )
+            
+            from pygam import LogisticGAM, s, te
+            
+            # Add radial distance feature
+            radius = np.linalg.norm(inputs[:, [1, 2]], axis=1)
+            inputs_with_radius = np.column_stack([inputs, radius])
+            
+            # Extract GAM hyperparameters or use defaults
+            gam_params = algorithm_kwargs if algorithm_kwargs is not None else {}
+            n_splines_T = gam_params.get('n_splines_T', 12)
+            n_splines_radius = gam_params.get('n_splines_radius', 5)
+            spline_order = gam_params.get('spline_order', 3)
+            lam_range = gam_params.get('lam_range', np.logspace(0, 5, 11))
+            include_interaction = gam_params.get('include_interaction', True)
+            
+            # Build GAM formula
+            monotone_constraint = 'monotonic_inc' if acceptance_region == 'right' else 'monotonic_dec'
+            
+            if include_interaction:
+                gam_formula = (
+                    s(0, constraints=monotone_constraint, n_splines=n_splines_T, spline_order=spline_order) +
+                    s(3, n_splines=n_splines_radius, spline_order=spline_order) +
+                    te(0, 3)
+                )
+            else:
+                gam_formula = (
+                    s(0, constraints=monotone_constraint, n_splines=n_splines_T, spline_order=spline_order) +
+                    s(3, n_splines=n_splines_radius, spline_order=spline_order)
+                )
+            
+            algorithm = LogisticGAM(gam_formula)
+            
+            # Grid search over smoothing parameters
+            if verbose:
+                print(f"GAM grid search over {len(lam_range)} lambda values...")
+            
+            algorithm.gridsearch(
+                inputs_with_radius, 
+                rejection_indicators, 
+                lam=lam_range,
+                progress=verbose
+            )
+            
+            if verbose:
+                print(f"Best lambda: {algorithm.lam}")
+                print(f"AIC: {algorithm.statistics_['AIC']:.2f}")
+                print(f"Pseudo R²: {algorithm.statistics_['pseudo_r2']['McFadden']:.3f}")
+
+            # Include transformations as needed
+            class GAMWrapper:
+                def __init__(self, gam_model):
+                    self.gam_model = gam_model
+                
+                def predict(self, X):
+                    X_with_radius = np.column_stack([X, np.linalg.norm(X[:, [1, 2]], axis=1)])
+                    return self.gam_model.predict(X_with_radius)
+                
+                def predict_proba(self, X):
+                    X_with_radius = np.column_stack([X, np.linalg.norm(X[:, [1, 2]], axis=1)])
+                    probs = self.gam_model.predict_proba(X_with_radius)
+                    return np.column_stack([1 - probs, probs])  # Return [P(class=0), P(class=1)]
+            
+            algorithm = GAMWrapper(algorithm)
         elif algorithm == 'nn':
             raise NotImplementedError
             # TODO: need to enforce monotonicity in the cutoffs, otherwise unreliable
@@ -240,7 +324,7 @@ def estimate_rejection_proba(
             learner_kwargs = {arg: algorithm_kwargs[arg] for arg in ['epochs', 'batch_size']}
             algorithm.fit(X=inputs, y=rejection_indicators, **learner_kwargs)
         else:
-            raise ValueError(f"Only 'cat-gb', 'nn' or custom algorithm (Any) are currently supported, got {algorithm}")
+            raise ValueError(f"Only 'cat-gb', 'nn', 'logistic', 'gam' or custom algorithm (Any) are currently supported, got {algorithm}")
     else:
         inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm)
         algorithm.fit(X=inputs, y=rejection_indicators)
