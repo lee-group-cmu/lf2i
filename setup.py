@@ -11,8 +11,8 @@ AUTHOR = "Luca Masserano, Niccolò Dalmasso, David Zhao, Rafael Izbicki, Ann B. 
 REQUIRES_PYTHON = ">=3.9.0, <3.12"
 
 REQUIRED = [
-    "alphashape",
-    "bayesflow",
+    # "alphashape",
+    # "bayesflow",
     "catboost",
     "click",
     "descartes",

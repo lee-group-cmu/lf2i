@@ -113,7 +113,7 @@ def plot_parameter_regions(
             leg_labels += ['Prior']
         legend = ax.legend(
             leg_handles, leg_labels, handler_map={leg_handles[0]: MergedPatchHandler(num_patches=len(parameter_regions), gap_ratio=0.1)}, 
-            prop={'size': 25}, loc='lower left', handlelength=3
+            prop={'size': 18}, loc='lower left', handlelength=3
         )
         if alpha_shape:
             legend.legend_handles[0]._sizes = [40]

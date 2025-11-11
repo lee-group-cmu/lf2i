@@ -4,8 +4,8 @@ from tqdm import tqdm
 import warnings
 from joblib import Parallel, delayed
 
-import rpy2.robjects as robj
-import rpy2.robjects.numpy2ri
+# import rpy2.robjects as robj
+# import rpy2.robjects.numpy2ri
 import numpy as np
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV

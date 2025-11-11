@@ -8,15 +8,15 @@ from torch.distributions import Distribution
 
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
 from sbi.utils.kde import KDEWrapper
-from bayesflow.amortizers import AmortizedPosterior
+# from bayesflow.amortizers import AmortizedPosterior
 
-from lf2i.estimators import PosteriorEstimator
+# from lf2i.estimators import PosteriorEstimator
 from lf2i.test_statistics import TestStatistic
 from lf2i.utils.miscellanea import to_torch_if_np, to_np_if_torch
 
 
 def hpd_region(
-    posterior: Union[NeuralPosterior, KDEWrapper, Distribution, AmortizedPosterior],
+    posterior: Union[NeuralPosterior, KDEWrapper, Distribution],
     param_grid: torch.Tensor, 
     x: torch.Tensor, 
     credible_level: float, 
@@ -61,28 +61,28 @@ def hpd_region(
     assert 0 < credible_level < 1, "Credible level must be in (0, 1)."
     x = x if (len(x.shape) > 1) else x.unsqueeze(0)
 
-    if isinstance(posterior, (NeuralPosterior, PosteriorEstimator)):
+    if isinstance(posterior, NeuralPosterior):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ... when using NSF
             posterior_probs = torch.exp(posterior.log_prob(
                 theta=param_grid, x=x, **posterior_kwargs
             ).double()).double()
-    elif isinstance(posterior, dict):
-        posterior_load = PosteriorEstimator.from_params(posterior)
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', UserWarning)
-            posterior_probs = torch.exp(posterior_load.log_prob(theta=param_grid, x=x, **posterior_kwargs).double()).double()
+    # elif isinstance(posterior, dict):
+    #     posterior_load = PosteriorEstimator.from_params(posterior)
+    #     with warnings.catch_warnings():
+    #         warnings.simplefilter('ignore', UserWarning)
+    #         posterior_probs = torch.exp(posterior_load.log_prob(theta=param_grid, x=x, **posterior_kwargs).double()).double()
     elif isinstance(posterior, (KDEWrapper, Distribution)):
         posterior_probs = torch.exp(posterior.log_prob(param_grid).double()).double()
-    elif isinstance(posterior, AmortizedPosterior):
-        posterior_probs = torch.exp(torch.tensor(posterior.log_prob(
-            input_dict={
-                'summary_conditions': x.expand(len(param_grid), x.shape[-1]). reshape(-1, 1, x.shape[-1]).numpy(),
-                'direct_conditions': None,
-                'parameters': param_grid.reshape(-1, 1, param_grid.shape[-1]).numpy()
-            },
-            **posterior_kwargs
-        )).double()).double()
+    # elif isinstance(posterior, AmortizedPosterior):
+    #     posterior_probs = torch.exp(torch.tensor(posterior.log_prob(
+    #         input_dict={
+    #             'summary_conditions': x.expand(len(param_grid), x.shape[-1]). reshape(-1, 1, x.shape[-1]).numpy(),
+    #             'direct_conditions': None,
+    #             'parameters': param_grid.reshape(-1, 1, param_grid.shape[-1]).numpy()
+    #         },
+    #         **posterior_kwargs
+    #     )).double()).double()
     else:
         raise ValueError
     posterior_probs /= torch.sum(posterior_probs)  # normalize

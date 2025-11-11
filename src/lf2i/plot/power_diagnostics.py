@@ -19,7 +19,9 @@ def set_size_plot(
     custom_ax: Optional[Axes] = None,
     show_text: bool = False,
     title: Optional[str] = None,
-    save_fig_path: Optional[str] = None
+    save_fig_path: Optional[str] = None,
+    n_bins: int = 30,
+    n_levels: int = 15
 ) -> None:
     """Plot average confidence set sizes across parameter space."""
     
@@ -46,9 +48,9 @@ def set_size_plot(
             fig = plt.figure(figsize=figsize)
         ax = custom_ax or plt.gca()
 
-        # Create bins and heatmap
-        x_bins = np.histogram_bin_edges(parameters[:, 0], bins='auto')
-        y_bins = np.histogram_bin_edges(parameters[:, 1], bins='auto')
+        # Create bins with controlled count
+        x_bins = np.linspace(parameters[:, 0].min(), parameters[:, 0].max(), n_bins)
+        y_bins = np.linspace(parameters[:, 1].min(), parameters[:, 1].max(), n_bins)
         
         binned_sum_sizes, xedges, yedges = np.histogram2d(
             parameters[:, 0], parameters[:, 1], 
@@ -59,42 +61,50 @@ def set_size_plot(
             parameters[:, 0], parameters[:, 1], 
             bins=[x_bins, y_bins]
         )
-        heatmap_values = binned_sum_sizes / bin_counts
+        
+        # Avoid division by zero
+        with np.errstate(divide='ignore', invalid='ignore'):
+            heatmap_values = binned_sum_sizes / bin_counts
+            heatmap_values[~np.isfinite(heatmap_values)] = np.nan
 
         # Determine colormap range
         if vmin_vmax is None:
             vmin_vmax = (np.nanmin(heatmap_values), np.nanmax(heatmap_values))
         
-        levels = np.linspace(vmin_vmax[0], vmin_vmax[1], num=15)
+        levels = np.linspace(vmin_vmax[0], vmin_vmax[1], num=n_levels)
         
-        # Plot
+        # Create mesh grid for plotting - use bin CENTERS not edges
+        x_centers = (xedges[:-1] + xedges[1:]) / 2
+        y_centers = (yedges[:-1] + yedges[1:]) / 2
+        X, Y = np.meshgrid(x_centers, y_centers)
+        
+        # Plot using pcolormesh for proper edge handling
         contour_filled = ax.contourf(
-            xedges[:-1], yedges[:-1], heatmap_values.T[::-1], 
+            X, Y, heatmap_values.T,  # No need to flip if using centers
             levels=levels, cmap='viridis', extend='both'
         )
         contour_lines = ax.contour(
-            xedges[:-1], yedges[:-1], heatmap_values.T[::-1], 
+            X, Y, heatmap_values.T, 
             levels=levels, colors="white", linewidths=0.8
         )
-        clabels = ax.clabel(
-            contour_lines, levels[::2], 
-            inline=True, fontsize=15, fmt="%1.2f"
-        )
-        for txt in clabels:
-            txt.set_color("black")
-            txt.set_bbox(dict(facecolor="white", edgecolor="black", boxstyle="square,pad=0.1"))
+        # clabels = ax.clabel(
+        #     contour_lines, levels[::2], 
+        #     inline=True, fontsize=15, fmt="%1.2f"
+        # )
+        # for txt in clabels:
+        #     txt.set_color("black")
+        #     txt.set_bbox(dict(facecolor="white", edgecolor="black", boxstyle="square,pad=0.1"))
 
-        if show_text:
-            for y_index in range(len(yedges)-1):
-                for x_index in range(len(xedges)-1):
-                    label = heatmap_values.T[::-1, :][y_index, x_index]
-                    if not np.isnan(label):
-                        ax.text(
-                            xedges[x_index] + 0.5*(xedges[1]-xedges[0]), 
-                            yedges[y_index] + 0.5*(yedges[1]-yedges[0]), 
-                            f'{label:.2f}', 
-                            color='black', ha='center', va='center', fontsize=8
-                        )
+        # if show_text:
+        #     for i, y_center in enumerate(y_centers):
+        #         for j, x_center in enumerate(x_centers):
+        #             label = heatmap_values[j, i]  # Note: transposed indexing
+        #             if not np.isnan(label):
+        #                 ax.text(
+        #                     x_center, y_center, 
+        #                     f'{label:.2f}', 
+        #                     color='black', ha='center', va='center', fontsize=8
+        #                 )
 
         if custom_ax is None:
             cbar = fig.colorbar(contour_filled, format='%1.2f')
@@ -109,10 +119,16 @@ def set_size_plot(
             ax.set_xlabel(params_labels[0], fontsize=25, labelpad=3)
             ax.set_ylabel(params_labels[1], fontsize=25, labelpad=10, rotation=0)
         
+        # Set limits properly to show all data
         if xlims is not None:
             ax.set_xlim(*xlims)
+        else:
+            ax.set_xlim(parameters[:, 0].min(), parameters[:, 0].max())
+            
         if ylims is not None:
             ax.set_ylim(*ylims)
+        else:
+            ax.set_ylim(parameters[:, 1].min(), parameters[:, 1].max())
 
         if xlims is not None and ylims is not None:
             # Set limits based on parameter_space_bounds
@@ -123,15 +139,17 @@ def set_size_plot(
             
             # Set ticks based on the actual bounds
             ax.set_xticks(np.linspace(x_low, x_high, 5))
-            ax.set_xticklabels(np.linspace(x_low, x_high, 5))
+            ax.set_xticklabels([f'{x:.1f}' for x in np.linspace(x_low, x_high, 5)])
             ax.set_yticks(np.linspace(y_low, y_high, 5))
-            ax.set_yticklabels(np.linspace(y_low, y_high, 5))
+            ax.set_yticklabels([f'{y:.1f}' for y in np.linspace(y_low, y_high, 5)])
         else:
-            # Fallback to hardcoded values
-            ax.set_xticks(np.linspace(-10, 10, 5))
-            ax.set_xticklabels(np.linspace(-10, 10, 5))
-            ax.set_yticks(np.linspace(-10, 10, 5))
-            ax.set_yticklabels(np.linspace(-10, 10, 5))
+            # Use data-driven ticks
+            x_range = parameters[:, 0]
+            y_range = parameters[:, 1]
+            ax.set_xticks(np.linspace(x_range.min(), x_range.max(), 5))
+            ax.set_xticklabels([f'{x:.1f}' for x in np.linspace(x_range.min(), x_range.max(), 5)])
+            ax.set_yticks(np.linspace(y_range.min(), y_range.max(), 5))
+            ax.set_yticklabels([f'{y:.1f}' for y in np.linspace(y_range.min(), y_range.max(), 5)])
             
     elif param_dim == 3:
         fig = plt.figure(figsize=figsize)
