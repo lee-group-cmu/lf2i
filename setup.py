@@ -71,6 +71,5 @@ setup(
     extras_require=EXTRAS,
     license="MIT",
     entry_points=ENTRY_POINTS,
-    package_data={'': ['*.r', '*.R']},
     include_package_data=True
 )
