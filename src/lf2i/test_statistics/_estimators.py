@@ -2,7 +2,6 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.neural_network import MLPRegressor, MLPClassifier
 from xgboost import XGBRegressor, XGBClassifier
-from sbi.inference import SNPE, NPSE, FMPE
 
 
 ESTIMATORS = {
@@ -10,11 +9,6 @@ ESTIMATORS = {
     'gb_r': lambda **kwargs: XGBRegressor(**kwargs),
     'rf': lambda **kwargs: RandomForestRegressor(**kwargs),
     'mlp_r': lambda **kwargs: MLPRegressor(**kwargs),
-
-    # posterior estimators
-    'snpe': lambda **kwargs: SNPE(**kwargs),
-    'npse': lambda **kwargs: NPSE(**kwargs),
-    'fmpe': lambda **kwargs: FMPE(**kwargs),
 
     # probabilistic classification algorithms (for likelihood estimation)
     'qda': lambda **kwargs: QuadraticDiscriminantAnalysis(**kwargs),
