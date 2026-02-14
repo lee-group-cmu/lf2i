@@ -11,7 +11,6 @@ from catboost import CatBoostClassifier
 import torch
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
 from sbi.utils.kde import KDEWrapper
-from sbi.simulators.simutils import tqdm_joblib
 
 from lf2i.test_statistics.waldo import Waldo
 from lf2i.utils.calibration_diagnostics_inputs import (
@@ -21,6 +20,7 @@ from lf2i.utils.calibration_diagnostics_inputs import (
     preprocess_diagnostics
 )
 from lf2i.utils.other_methods import hpd_region, gaussian_prediction_sets
+from lf2i.utils.parallel import tqdm_joblib
 
 
 def estimate_coverage_proba(

@@ -5,7 +5,6 @@ from joblib import Parallel, delayed
 import numpy as np
 from scipy import integrate
 import torch
-from sbi.simulators.simutils import tqdm_joblib
 
 from lf2i.test_statistics._base import TestStatistic
 from lf2i.utils.odds_inputs import (
@@ -15,6 +14,7 @@ from lf2i.utils.odds_inputs import (
     preprocess_odds_integration
 )
 from lf2i.utils.miscellanea import to_np_if_torch
+from lf2i.utils.parallel import tqdm_joblib
 
 
 class BFF(TestStatistic):

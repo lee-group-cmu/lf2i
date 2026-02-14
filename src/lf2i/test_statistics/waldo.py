@@ -5,8 +5,9 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 import numpy as np
 import torch
-from sbi.simulators.simutils import tqdm_joblib
+
 from lf2i.test_statistics._base import TestStatistic
+from lf2i.utils.parallel import tqdm_joblib
 from lf2i.utils.waldo_inputs import preprocess_waldo_estimation, preprocess_waldo_evaluation, preprocess_waldo_computation
 
 

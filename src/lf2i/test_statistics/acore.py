@@ -6,7 +6,6 @@ import warnings
 import numpy as np
 import torch
 from scipy.optimize import minimize
-from sbi.simulators.simutils import tqdm_joblib
 
 from lf2i.test_statistics._base import TestStatistic
 from lf2i.utils.odds_inputs import (
@@ -16,6 +15,7 @@ from lf2i.utils.odds_inputs import (
     preprocess_for_odds_cs
 )
 from lf2i.utils.miscellanea import to_np_if_torch
+from lf2i.utils.parallel import tqdm_joblib
 
 
 class ACORE(TestStatistic):

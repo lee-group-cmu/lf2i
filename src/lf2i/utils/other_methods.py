@@ -8,9 +8,7 @@ from torch.distributions import Distribution
 
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
 from sbi.utils.kde import KDEWrapper
-# from bayesflow.amortizers import AmortizedPosterior
 
-# from lf2i.estimators import PosteriorEstimator
 from lf2i.test_statistics import TestStatistic
 from lf2i.utils.miscellanea import to_torch_if_np, to_np_if_torch
 

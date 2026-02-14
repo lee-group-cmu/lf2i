@@ -7,7 +7,8 @@ import numpy as np
 import torch
 from torch.distributions import Distribution
 from sbi.inference.posteriors.base_posterior import NeuralPosterior
-from sbi.simulators.simutils import tqdm_joblib
+
+from lf2i.utils.parallel import tqdm_joblib
 from lf2i.utils.posterior_ts_inputs import preprocess_estimation_evaluation
 from lf2i.test_statistics import TestStatistic
 
