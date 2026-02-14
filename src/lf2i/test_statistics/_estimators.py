@@ -15,3 +15,7 @@ ESTIMATORS = {
     'mlp_c': lambda **kwargs: MLPClassifier(**kwargs),
     'gb_c': lambda **kwargs: XGBClassifier(**kwargs),
 }
+
+# Posterior estimators are no longer provided as keywords
+# Users should pass their own AbstractNeuralPosterior instances
+_REMOVED_POSTERIOR_ESTIMATORS = ['snpe', 'npse', 'fmpe']

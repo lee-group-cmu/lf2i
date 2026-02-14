@@ -6,7 +6,6 @@ from joblib import Parallel, delayed
 import numpy as np
 import torch
 from torch.distributions import Distribution
-from sbi.inference.posteriors.base_posterior import NeuralPosterior
 
 from lf2i.utils.parallel import tqdm_joblib
 from lf2i.utils.posterior_ts_inputs import preprocess_estimation_evaluation
@@ -18,7 +17,7 @@ class Posterior(TestStatistic):
     def __init__(
         self,
         poi_dim: int,
-        estimator: Union[str, NeuralPosterior, Any],
+        estimator: Union[str, Any],
         estimator_kwargs: Dict = {},
         n_jobs: int = -2,
         **posterior_kwargs
@@ -81,7 +80,7 @@ class PosteriorPriorRatio(TestStatistic):
         self,
         poi_dim: int,
         prior: Union[Distribution, Any],
-        estimator: Union[str, NeuralPosterior, Any],
+        estimator: Union[str, Any],
         estimator_kwargs: Dict = {},
         n_jobs: int = -2,
         **posterior_kwargs
@@ -152,7 +151,7 @@ class PriorPosteriorRatio(TestStatistic):
         self,
         poi_dim: int,
         prior: Union[Distribution, Any],
-        estimator: Union[str, NeuralPosterior, Any],
+        estimator: Union[str, Any],
         estimator_kwargs: Dict = {},
         n_jobs: int = -2,
         **posterior_kwargs
