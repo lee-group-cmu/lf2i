@@ -2,7 +2,6 @@ from typing import Optional, Tuple, Union, Dict, List, Sequence, Any
 from warnings import simplefilter
 
 import numpy as np
-# from rpy2.robjects.vectors import ListVector
 import pandas as pd
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -10,8 +9,6 @@ from matplotlib.lines import Line2D
 from matplotlib.axes._axes import Axes
 import matplotlib.colors as mcolors
 import seaborn as sns
-
-from lf2i.diagnostics.coverage_probability import predict_r_estimator
 
 
 def coverage_probability_plot(
@@ -327,39 +324,7 @@ def coverage_pairplot(
                         **kwargs
                     )
                 elif plot_type == 'proba_partial_dependence_min':
-                    if (diagnostics_estimator) and isinstance(diagnostics_estimator, ListVector):  # rpy2 ListVector; support only gam for now. TODO: other prob clfs
-                        # for partial dependence plots
-                        assert aggregate_fun is not None
-                        other_params_idx = list(set(range(rows)).difference(set([row, col])))
-                        if aggregate_fun == 'mean':
-                            which_other_params = parameters[np.argmin(np.abs(probabilities - np.mean(probabilities))), other_params_idx]
-                        elif aggregate_fun == 'min':
-                            which_other_params = parameters[np.argmin(probabilities), other_params_idx]
-                        elif aggregate_fun == 'max':
-                            which_other_params = parameters[np.argmax(probabilities), other_params_idx]
-                        else:
-                            raise NotImplementedError
-                        assert which_other_params.shape == (len(other_params_idx), )
-                        partial_dependence_params = np.copy(parameters)
-                        partial_dependence_params[:, other_params_idx] = which_other_params
-                        partial_dependence_probabilities, _, _ = predict_r_estimator(
-                            fitted_estimator=diagnostics_estimator,
-                            parameters=partial_dependence_params,
-                            param_dim=rows,
-                            n_sigma=2  # unused
-                        )
-                
-                        heatmap = coverage_probability_plot(
-                            parameters=parameters[:, [col, row]],  # swap order to have 'row' parameter on y axis
-                            coverage_probability=partial_dependence_probabilities,  # array
-                            confidence_level=confidence_level,
-                            param_dim=2,  # pairplot
-                            vmin_vmax=vmin_vmax,
-                            custom_ax=ax[row, col],
-                            **kwargs
-                        )
-                    else:
-                        raise NotImplementedError
+                    raise NotImplementedError
                 elif plot_type == 'coverage_regions_marginal':
                     raise NotImplementedError  # TODO: need to double check
                     coverage_regions_plot(

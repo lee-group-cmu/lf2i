@@ -11,15 +11,12 @@ AUTHOR = "Luca Masserano, Niccolò Dalmasso, David Zhao, Rafael Izbicki, Ann B. 
 REQUIRES_PYTHON = ">=3.9.0, <3.12"
 
 REQUIRED = [
-    # "alphashape",
-    # "bayesflow",
     "catboost",
     "click",
     "descartes",
     "joblib",
     "matplotlib>=3.6.0",
     "numpy",
-    "rpy2==3.5.4",
     "sbi>=0.19.2",
     "scikit-learn",
     "scipy",
@@ -39,7 +36,8 @@ EXTRAS = {
         "nbsphinx",
         "pytest",
         "sphinx",
-        "sphinx-mdinclude"
+        "sphinx-mdinclude",
+        "alphashape"
     ]
 }
 

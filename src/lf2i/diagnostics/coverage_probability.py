@@ -4,8 +4,6 @@ from tqdm import tqdm
 import warnings
 from joblib import Parallel, delayed
 
-# import rpy2.robjects as robj
-# import rpy2.robjects.numpy2ri
 import numpy as np
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV
@@ -339,7 +337,7 @@ def fit_r_estimator(
     parameters: np.ndarray,
     param_dim: int
 ) -> Any:
-    """Estimate coverage probabilities across the whole parameter space using a pre-defined estimator available in R. 
+    """Estimate coverage probabilities across the whole parameter space using a pre-defined estimator available in R. (DEPRECATED)
 
     Parameters
     ----------
@@ -362,28 +360,14 @@ def fit_r_estimator(
     NotImplementedError
         Estimator must be one of [`gam`, TBD]
     """
-    file_path = pathlib.Path(__file__).parent.resolve() / 'estimators.r'
-    robj.r(f"source('{file_path}')")
-    robj.conversion.py2ri = robj.numpy2ri
-    rpy2.robjects.numpy2ri.activate()
-
-    indicators = robj.r.matrix(indicators)
-    parameters = robj.r.matrix(parameters.reshape((parameters.size)), nrow=parameters.shape[0], ncol=parameters.shape[1], byrow=True)
-
-    if estimator == 'splines':
-        try:
-            output_dict = robj.globalenv['fit_joint_splines'](indicators, parameters, param_dim)
-        except Exception as e:
-            estimator = 'gam_splines'
-            # NOTE: memoryerror can occur if joint splines tensor is too big. Default behaviour is to use additive splines (one for each input) for now.
-            warnings.warn(f'Training joint tensor product splines basis raised {str(e)}. Reverting to additive splines via GAMs.')
-            output_dict = robj.globalenv['fit_additive_splines'](indicators, parameters, param_dim)
-    else: 
-        # TODO: additional methods?
-        raise NotImplementedError(f"Estimator must be one of [`splines`], got {estimator}")
-
-    output_dict = dict(zip(output_dict.names, list(output_dict)))
-    return output_dict[estimator]
+    warnings.warn(
+        "fit_r_estimator() is deprecated and will be removed",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    raise NotImplementedError(
+        "fit_r_estimator() is deprecated and will be removed"
+    )
 
 
 def predict_r_estimator(
@@ -392,7 +376,7 @@ def predict_r_estimator(
     param_dim: int,
     n_sigma: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Evaluate the trained R estimator and estimate the coverage probabilities given `parameters`.
+    """Evaluate the trained R estimator and estimate the coverage probabilities given `parameters`. (DEPRECATED)
 
     Parameters
     ----------
@@ -408,17 +392,11 @@ def predict_r_estimator(
     Tuple[np.ndarray, np.ndarray, np.ndarray]
         Estimated conditional coverage probabilities -- mean, upper-n_sigma bound. lower-n_sigma bound
     """
-    file_path = pathlib.Path(__file__).parent.resolve() / 'estimators.r'
-    robj.r(f"source('{file_path}')")
-    robj.conversion.py2ri = robj.numpy2ri
-    rpy2.robjects.numpy2ri.activate()
-
-    parameters = robj.r.matrix(parameters.reshape((parameters.size)), nrow=parameters.shape[0], ncol=parameters.shape[1], byrow=True)
-    # TODO: this assumes a gam-like model
-    output_dict = robj.globalenv['predict_gam'](fitted_estimator, parameters, param_dim)
-    output_dict = dict(zip(output_dict.names, list(output_dict)))
-
-    mean_proba = np.array(output_dict["predictions"])
-    upper_proba = np.maximum(0, np.minimum(1, mean_proba + np.array(output_dict["se"]) * n_sigma))
-    lower_proba = np.maximum(0, np.minimum(1, mean_proba - np.array(output_dict["se"]) * n_sigma))
-    return mean_proba, upper_proba, lower_proba
+    warnings.warn(
+        "predict_r_estimator() is deprecated and will be removed",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    raise NotImplementedError(
+        "predict_r_estimator() is deprecated and will be removed"
+    )
