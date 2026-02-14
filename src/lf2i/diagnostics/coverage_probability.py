@@ -9,9 +9,11 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV
 from catboost import CatBoostClassifier
 import torch
-from sbi.inference.posteriors.base_posterior import NeuralPosterior
-from sbi.utils.kde import KDEWrapper
 
+from lf2i.estimators.base_posteriors import (
+    AbstractNeuralPosterior,
+    AbstractKDE
+)
 from lf2i.test_statistics.waldo import Waldo
 from lf2i.utils.calibration_diagnostics_inputs import (
     preprocess_indicators_lf2i, 
@@ -189,7 +191,7 @@ def isin_with_tol(a, B, atol=1e-6):
 
 
 def compute_indicators_posterior(
-    posterior: Union[NeuralPosterior, KDEWrapper, Sequence[Union[NeuralPosterior, KDEWrapper]]],
+    posterior: Union[AbstractNeuralPosterior, AbstractKDE, Sequence[Union[AbstractNeuralPosterior, AbstractKDE]]],
     parameters: torch.Tensor,
     samples: torch.Tensor,
     parameter_grid: torch.Tensor,
@@ -208,7 +210,7 @@ def compute_indicators_posterior(
 
     Parameters
     ----------
-    posterior : Union[NeuralPosterior, KDEWrapper, Sequence[Union[NeuralPosterior, KDEWrapper]]],
+    posterior : Union[AbstractNeuralPosterior, AbstractKDE, Sequence[Union[AbstractNeuralPosterior, AbstractKDE]]],
         Estimated posterior distribution. If `Sequence` of posteriors, we assume i-th posterior is estimated given i-th element of `samples`.
         Must have `log_prob()` method. 
     parameters : torch.Tensor,
