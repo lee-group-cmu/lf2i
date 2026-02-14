@@ -17,7 +17,6 @@ REQUIRED = [
     "joblib",
     "matplotlib>=3.6.0",
     "numpy",
-    "sbi>=0.19.2",
     "scikit-learn",
     "scipy",
     "seaborn>=0.12.1",
