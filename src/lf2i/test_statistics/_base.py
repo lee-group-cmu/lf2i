@@ -1,7 +1,7 @@
 from typing import Union, Dict, Any, List
 from abc import ABC, abstractmethod
 
-from lf2i.estimators.base_posteriors import AbstractNeuralPosterior
+from lf2i.estimators.base_posteriors import AbstractNeuralPosteriorTrainer
 from lf2i.test_statistics._estimators import ESTIMATORS, _REMOVED_POSTERIOR_ESTIMATORS
 
 
@@ -39,12 +39,14 @@ class TestStatistic(ABC):
             if estimator in _REMOVED_POSTERIOR_ESTIMATORS:
                 raise ValueError(
                     f"Posterior estimator '{estimator}' is no longer available as a keyword.\n"
-                    f"See documentation for AbstractNeuralPosterior interface requirements."
+                    f"See documentation for AbstractNeuralPosteriorTrainer interface requirements."
                 )
             else:
-                assert isinstance(estimator, AbstractNeuralPosterior), (
-                    "Posterior estimator must be an AbstractNeuralPosterior."
+                assert isinstance(estimator, AbstractNeuralPosteriorTrainer), (
+                    "Posterior estimator must be an AbstractNeuralPosteriorTrainer."
                 )
+            self._estimator_trained[estimand_name] = False
+            return estimator
 
         # Keyword-based estimator handling
         if isinstance(estimator, str):

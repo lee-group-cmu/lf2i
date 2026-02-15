@@ -92,6 +92,47 @@ class AbstractNeuralPosterior(Protocol):
             Log probabilities
         """
         ...
+
+
+@runtime_checkable
+class AbstractKDE(Protocol):
+    """
+    Protocol for KDE wrappers.
+    Compatible with sbi.utils.kde.KDEWrapper.
+    
+    Note: KDE typically doesn't need the 'x' parameter since it's fit to samples.
+    """
+    
+    def log_prob(
+        self, 
+        theta: Union[torch.Tensor, np.ndarray],
+        **kwargs
+    ) -> torch.Tensor:
+        """
+        Evaluate log probability under the KDE.
+        
+        Parameters
+        ----------
+        theta : Union[torch.Tensor, np.ndarray]
+            Points at which to evaluate density
+            
+        Returns
+        -------
+        torch.Tensor
+            Log probabilities
+        """
+        ...
+
+
+@runtime_checkable
+class AbstractNeuralPosteriorTrainer(Protocol):
+    """
+    Protocol for neural posterior estimators that require training.
+    Compatible with sbi.inference.posteriors.base_posterior.NeuralPosterior.
+    
+    Note: This extends AbstractPosterior's interface by including training methods.
+    """
+
     
     def append_simulations(
         self,
@@ -135,35 +176,5 @@ class AbstractNeuralPosterior(Protocol):
         -------
         AbstractNeuralPosterior
             The trained posterior object ready for inference
-        """
-        ...
-
-
-@runtime_checkable
-class AbstractKDE(Protocol):
-    """
-    Protocol for KDE wrappers.
-    Compatible with sbi.utils.kde.KDEWrapper.
-    
-    Note: KDE typically doesn't need the 'x' parameter since it's fit to samples.
-    """
-    
-    def log_prob(
-        self, 
-        theta: Union[torch.Tensor, np.ndarray],
-        **kwargs
-    ) -> torch.Tensor:
-        """
-        Evaluate log probability under the KDE.
-        
-        Parameters
-        ----------
-        theta : Union[torch.Tensor, np.ndarray]
-            Points at which to evaluate density
-            
-        Returns
-        -------
-        torch.Tensor
-            Log probabilities
         """
         ...

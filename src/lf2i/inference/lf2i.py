@@ -244,7 +244,7 @@ class LF2I:
         region_type: str,
         confidence_level: float,
         calibration_method: Optional[str] = None,
-        coverage_estimator: str = 'splines',
+        coverage_estimator: str = 'cat-gb', # TODO: splines are deprecated
         coverage_estimator_kwargs: Dict = {},
         T_double_prime: Optional[Tuple[Union[np.ndarray, torch.Tensor]]] = None,
         simulator: Optional[Simulator] = None,

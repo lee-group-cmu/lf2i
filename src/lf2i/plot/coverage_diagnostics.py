@@ -31,19 +31,20 @@ def coverage_probability_plot(
     n_bins: int = 30,
     n_levels: int = 15
 ) -> None:
+    # TODO: Plot variance in coverage
     if param_dim == 1:
         df_plot = pd.DataFrame({
             "parameters": parameters.reshape(-1,),
             "mean_proba": coverage_probability.reshape(-1,),
-            "lower_proba": lower_proba.reshape(-1,),
-            "upper_proba": upper_proba.reshape(-1,)
+            # "lower_proba": lower_proba.reshape(-1,),
+            # "upper_proba": upper_proba.reshape(-1,)
         }).sort_values(by="parameters")
 
         _, ax = plt.subplots(1, 1)
         ax.plot(df_plot.parameters, df_plot.mean_proba, color='crimson', label='Estimated Coverage')
-        ax.plot(df_plot.parameters, df_plot.lower_proba, color='crimson')
-        ax.plot(df_plot.parameters, df_plot.upper_proba, color='crimson')
-        ax.fill_between(x=df_plot.parameters, y1=df_plot.lower_proba, y2=df_plot.upper_proba, alpha=0.2, color='crimson')
+        # ax.plot(df_plot.parameters, df_plot.lower_proba, color='crimson')
+        # ax.plot(df_plot.parameters, df_plot.upper_proba, color='crimson')
+        # ax.fill_between(x=df_plot.parameters, y1=df_plot.lower_proba, y2=df_plot.upper_proba, alpha=0.2, color='crimson')
         ax.axhline(y=confidence_level, color='black', linestyle="--", linewidth=3, 
                     label=f"Nominal coverage = {round(100 * confidence_level, 1)} %", zorder=10)
         

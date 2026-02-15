@@ -11,14 +11,15 @@ AUTHOR = "Luca Masserano, Niccolò Dalmasso, David Zhao, Rafael Izbicki, Ann B. 
 REQUIRES_PYTHON = ">=3.9.0, <3.12"
 
 REQUIRED = [
-    "catboost",
+    "alphashape",
+    "catboost>=1.2.8",
     "click",
     "descartes",
     "joblib",
     "matplotlib>=3.6.0",
-    "numpy",
-    "scikit-learn",
-    "scipy",
+    "numpy>=1.26.4",
+    "scikit-learn>=1.5.2",
+    "scipy>=1.11.4",
     "seaborn>=0.12.1",
     "torch>=1.12.1",
     "tqdm",
@@ -26,6 +27,7 @@ REQUIRED = [
 ]
 
 EXTRAS = {
+    "examples": ["sbi>=0.19.2"],
     "dev": [
         "aquirdturtle-collapsible-headings",
         "ipykernel",
