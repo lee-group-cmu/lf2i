@@ -49,6 +49,10 @@ def estimate_coverage_proba(
         Name of the probabilistic classifier to use to estimate coverage probabilities. 
     estimator_kwargs : Dict
         Settings for `estimator`.
+        If `estimator='cat-gb'`, passing `{'cv': hp_dist}` triggers a randomized hyperparameter search over
+        `hp_dist` (a `Dict`) using 5-fold cross validation; include `n_iter` to control how many sampled
+        hyperparameter settings are evaluated (defaults to 10).
+        If `cv` is not provided, remaining keys in `estimator_kwargs` are passed directly to `CatBoostClassifier`.
     param_dim : int
         Dimensionality of the parameter.
     new_parameters : Optional[np.ndarray], optional
@@ -71,21 +75,24 @@ def estimate_coverage_proba(
     """
     indicators, parameters, new_parameters = preprocess_diagnostics(indicators, parameters, new_parameters, param_dim)
     if estimator == 'cat-gb':
-        estimator = RandomizedSearchCV(
-            estimator=CatBoostClassifier(
-                loss_function='CrossEntropy',
-                silent=True
-            ),
-            param_distributions={
-                'iterations': [100, 300, 500, 700, 1000], 'depth': [1, 3, 5, 7, 10],
-            },
-            n_iter=25,
-            n_jobs=-2,
-            refit=True,
-            cv=5
-        )
-        estimator.fit(X=parameters, y=indicators)
-        best_params = estimator.best_params_
+        catboost_kwargs = {k: v for k, v in estimator_kwargs.items() if k not in ['cv', 'n_iter']}
+        if 'cv' in estimator_kwargs:
+            estimator = RandomizedSearchCV(
+                estimator=CatBoostClassifier(
+                    loss_function='CrossEntropy',
+                    silent=True,
+                    **catboost_kwargs
+                ),
+                param_distributions=estimator_kwargs['cv'],
+                n_iter=10 if 'n_iter' not in estimator_kwargs else estimator_kwargs['n_iter'],
+                n_jobs=-2,
+                refit=True,
+                cv=5
+            )
+            estimator.fit(X=parameters, y=indicators)
+            best_params = estimator.best_params_
+        else:
+            best_params = catboost_kwargs
 
         estimator = CalibratedClassifierCV(
             estimator=CatBoostClassifier(
