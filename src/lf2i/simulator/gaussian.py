@@ -86,11 +86,9 @@ class GaussianMean(Simulator):
             )
         else: 
             raise NotImplementedError(f"Prior '{prior}' not supported. Use 'gaussian' or 'uniform'.")
-            
+   
     def simulate_for_test_statistic(self, size: int, estimation_method: str) -> Tuple[torch.Tensor]:
-        if estimation_method == 'likelihood':
-            raise NotImplementedError
-        elif estimation_method in ['prediction', 'posterior']:
+        if estimation_method in ['likelihood', 'prediction', 'posterior']:
             params = self.prior.sample(sample_shape=(size,)).reshape(size, self.poi_dim)
             # shape is interpreted as 'draw `shape` samples for each d-dim element of params'
             samples = self.likelihood(loc=params).sample(sample_shape=(self.batch_size,))
