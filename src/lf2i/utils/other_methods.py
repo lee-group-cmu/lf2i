@@ -33,7 +33,6 @@ def hpd_region(
         - `AbstractNeuralPosterior` from `sbi` methods involving underlying neural networks, e.g. `SNPE`, `FMPE`.
         - `AbstractKDE` from `sbi` methods involving kernel density estimation, e.g. `SBCABC`.
         - `Distribution` from `torch.distributions` or other libraries.
-        - `AmortizedPosterior` from `bayesflow` methods involving amortized inference.
     param_grid : torch.Tensor
         Grid of parameter values over which to evaluate the posterior.
     x : torch.Tensor

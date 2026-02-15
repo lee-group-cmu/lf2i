@@ -70,20 +70,7 @@ def estimate_coverage_proba(
         `Estimator` must be one of [`splines`, `cat-gb`].
     """
     indicators, parameters, new_parameters = preprocess_diagnostics(indicators, parameters, new_parameters, param_dim)
-    if estimator  == 'splines':
-        estimator = fit_r_estimator(
-            estimator,
-            indicators, 
-            parameters,
-            param_dim
-        )
-        mean_proba, upper_proba, lower_proba = predict_r_estimator(
-            estimator, 
-            parameters if new_parameters is None else new_parameters,
-            param_dim,
-            n_sigma
-        )
-    elif estimator == 'cat-gb':
+    if estimator == 'cat-gb':
         estimator = RandomizedSearchCV(
             estimator=CatBoostClassifier(
                 loss_function='CrossEntropy',
@@ -114,7 +101,7 @@ def estimate_coverage_proba(
         mean_proba, upper_proba, lower_proba = estimator.predict_proba(X=parameters if new_parameters is None else new_parameters)[:, 1], None, None
     else:
         # TODO: additional methods?
-        raise ValueError(f"Estimators currently supported: [`splines`, `cat-gb`]; got {estimator}")
+        raise ValueError(f"Estimators currently supported: [`cat-gb`]; got {estimator}")
     out_parameters = parameters if new_parameters is None else new_parameters
     return estimator, out_parameters, mean_proba, upper_proba, lower_proba
 

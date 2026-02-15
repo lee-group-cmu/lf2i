@@ -22,6 +22,9 @@ class Posterior(TestStatistic):
         n_jobs: int = -2,
         **posterior_kwargs
     ) -> None:
+        """
+        `estimator` currently compatible with posterior objects with interface of lf2i.estimators.base_posteriors.AbstractNeuralPosteriorTrainer.
+        """
         # Accept for high values, i.e. if posterior is very high
         super().__init__(acceptance_region='right', estimation_method='posterior')
         self.poi_dim = poi_dim

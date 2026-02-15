@@ -19,7 +19,7 @@ class Waldo(TestStatistic):
     ----------
     estimator : Union[str, Any]
         If `estimation_method == prediction`, then this is the conditional mean estimator.
-        If `estimation_method == posterior`, then this is the posterior estimator. Currently compatible with posterior objects from SBI package (https://github.com/mackelab/sbi)
+        If `estimation_method == posterior`, then this is the posterior estimator. Currently compatible with posterior objects with interface of lf2i.estimators.base_posteriors.AbstractNeuralPosteriorTrainer.
 
         If `str`, will use one of the predefined estimators. 
         If `Any`, a trained estimator is expected. Needs to implement `estimator.predict(X=...)` ("prediction"), or `estimator.sample(sample_shape=..., x=...)` ("posterior").
