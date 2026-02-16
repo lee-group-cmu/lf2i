@@ -10,28 +10,22 @@ from lf2i.utils.miscellanea import to_np_if_torch, check_for_nans
 
 
 def preprocess_odds_estimation(
-    labels: Union[np.ndarray, torch.Tensor],
     parameters: Union[np.ndarray, torch.Tensor],
     samples: Union[np.ndarray, torch.Tensor],
     param_dim: int,
     estimator: Any
 ) -> Tuple[Union[np.ndarray, torch.Tensor]]:
-    check_for_nans(labels)
     check_for_nans(parameters)
     check_for_nans(samples)
     # TODO: this is not general, i.e. assumes our torch “construction” with a Learner that has a model attribute
     if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
         # PyTorch models
-        if isinstance(labels, np.ndarray):
-            labels = torch.from_numpy(labels)
         if isinstance(parameters, np.ndarray):
             parameters = torch.from_numpy(parameters)
         if isinstance(samples, np.ndarray):
             samples = torch.from_numpy(samples)
     if isinstance(estimator, (BaseEstimator, XGBModel)):
         # Scikit-Learn or XGBoost models
-        if isinstance(labels, torch.Tensor):
-            labels = labels.numpy()
         if isinstance(parameters, torch.Tensor):
             parameters = parameters.numpy()
         if isinstance(samples, torch.Tensor):
@@ -52,7 +46,86 @@ def preprocess_odds_estimation(
             parameters.reshape(-1, param_dim),
             samples.reshape(-1, samples.shape[-1])
         ))
+
+    # Relabel via permutation
+    labels = preprocess_odds_relabel(parameters, samples)
+
     return labels.reshape(-1, ), params_samples
+
+
+def preprocess_odds_relabel(
+    parameters: Union[np.ndarray, torch.Tensor],
+    samples: Union[np.ndarray, torch.Tensor]
+) -> Union[np.ndarray, torch.Tensor]:
+    """
+    Create labels from parameters and samples.
+
+    Behavior:
+    - If `samples` has shape (n_configs, batch_size, data_dim) it returns
+      labels = repeat(arange(n_configs), repeats=batch_size).
+    - If `samples` has shape (n_configs, data_dim) it returns labels = arange(n_configs).
+    - Works when `parameters` / `samples` are torch Tensors or numpy arrays.
+      Both inputs must be of the same type.
+
+    Returns
+    -------
+    Union[np.ndarray, torch.Tensor]
+        1D integer label array / tensor of length equal to number of generated samples.
+    """
+    # require inputs to be of the same type
+    params_is_torch = isinstance(parameters, torch.Tensor)
+    samples_is_torch = isinstance(samples, torch.Tensor)
+    params_is_np = isinstance(parameters, np.ndarray)
+    samples_is_np = isinstance(samples, np.ndarray)
+
+    if not ((params_is_torch and samples_is_torch) or (params_is_np and samples_is_np)):
+        raise TypeError("parameters and samples must both be numpy arrays or both torch tensors")
+
+    if params_is_torch:
+        # infer number of parameter configurations from parameters if possible
+        try:
+            n_configs = parameters.reshape(-1, parameters.shape[-1]).shape[0]
+        except Exception:
+            n_configs = parameters.shape[0]
+
+        if samples.ndim == 3:
+            batch_size = samples.shape[1]
+            labels = torch.repeat_interleave(torch.arange(n_configs, dtype=torch.long), repeats=batch_size)
+        elif samples.ndim == 2:
+            if samples.shape[0] == n_configs:
+                labels = torch.arange(n_configs, dtype=torch.long)
+            else:
+                labels = torch.arange(samples.shape[0], dtype=torch.long)
+        else:
+            labels = torch.arange(samples.shape[0], dtype=torch.long)
+
+        expected = n_configs * (samples.shape[1] if samples.ndim == 3 else 1)
+        if labels.numel() != expected:
+            warnings.warn("Generated labels length does not match expected number of samples from parameters/samples.")
+        return labels
+
+    else:
+        # numpy branch (original behavior)
+        try:
+            n_configs = parameters.reshape(-1, parameters.shape[-1]).shape[0]
+        except Exception:
+            n_configs = parameters.shape[0]
+
+        if samples.ndim == 3:
+            batch_size = samples.shape[1]
+            labels = np.repeat(np.arange(n_configs), repeats=batch_size)
+        elif samples.ndim == 2:
+            if samples.shape[0] == n_configs:
+                labels = np.arange(n_configs)
+            else:
+                labels = np.arange(samples.shape[0])
+        else:
+            labels = np.arange(samples.shape[0])
+
+        if labels.size != (n_configs * (samples.shape[1] if samples.ndim == 3 else 1)):
+            warnings.warn("Generated labels length does not match expected number of samples from parameters/samples.")
+
+        return labels
 
 
 def preprocess_for_odds_cv(
@@ -88,6 +161,16 @@ def preprocess_for_odds_cv(
     """
     check_for_nans(parameters)
     check_for_nans(samples)
+
+    # Ensure samples have shape (n_samples, batch_size, data_dim).
+    # Accept inputs that are (batch_size, data_dim) and treat them as single sample (n_samples=1).
+    if isinstance(samples, torch.Tensor):
+        if samples.ndim == 2:
+            samples = samples.reshape(1, batch_size, data_dim)
+    else:
+        if samples.ndim == 2:
+            samples = samples.reshape(1, batch_size, data_dim)
+
     # TODO: this is not general, i.e. assumes our torch “construction” with a Learner that has a model attribute
     if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
         if isinstance(parameters, np.ndarray):

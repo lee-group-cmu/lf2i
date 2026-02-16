@@ -69,7 +69,6 @@ class ACORE(TestStatistic):
     
     def estimate(
         self,
-        labels: Union[np.ndarray, torch.Tensor], 
         parameters: Union[np.ndarray, torch.Tensor], 
         samples: Union[np.ndarray, torch.Tensor],
     ) -> None:
@@ -89,7 +88,9 @@ class ACORE(TestStatistic):
         samples : Union[np.ndarray, torch.Tensor]
             Simulated samples to be used for training.
         """
-        labels, params_samples = preprocess_odds_estimation(labels, parameters, samples, self.param_dim, self.estimator)
+        labels, params_samples = preprocess_odds_estimation(
+            parameters, samples, self.param_dim, self.estimator
+        )
         self.estimator.fit(X=params_samples, y=labels)
         self._estimator_trained['odds'] = True
 
@@ -186,14 +187,14 @@ class ACORE(TestStatistic):
             numerator = self._log_odds(self.estimator.predict_proba(X=params_samples))
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
                 denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
-                    lambda idx: self._maximize_log_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds[:self.poi_dim]) 
+                    lambda idx: self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds[:self.poi_dim]) 
                     )(i) for i in it
                 ))
             return numerator / denominator
         else:
             def do_one(idx: int) -> float:
-                num = self._maximize_log_odds(sample=samples[idx, :, :], fixed_poi=parameters[idx, :self.poi_dim], optimization_bounds=param_space_bounds[-self.nuisance_dim:])
-                den = self._maximize_log_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
+                num = self._maximize_log_odds(sample=samples[idx], fixed_poi=parameters[idx, :self.poi_dim], optimization_bounds=param_space_bounds[-self.nuisance_dim:])
+                den = self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
                 return num / den
 
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
@@ -213,7 +214,7 @@ class ACORE(TestStatistic):
             # denominator is the same regardless of parameter grid value
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
                 denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
-                    lambda idx: self._maximize_log_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds[:self.poi_dim]) 
+                    lambda idx: self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds[:self.poi_dim]) 
                     )(i) for i in it
                 )).reshape(-1, 1)
             return numerator / denominator  # automatic broadcasting along dimension 1
@@ -226,8 +227,8 @@ class ACORE(TestStatistic):
             
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
                 out = np.vstack(Parallel(n_jobs=self.n_jobs)(delayed(lambda idx: param_grid_loop(
-                    sample=samples[idx, :, :], 
-                    denominator=self._maximize_log_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
+                    sample=samples[idx], 
+                    denominator=self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
                     ).reshape(1, -1))(i) for i in it
                 ))
             return out

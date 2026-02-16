@@ -92,44 +92,10 @@ class BFF(TestStatistic):
         samples : Union[np.ndarray, torch.Tensor]
             Simulated samples from the true joint distribution (n_samples, sample_dim).
         """
-        # Convert to numpy for easier manipulation
-        if isinstance(parameters, torch.Tensor):
-            parameters = parameters.cpu().numpy()
-        if isinstance(samples, torch.Tensor):
-            samples = samples.cpu().numpy()
-        
-        n_samples = len(parameters)
-        
-        # Create positive class (label=1): original matched pairs
-        params_pos = parameters.copy()
-        samples_pos = samples.copy()
-        labels_pos = np.ones(n_samples, dtype=np.int64)
-        
-        # Create negative class (label=0): permuted pairs
-        # For each index i, sample from all indices except i (derangement)
-        permutation = np.array([np.random.choice(np.delete(np.arange(n_samples), i)) 
-                            for i in range(n_samples)])
-        
-        params_neg = parameters[permutation].copy()
-        samples_neg = samples.copy()  # Keep samples the same, permute parameters
-        labels_neg = np.zeros(n_samples, dtype=np.int64)
-        
-        # Combine positive and negative classes
-        all_parameters = np.vstack([params_pos, params_neg])
-        all_samples = np.vstack([samples_pos, samples_neg])
-        all_labels = np.concatenate([labels_pos, labels_neg])
-        
-        # Shuffle the combined dataset
-        shuffle_idx = np.random.permutation(2 * n_samples)
-        all_parameters = all_parameters[shuffle_idx]
-        all_samples = all_samples[shuffle_idx]
-        all_labels = all_labels[shuffle_idx]
-        
-        # Preprocess and train the sklearn MLPClassifier
-        labels_tensor, params_samples = preprocess_odds_estimation(
-            all_labels, all_parameters, all_samples, self.param_dim, self.estimator
+        labels, params_samples = preprocess_odds_estimation(
+            parameters, samples, self.param_dim, self.estimator
         )
-        self.estimator.fit(X=params_samples, y=labels_tensor)
+        self.estimator.fit(X=params_samples, y=labels)
         self._estimator_trained['odds'] = True
 
     def evaluate(
