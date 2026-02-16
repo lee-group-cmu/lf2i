@@ -207,7 +207,9 @@ class ACORE(TestStatistic):
         samples: Union[np.ndarray, torch.Tensor],
         param_space_bounds: List[List[float]]
     ) -> np.ndarray:
-        parameter_grid, samples, param_grid_samples = preprocess_for_odds_cs(parameter_grid, samples, self.poi_dim, self.batch_size, self.data_dim, self.estimator)
+        parameter_grid, samples, param_grid_samples = preprocess_for_odds_cs(parameter_grid, samples, self.param_dim, self.batch_size, self.data_dim, self.estimator)
+        poi_grid = parameter_grid[:, :self.poi_dim]
+
         if self.nuisance_dim == 0:
             # log_odds already aggregates wrt batch_size
             numerator = self._log_odds(self.estimator.predict_proba(X=param_grid_samples)).reshape(samples.shape[0], parameter_grid.shape[0])
@@ -222,7 +224,7 @@ class ACORE(TestStatistic):
             def param_grid_loop(sample: Union[np.ndarray, torch.Tensor], denominator: float) -> np.ndarray:
                 numerator = np.empty(shape=(parameter_grid.shape[0], ))
                 for j in range(parameter_grid.shape[0]):
-                    numerator[j] = self._maximize_log_odds(sample=sample, fixed_poi=parameter_grid[j, :], optimization_bounds=param_space_bounds[-self.nuisance_dim:])
+                    numerator[j] = self._maximize_log_odds(sample=sample, fixed_poi=poi_grid[j, :], optimization_bounds=param_space_bounds[-self.nuisance_dim:])
                 return numerator / denominator
             
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
