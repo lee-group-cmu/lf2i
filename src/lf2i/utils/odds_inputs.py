@@ -207,7 +207,7 @@ def preprocess_for_odds_cv(
 def preprocess_for_odds_cs(
     parameter_grid: Union[np.ndarray, torch.Tensor],
     samples: Union[np.ndarray, torch.Tensor],
-    poi_dim: int,
+    param_dim: int,
     batch_size: int,
     data_dim: int,
     estimator: Any
@@ -230,10 +230,11 @@ def preprocess_for_odds_cs(
     ----------
     parameter_grid : Union[np.ndarray, torch.Tensor]
         Array of parameters over which odds have to be evaluated *for each* sample.
+        Note that parameter_grid is expected to be of shape (-1, poi_dim + nuisance_dim).
     samples : Union[np.ndarray, torch.Tensor]
         Array of samples. Should have shape `(n_samples, batch_size, data_dim)`.
-    poi_dim : int
-        Dimensionality of the space of parameters of interest.
+    param_dim : int
+        Dimensionality of the parameter space.
     batch_size : int
         Number of samples in a batch from a specific parameter configuration.
     data_dim: int
@@ -246,7 +247,7 @@ def preprocess_for_odds_cs(
     """    
     check_for_nans(parameter_grid)
     check_for_nans(samples)
-    parameter_grid = parameter_grid.reshape(-1, poi_dim)
+    parameter_grid = parameter_grid.reshape(-1, param_dim)
     samples = samples.reshape(-1, batch_size, data_dim)   
     # TODO: this is not general, i.e. assumes our torch “construction” with a Learner that has a model attribute
     if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
