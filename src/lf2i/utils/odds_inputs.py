@@ -30,7 +30,10 @@ def preprocess_odds_estimation(
             parameters = parameters.numpy()
         if isinstance(samples, torch.Tensor):
             samples = samples.numpy()
-    
+
+    # Relabel via permutation
+    parameters, samples, labels = preprocess_odds_relabel(parameters, samples)
+
     if (len(samples.shape) == 3) and (samples.shape[1] > 1):
         warnings.warn(
             f"""You provided a simulated set with single-sample size = {samples.shape[1]}.\n
@@ -39,18 +42,15 @@ def preprocess_odds_estimation(
     if isinstance(parameters, np.ndarray):
         params_samples = np.hstack((
             parameters.reshape(-1, param_dim),
-            samples.reshape(-1, samples.shape[-1])
+            samples.reshape(-1, samples.shape[-1]) if samples.ndim == 2 else samples.reshape(samples.shape[0], -1)
         ))
     else:
         params_samples = torch.hstack((
             parameters.reshape(-1, param_dim),
-            samples.reshape(-1, samples.shape[-1])
+            samples.reshape(-1, samples.shape[-1]) if samples.ndim == 2 else samples.reshape(samples.shape[0], -1)
         ))
 
-    # Relabel via permutation
-    labels = preprocess_odds_relabel(parameters, samples)
-
-    return labels.reshape(-1, ), params_samples
+    return labels, params_samples
 
 
 def preprocess_odds_relabel(
@@ -81,51 +81,61 @@ def preprocess_odds_relabel(
     if not ((params_is_torch and samples_is_torch) or (params_is_np and samples_is_np)):
         raise TypeError("parameters and samples must both be numpy arrays or both torch tensors")
 
+    n_samples = samples.shape[0]
+
     if params_is_torch:
-        # infer number of parameter configurations from parameters if possible
-        try:
-            n_configs = parameters.reshape(-1, parameters.shape[-1]).shape[0]
-        except Exception:
-            n_configs = parameters.shape[0]
+        # Create positive class (label=1)
+        params_pos = parameters.clone()
+        samples_pos = samples.clone()
+        labels_pos = torch.ones(n_samples, dtype=torch.int64)
 
-        if samples.ndim == 3:
-            batch_size = samples.shape[1]
-            labels = torch.repeat_interleave(torch.arange(n_configs, dtype=torch.long), repeats=batch_size)
-        elif samples.ndim == 2:
-            if samples.shape[0] == n_configs:
-                labels = torch.arange(n_configs, dtype=torch.long)
-            else:
-                labels = torch.arange(samples.shape[0], dtype=torch.long)
-        else:
-            labels = torch.arange(samples.shape[0], dtype=torch.long)
+        # Create negative class (label=0)
+        permutation = torch.tensor([torch.randint(torch.arange(n_samples)[torch.arange(n_samples) != i].shape[0], (1,)).item()
+                                    for i in range(n_samples)])
+        params_neg = parameters.clone()
+        samples_neg = samples.clone()
+        labels_neg = torch.zeros(n_samples, dtype=torch.int64)
 
-        expected = n_configs * (samples.shape[1] if samples.ndim == 3 else 1)
-        if labels.numel() != expected:
-            warnings.warn("Generated labels length does not match expected number of samples from parameters/samples.")
-        return labels
+        # Combine positive and negative classes
+        all_parameters = torch.cat([params_pos, params_neg], dim=0)
+        all_samples = torch.cat([samples_pos, samples_neg], dim=0)
+        all_labels = torch.cat([labels_pos, labels_neg], dim=0)
+
+        # Shuffle the combined dataset
+        shuffle_idx = torch.randperm(2 * n_samples)
+        all_parameters = all_parameters[shuffle_idx]
+        all_samples = all_samples[shuffle_idx]
+        all_labels = all_labels[shuffle_idx]
+
+        return all_parameters, all_samples, all_labels
 
     else:
-        # numpy branch (original behavior)
-        try:
-            n_configs = parameters.reshape(-1, parameters.shape[-1]).shape[0]
-        except Exception:
-            n_configs = parameters.shape[0]
+        # Create positive class (label=1): original matched pairs
+        params_pos = parameters.copy()
+        samples_pos = samples.copy()
+        labels_pos = np.ones(n_samples, dtype=np.int64)
+        
+        # Create negative class (label=0): permuted pairs
+        # For each index i, sample from all indices except i (derangement)
+        permutation = np.array([np.random.choice(np.delete(np.arange(n_samples), i)) 
+                            for i in range(n_samples)])
+        
+        params_neg = parameters[permutation].copy()
+        samples_neg = samples.copy()  # Keep samples the same, permute parameters
+        labels_neg = np.zeros(n_samples, dtype=np.int64)
+        
+        # Combine positive and negative classes
+        all_parameters = np.vstack([params_pos, params_neg])
+        all_samples = np.vstack([samples_pos, samples_neg])
+        all_labels = np.concatenate([labels_pos, labels_neg])
+        
+        # Shuffle the combined dataset
+        shuffle_idx = np.random.permutation(2 * n_samples)
+        all_parameters = all_parameters[shuffle_idx]
+        all_samples = all_samples[shuffle_idx]
+        all_labels = all_labels[shuffle_idx]
 
-        if samples.ndim == 3:
-            batch_size = samples.shape[1]
-            labels = np.repeat(np.arange(n_configs), repeats=batch_size)
-        elif samples.ndim == 2:
-            if samples.shape[0] == n_configs:
-                labels = np.arange(n_configs)
-            else:
-                labels = np.arange(samples.shape[0])
-        else:
-            labels = np.arange(samples.shape[0])
-
-        if labels.size != (n_configs * (samples.shape[1] if samples.ndim == 3 else 1)):
-            warnings.warn("Generated labels length does not match expected number of samples from parameters/samples.")
-
-        return labels
+        return all_parameters, all_samples, all_labels
 
 
 def preprocess_for_odds_cv(
