@@ -209,7 +209,7 @@ class LF2I:
         if calibration_method == 'critical-values':
             # if estimating for multiple levels, this should return a matrix with dims (eval_grid.shape[0], num_levels)
             critical_values = to_np_if_pd(self.calibration_model[calib_dict_key].predict(
-                preprocess_predict_quantile_regression(evaluation_grid, self.calibration_model[calib_dict_key], self.test_statistic.poi_dim)
+                preprocess_predict_quantile_regression(evaluation_grid, self.calibration_model[calib_dict_key], self.test_statistic.param_dim)
             ))
             p_values = None
         else:
@@ -235,7 +235,7 @@ class LF2I:
                 p_values=p_values,
                 alpha=a,
                 acceptance_region=self.test_statistic.acceptance_region,
-                poi_dim=self.test_statistic.poi_dim
+                poi_dim=self.test_statistic.param_dim
             ))
         return confidence_regions if len(alpha) > 1 else confidence_regions[0]
 

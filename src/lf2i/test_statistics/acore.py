@@ -54,7 +54,8 @@ class ACORE(TestStatistic):
         data_dim: int,
         estimator_kwargs: Dict = {},
         verbose: bool = True,
-        n_jobs: int = -2
+        n_jobs: int = -2,
+        param_space_bounds: List[Tuple[float]] = None
     ) -> None:
         super().__init__(acceptance_region='right', estimation_method='likelihood')
 
@@ -66,6 +67,7 @@ class ACORE(TestStatistic):
         self.estimator = self._choose_estimator(estimator, estimator_kwargs, 'odds')
         self.verbose = verbose
         self.n_jobs = n_jobs
+        self.param_space_bounds = param_space_bounds
     
     def estimate(
         self,
@@ -99,7 +101,7 @@ class ACORE(TestStatistic):
         parameters: Union[np.ndarray, torch.Tensor],
         samples:  Union[np.ndarray, torch.Tensor],
         mode: str,
-        param_space_bounds: Optional[List[Tuple[float]]]
+        param_space_bounds: Optional[List[Tuple[float]]] = None
     ) -> np.ndarray:
         r"""Evaluate the ACORE test statistic over the given parameters and samples. 
         Behaviour differs depending on mode: 
@@ -127,6 +129,9 @@ class ACORE(TestStatistic):
         ValueError
             If `mode` is not among the pre-specified values.
         """
+        if param_space_bounds is None:
+            param_space_bounds = self.param_space_bounds
+
         if mode == 'critical_values':
             return self._compute_for_critical_values(parameters, samples, param_space_bounds)
         elif mode == 'confidence_sets':
@@ -208,12 +213,12 @@ class ACORE(TestStatistic):
                     lambda idx: self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds) 
                     )(i) for i in it
                 ))
-            return -2*(numerator - denominator)
+            return (numerator - denominator)
         else:
             def do_one(idx: int) -> float:
                 num = self._maximize_log_odds(sample=samples[idx], fixed_poi=parameters[idx, :self.poi_dim], optimization_bounds=param_space_bounds)
                 den = self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
-                return -2*(num - den)
+                return (num - den)
 
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
                 acore = np.array(Parallel(n_jobs=self.n_jobs)(delayed(do_one)(i) for i in it))
@@ -237,13 +242,13 @@ class ACORE(TestStatistic):
                     lambda idx: self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds) 
                     )(i) for i in it
                 )).reshape(-1, 1)
-            return -2 * (numerator - denominator)  # automatic broadcasting along dimension 1
+            return (numerator - denominator)  # automatic broadcasting along dimension 1
         else:
             def param_grid_loop(sample: Union[np.ndarray, torch.Tensor], denominator: float) -> np.ndarray:
                 numerator = np.empty(shape=(parameter_grid.shape[0], ))
                 for j in range(parameter_grid.shape[0]):
                     numerator[j] = self._maximize_log_odds(sample=sample, fixed_poi=poi_grid[j, :], optimization_bounds=param_space_bounds)
-                return -2 * (numerator - denominator)
+                return (numerator - denominator)
             
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
                 out = np.vstack(Parallel(n_jobs=self.n_jobs)(delayed(lambda idx: param_grid_loop(
@@ -260,3 +265,31 @@ class ACORE(TestStatistic):
         param_space_bounds: List[List[float]]
     ) -> np.ndarray:
         return self._compute_for_critical_values(parameters, samples, param_space_bounds)
+
+    def _compute_restricted_mle_for_confidence_sets(
+        self,
+        parameter_grid: Union[np.ndarray, torch.Tensor],
+        samples: Union[np.ndarray, torch.Tensor],
+        param_space_bounds: List[List[float]]
+    ) -> np.ndarray:
+        parameter_grid, samples, param_grid_samples = preprocess_for_odds_cs(parameter_grid, samples, self.param_dim, self.batch_size, self.data_dim, self.estimator)
+        poi_grid = parameter_grid[:, :self.poi_dim]
+
+        if self.nuisance_dim == 0:
+            # log_odds already aggregates wrt batch_size
+            mle = self._log_odds(self.estimator.predict_proba(X=param_grid_samples), argmax=True).reshape(samples.shape[0], parameter_grid.shape[0])
+            return mle
+        else:
+            def param_grid_loop(sample: Union[np.ndarray, torch.Tensor], denominator: float) -> np.ndarray:
+                mle = np.empty(shape=(parameter_grid.shape[0], self.param_dim))
+                for j in range(parameter_grid.shape[0]):
+                    mle[j, :] = self._maximize_log_odds(sample=sample, fixed_poi=poi_grid[j, :], optimization_bounds=param_space_bounds, argmax=True)
+                return mle
+            
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
+                out = np.vstack(Parallel(n_jobs=self.n_jobs)(delayed(lambda idx: param_grid_loop(
+                    sample=samples[idx], 
+                    denominator=self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
+                    ).reshape(1, parameter_grid.shape[0], self.param_dim))(i) for i in it
+                ))
+            return out
