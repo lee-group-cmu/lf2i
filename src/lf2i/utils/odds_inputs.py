@@ -40,7 +40,7 @@ def preprocess_odds_estimation(
         else:
             data_set_size, batch_size, data_dim = samples.shape
             parameters_expanded = parameters.unsqueeze(1).expand(data_set_size, batch_size, param_dim)
-            params_samples = torch.cat([samples, parameters_expanded], dim=-1)
+            params_samples = torch.cat([parameters_expanded, samples], dim=-1)
     else:
         if isinstance(parameters, np.ndarray):
             params_samples = np.hstack((
@@ -58,86 +58,147 @@ def preprocess_odds_estimation(
 
 def preprocess_odds_relabel(
     parameters: Union[np.ndarray, torch.Tensor],
-    samples: Union[np.ndarray, torch.Tensor]
-) -> Union[np.ndarray, torch.Tensor]:
+    samples: Union[np.ndarray, torch.Tensor],
+    use_distant_pairs: bool = False
+) -> Tuple:
     """
-    Create labels from parameters and samples.
-
-    Behavior:
-    - If `samples` has shape (n_configs, batch_size, data_dim) it returns
-      labels = repeat(arange(n_configs), repeats=batch_size).
-    - If `samples` has shape (n_configs, data_dim) it returns labels = arange(n_configs).
-    - Works when `parameters` / `samples` are torch Tensors or numpy arrays.
-      Both inputs must be of the same type.
-
+    Create labels by splitting data into two halves, keeping one matched and permuting the other.
+    
+    Parameters
+    ----------
+    parameters : array of shape (n_samples, param_dim)
+    samples : array of shape (n_samples, batch_size, data_dim)
+    use_distant_pairs : bool
+        If True, use farthest parameter pairs for negative class.
+        If False, use random permutation within the second half.
+    
     Returns
     -------
-    Union[np.ndarray, torch.Tensor]
-        1D integer label array / tensor of length equal to number of generated samples.
+    Tuple of (all_parameters, all_samples, all_labels)
     """
-    # require inputs to be of the same type
     params_is_torch = isinstance(parameters, torch.Tensor)
     samples_is_torch = isinstance(samples, torch.Tensor)
-    params_is_np = isinstance(parameters, np.ndarray)
-    samples_is_np = isinstance(samples, np.ndarray)
-
-    if not ((params_is_torch and samples_is_torch) or (params_is_np and samples_is_np)):
+    
+    if not ((params_is_torch and samples_is_torch) or 
+            (isinstance(parameters, np.ndarray) and isinstance(samples, np.ndarray))):
         raise TypeError("parameters and samples must both be numpy arrays or both torch tensors")
-
+    
     n_samples = samples.shape[0]
-
+    
+    # Ensure even number of samples
+    if n_samples % 2 != 0:
+        n_samples = n_samples - 1
+        if params_is_torch:
+            parameters = parameters[:n_samples]
+            samples = samples[:n_samples]
+        else:
+            parameters = parameters[:n_samples]
+            samples = samples[:n_samples]
+    
+    half = n_samples // 2
+    
     if params_is_torch:
-        # Create positive class (label=1)
-        params_pos = parameters.clone()
-        samples_pos = samples.clone()
-        labels_pos = torch.ones(n_samples, dtype=torch.int64)
-
-        # Create negative class (label=0)
-        permutation = torch.tensor([torch.randint(torch.arange(n_samples)[torch.arange(n_samples) != i].shape[0], (1,)).item()
-                                    for i in range(n_samples)])
-        params_neg = parameters.clone()
-        samples_neg = samples.clone()
-        labels_neg = torch.zeros(n_samples, dtype=torch.int64)
-
-        # Combine positive and negative classes
+        # Split into two halves
+        params_first = parameters[:half].clone()
+        samples_first = samples[:half].clone()
+        
+        params_second = parameters[half:].clone()
+        samples_second = samples[half:].clone()
+        
+        # Class 1: First half with matched pairs
+        params_pos = params_first
+        samples_pos = samples_first
+        labels_pos = torch.ones(half, dtype=torch.int64)
+        
+        # Class 0: Second half with permuted parameters
+        if use_distant_pairs:
+            # Calculate pairwise distances within second half
+            params_expanded = params_second.unsqueeze(1)  # (half, 1, param_dim)
+            params_tiled = params_second.unsqueeze(0)     # (1, half, param_dim)
+            distances = torch.norm(params_expanded - params_tiled, dim=2)  # (half, half)
+            
+            # For each sample, find a distant parameter (not necessarily the farthest to avoid always using same pairs)
+            distances.fill_diagonal_(float('-inf'))
+            # Get top-k farthest, then randomly choose from them
+            k = min(5, half - 1)  # Consider 5 farthest parameters
+            _, top_k_indices = torch.topk(distances, k, dim=1)
+            # Randomly select one from top-k for each sample
+            random_k_idx = torch.randint(0, k, (half,))
+            permutation = top_k_indices[torch.arange(half), random_k_idx]
+        else:
+            # Random permutation ensuring no i->i mapping
+            permutation = torch.randperm(half)
+            # Ensure derangement (no fixed points)
+            for i in range(half):
+                if permutation[i] == i:
+                    # Swap with next position (with wraparound)
+                    j = (i + 1) % half
+                    permutation[i], permutation[j] = permutation[j], permutation[i]
+        
+        params_neg = params_second[permutation]
+        samples_neg = samples_second  # Keep samples in original order
+        labels_neg = torch.zeros(half, dtype=torch.int64)
+        
+        # Combine
         all_parameters = torch.cat([params_pos, params_neg], dim=0)
         all_samples = torch.cat([samples_pos, samples_neg], dim=0)
         all_labels = torch.cat([labels_pos, labels_neg], dim=0)
-
+        
         # Shuffle the combined dataset
-        shuffle_idx = torch.randperm(2 * n_samples)
+        shuffle_idx = torch.randperm(n_samples)
         all_parameters = all_parameters[shuffle_idx]
         all_samples = all_samples[shuffle_idx]
         all_labels = all_labels[shuffle_idx]
-
+        
         return all_parameters, all_samples, all_labels
-
-    else:
-        # Create positive class (label=1): original matched pairs
-        params_pos = parameters.copy()
-        samples_pos = samples.copy()
-        labels_pos = np.ones(n_samples, dtype=np.int64)
+    
+    else:  # numpy version
+        # Split into two halves
+        params_first = parameters[:half].copy()
+        samples_first = samples[:half].copy()
         
-        # Create negative class (label=0): permuted pairs
-        # For each index i, sample from all indices except i (derangement)
-        permutation = np.array([np.random.choice(np.delete(np.arange(n_samples), i)) 
-                            for i in range(n_samples)])
+        params_second = parameters[half:].copy()
+        samples_second = samples[half:].copy()
         
-        params_neg = parameters[permutation].copy()
-        samples_neg = samples.copy()  # Keep samples the same, permute parameters
-        labels_neg = np.zeros(n_samples, dtype=np.int64)
+        # Class 1: First half with matched pairs
+        params_pos = params_first
+        samples_pos = samples_first
+        labels_pos = np.ones(half, dtype=np.int64)
         
-        # Combine positive and negative classes
+        # Class 0: Second half with permuted parameters
+        if use_distant_pairs:
+            from scipy.spatial.distance import cdist
+            distances = cdist(params_second, params_second)
+            np.fill_diagonal(distances, -np.inf)
+            
+            # Get top-k farthest, then randomly choose
+            k = min(5, half - 1)
+            top_k_indices = np.argpartition(distances, -k, axis=1)[:, -k:]
+            random_k_idx = np.random.randint(0, k, size=half)
+            permutation = top_k_indices[np.arange(half), random_k_idx]
+        else:
+            permutation = np.random.permutation(half)
+            # Ensure derangement
+            for i in range(half):
+                if permutation[i] == i:
+                    j = (i + 1) % half
+                    permutation[i], permutation[j] = permutation[j], permutation[i]
+        
+        params_neg = params_second[permutation]
+        samples_neg = samples_second
+        labels_neg = np.zeros(half, dtype=np.int64)
+        
+        # Combine
         all_parameters = np.vstack([params_pos, params_neg])
-        all_samples = np.vstack([samples_pos, samples_neg])
+        all_samples = np.vstack([samples_pos, samples_neg]) if samples.ndim == 2 else np.concatenate([samples_pos, samples_neg], axis=0)
         all_labels = np.concatenate([labels_pos, labels_neg])
         
-        # Shuffle the combined dataset
-        shuffle_idx = np.random.permutation(2 * n_samples)
+        # Shuffle
+        shuffle_idx = np.random.permutation(n_samples)
         all_parameters = all_parameters[shuffle_idx]
         all_samples = all_samples[shuffle_idx]
         all_labels = all_labels[shuffle_idx]
-
+        
         return all_parameters, all_samples, all_labels
 
 
@@ -194,7 +255,7 @@ def preprocess_for_odds_cv(
         if samples.ndim == 3 and samples.shape[1] > 1:
             data_set_size, batch_size, data_dim = samples.shape
             parameters_expanded = parameters.unsqueeze(1).expand(data_set_size, batch_size, param_dim)
-            params_samples = torch.cat([samples, parameters_expanded], dim=-1)
+            params_samples = torch.cat([parameters_expanded, samples], dim=-1)
         else:
             params_samples = torch.hstack((
                 torch.repeat_interleave(parameters.reshape(-1, param_dim), repeats=batch_size, dim=0),
@@ -317,7 +378,7 @@ def preprocess_odds_integration(
 def preprocess_odds_maximization(
     estimator: Any,
     nominal_params: torch.Tensor,
-    opt_param: np.ndarray,
+    opt_param: Union[np.ndarray, torch.Tensor],
     opt_param_index: int,
     sample: Union[np.ndarray, torch.Tensor],
 ) -> Union[np.ndarray, torch.Tensor]:
@@ -337,7 +398,11 @@ def preprocess_odds_maximization(
     """
     batch_size, data_dim = sample.shape
     param_dim = len(nominal_params)
-    opt_param = torch.tensor(opt_param, dtype=nominal_params.dtype)
+
+    if not isinstance(opt_param, torch.Tensor):
+        opt_param = torch.tensor(opt_param, dtype=nominal_params.dtype)
+    else:
+        opt_param = opt_param.to(nominal_params.dtype)
 
     if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
         # Reshape to start

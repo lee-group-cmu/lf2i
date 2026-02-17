@@ -155,9 +155,14 @@ class ACORE(TestStatistic):
             raise ValueError("max_iter must be positive")
         assert fixed_poi.shape[0] in [0, self.poi_dim], f"fixed_poi should be either empty or have the same number of dimensions as the number of POIs, got {fixed_poi.shape[0]} and {self.poi_dim} respectively"
 
-        nominal_parameter = torch.tensor(
-            np.array([np.mean(bounds) for bounds in optimization_bounds])
-        )  # use mid-point as initial guess
+        if fixed_poi.shape[0] > 0:
+            nominal_parameter = torch.cat((fixed_poi, torch.tensor(
+                np.array([np.mean(bounds) for bounds in optimization_bounds[self.poi_dim:]])
+            )))  # use mid-point as initial guess for nuisances
+        else:
+            nominal_parameter = torch.tensor(
+                np.array([np.mean(bounds) for bounds in optimization_bounds])
+            )  # use mid-point as initial guess
 
         # Global MLE over all parameters (POIs and nuisances)
         if fixed_poi.shape[0] == 0:
@@ -184,7 +189,7 @@ class ACORE(TestStatistic):
         # Evaluate likelihood at the solution
         def log_lik():
             return self._log_odds(self.estimator.predict_proba(
-                X=preprocess_for_odds_cv(nominal_parameter, sample.unsqueeze(0), self.param_dim, self.batch_size, self.data_dim, self.estimator)[2].float()
+                X=preprocess_odds_maximization(self.estimator, nominal_parameter, nominal_parameter[0], 0, sample)
             ))[0, 1].item()
 
         if argmax:
