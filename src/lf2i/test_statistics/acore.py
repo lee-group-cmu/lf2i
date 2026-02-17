@@ -155,21 +155,17 @@ class ACORE(TestStatistic):
             raise ValueError("max_iter must be positive")
         assert fixed_poi.shape[0] in [0, self.poi_dim], f"fixed_poi should be either empty or have the same number of dimensions as the number of POIs, got {fixed_poi.shape[0]} and {self.poi_dim} respectively"
 
+        # Set nominal parameter based on global or restricted MLE
         if fixed_poi.shape[0] > 0:
+            opt_dims = range(self.poi_dim, self.param_dim)
             nominal_parameter = torch.cat((fixed_poi, torch.tensor(
                 np.array([np.mean(bounds) for bounds in optimization_bounds[self.poi_dim:]])
             )))  # use mid-point as initial guess for nuisances
         else:
+            opt_dims = range(self.param_dim)
             nominal_parameter = torch.tensor(
                 np.array([np.mean(bounds) for bounds in optimization_bounds])
             )  # use mid-point as initial guess
-
-        # Global MLE over all parameters (POIs and nuisances)
-        if fixed_poi.shape[0] == 0:
-            opt_dims = range(self.param_dim)
-        # Restricted MLE over nuisances only, with POIs fixed to the value given by `fixed_poi`
-        else:
-            opt_dims = range(self.poi_dim, self.param_dim)
 
         for iteration in range(max_iter):
             for pdx in opt_dims:
@@ -209,15 +205,15 @@ class ACORE(TestStatistic):
             numerator = self._log_odds(self.estimator.predict_proba(X=params_samples))
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
                 denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
-                    lambda idx: self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds[:self.poi_dim]) 
+                    lambda idx: self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds) 
                     )(i) for i in it
                 ))
-            return numerator / denominator
+            return -2*(numerator - denominator)
         else:
             def do_one(idx: int) -> float:
-                num = self._maximize_log_odds(sample=samples[idx], fixed_poi=parameters[idx, :self.poi_dim], optimization_bounds=param_space_bounds[-self.nuisance_dim:])
+                num = self._maximize_log_odds(sample=samples[idx], fixed_poi=parameters[idx, :self.poi_dim], optimization_bounds=param_space_bounds)
                 den = self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
-                return num / den
+                return -2*(num - den)
 
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
                 acore = np.array(Parallel(n_jobs=self.n_jobs)(delayed(do_one)(i) for i in it))
@@ -238,16 +234,16 @@ class ACORE(TestStatistic):
             # denominator is the same regardless of parameter grid value
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
                 denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
-                    lambda idx: self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds[:self.poi_dim]) 
+                    lambda idx: self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds) 
                     )(i) for i in it
                 )).reshape(-1, 1)
-            return numerator / denominator  # automatic broadcasting along dimension 1
+            return -2 * (numerator - denominator)  # automatic broadcasting along dimension 1
         else:
             def param_grid_loop(sample: Union[np.ndarray, torch.Tensor], denominator: float) -> np.ndarray:
                 numerator = np.empty(shape=(parameter_grid.shape[0], ))
                 for j in range(parameter_grid.shape[0]):
-                    numerator[j] = self._maximize_log_odds(sample=sample, fixed_poi=poi_grid[j, :], optimization_bounds=param_space_bounds[-self.nuisance_dim:])
-                return numerator / denominator
+                    numerator[j] = self._maximize_log_odds(sample=sample, fixed_poi=poi_grid[j, :], optimization_bounds=param_space_bounds)
+                return -2 * (numerator - denominator)
             
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
                 out = np.vstack(Parallel(n_jobs=self.n_jobs)(delayed(lambda idx: param_grid_loop(
