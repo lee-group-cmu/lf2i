@@ -35,20 +35,23 @@ def preprocess_odds_estimation(
     parameters, samples, labels = preprocess_odds_relabel(parameters, samples)
 
     if (len(samples.shape) == 3) and (samples.shape[1] > 1):
-        warnings.warn(
-            f"""You provided a simulated set with single-sample size = {samples.shape[1]}.\n
-            This dimension will be flattened for estimation. Is this the desired behaviour?"""
-        )
-    if isinstance(parameters, np.ndarray):
-        params_samples = np.hstack((
-            parameters.reshape(-1, param_dim),
-            samples.reshape(-1, samples.shape[-1]) if samples.ndim == 2 else samples.reshape(samples.shape[0], -1)
-        ))
+        if isinstance(parameters, np.ndarray):
+            pass
+        else:
+            data_set_size, batch_size, data_dim = samples.shape
+            parameters_expanded = parameters.unsqueeze(1).expand(data_set_size, batch_size, param_dim)
+            params_samples = torch.cat([samples, parameters_expanded], dim=-1)
     else:
-        params_samples = torch.hstack((
-            parameters.reshape(-1, param_dim),
-            samples.reshape(-1, samples.shape[-1]) if samples.ndim == 2 else samples.reshape(samples.shape[0], -1)
-        ))
+        if isinstance(parameters, np.ndarray):
+            params_samples = np.hstack((
+                parameters.reshape(-1, param_dim),
+                samples.reshape(-1, samples.shape[-1]) if samples.ndim == 2 else samples.reshape(samples.shape[0], -1)
+            ))
+        else:
+            params_samples = torch.hstack((
+                parameters.reshape(-1, param_dim),
+                samples.reshape(-1, samples.shape[-1]) if samples.ndim == 2 else samples.reshape(samples.shape[0], -1)
+            ))
 
     return labels, params_samples
 
@@ -187,19 +190,29 @@ def preprocess_for_odds_cv(
             parameters = torch.from_numpy(parameters)
         if isinstance(samples, np.ndarray):
             samples = torch.from_numpy(samples)
-        params_samples = torch.hstack((
-            torch.repeat_interleave(parameters.reshape(-1, param_dim), repeats=batch_size, dim=0),
-            samples.reshape(-1, data_dim)
-        ))
+
+        if samples.ndim == 3 and samples.shape[1] > 1:
+            data_set_size, batch_size, data_dim = samples.shape
+            parameters_expanded = parameters.unsqueeze(1).expand(data_set_size, batch_size, param_dim)
+            params_samples = torch.cat([samples, parameters_expanded], dim=-1)
+        else:
+            params_samples = torch.hstack((
+                torch.repeat_interleave(parameters.reshape(-1, param_dim), repeats=batch_size, dim=0),
+                samples.reshape(-1, data_dim)
+            ))
     else:
         if isinstance(parameters, torch.Tensor):
             parameters = parameters.numpy()
         if isinstance(samples, torch.Tensor):
             samples = samples.numpy()
-        params_samples = np.hstack((
-            np.repeat(parameters.reshape(-1, param_dim), repeats=batch_size, axis=0),
-            samples.reshape(-1, data_dim)
-        ))
+
+        if samples.ndim == 3 and samples.shape[1] > 1:
+            pass
+        else:
+            params_samples = np.hstack((
+                np.repeat(parameters.reshape(-1, param_dim), repeats=batch_size, axis=0),
+                samples.reshape(-1, data_dim)
+            ))
 
     return parameters, samples, params_samples
 
@@ -255,25 +268,37 @@ def preprocess_for_odds_cs(
             parameter_grid = torch.from_numpy(parameter_grid)
         if isinstance(samples, np.ndarray):
             samples = torch.from_numpy(samples)
-        params_samples = torch.hstack((
-            torch.tile(
-                torch.repeat_interleave(parameter_grid, repeats=batch_size, dim=0), 
-                dims=(samples.shape[0], 1)
-            ),
-            torch.tile(samples, dims=(1, parameter_grid.shape[0], 1)).reshape(-1, data_dim)
-        ))
+
+        if samples.ndim == 3 and samples.shape[1] > 1:
+            data_set_size, batch_size, data_dim = samples.shape
+            parameter_grid_expanded = parameter_grid.unsqueeze(1).expand(-1, batch_size, param_dim)  # shape (param_grid_size, batch_size, param_dim)
+            parameter_grid_expanded_repeated = torch.repeat_interleave(parameter_grid_expanded, repeats=samples.shape[0], dim=0)
+            samples_tiled = torch.tile(samples, dims=(parameter_grid.shape[0], 1, 1))  # shape (param_grid_size*n_samples, batch_size, data_dim)
+            params_samples = torch.cat([parameter_grid_expanded_repeated, samples_tiled], dim=-1)
+        else:
+            params_samples = torch.hstack((
+                torch.tile(
+                    torch.repeat_interleave(parameter_grid, repeats=batch_size, dim=0), 
+                    dims=(samples.shape[0], 1)
+                ),
+                torch.tile(samples, dims=(1, parameter_grid.shape[0], 1)).reshape(-1, data_dim)
+            ))
     else:
         if isinstance(parameter_grid, torch.Tensor):
             parameter_grid = parameter_grid.numpy()
         if isinstance(samples, torch.Tensor):
             samples = samples.numpy()
-        params_samples = np.hstack((
-            np.tile(
-                np.repeat(parameter_grid, repeats=batch_size, axis=0), 
-                reps=(samples.shape[0], 1)
-            ),
-            np.tile(samples, reps=(1, parameter_grid.shape[0], 1)).reshape(-1, data_dim)
-        ))
+
+        if samples.ndim == 3 and samples.shape[1] > 1:
+            pass
+        else:
+            params_samples = np.hstack((
+                np.tile(
+                    np.repeat(parameter_grid, repeats=batch_size, axis=0), 
+                    reps=(samples.shape[0], 1)
+                ),
+                np.tile(samples, reps=(1, parameter_grid.shape[0], 1)).reshape(-1, data_dim)
+            ))
         
     return parameter_grid, samples, params_samples
 
