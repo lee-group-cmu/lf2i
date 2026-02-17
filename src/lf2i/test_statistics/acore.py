@@ -5,7 +5,7 @@ import warnings
 
 import numpy as np
 import torch
-from scipy.optimize import minimize
+from scipy.optimize import minimize, minimize_scalar
 
 from lf2i.test_statistics._base import TestStatistic
 from lf2i.utils.odds_inputs import (
@@ -138,42 +138,59 @@ class ACORE(TestStatistic):
         
     def _log_odds(
         self,
-        probs: Union[np.ndarray, torch.Tensor]
+        prob: Union[np.ndarray, torch.Tensor]
     ) -> np.ndarray:
-        probs = to_np_if_torch(probs)
-        return np.sum(np.log((probs[:, 1] / probs[:, 0])).reshape(-1, self.batch_size), axis=1)
+        prob = to_np_if_torch(prob)
+        return np.log(prob / (1 - prob))
 
     def _maximize_log_odds(
         self,
         sample: Union[np.ndarray, torch.Tensor],
         fixed_poi: Union[np.ndarray, torch.Tensor],  # needed only if maximizing solely over nuisances; otherwise empty array
         optimization_bounds: List[Tuple[float]],
-        argmax: bool = False
+        argmax: bool = False,
+        max_iter: Optional[int] = 1
     ) -> float:
-        # max f(x) = - min -f(x)
-        result = minimize(
-            fun=lambda *params: -1 * self._log_odds(self.estimator.predict_proba(
-                X=preprocess_odds_maximization(self.estimator, fixed_poi, params, sample, self.param_dim, self.batch_size)
-            )),
-            x0=np.array([np.mean(bounds) for bounds in optimization_bounds]),  # use mid-point as initial guess
-            method='Nelder-Mead',
-            bounds=optimization_bounds
-        )
-        if not result.success:
-            warnings.warn(f'Log-odds optimization failed. Message: {result.message}. Increasing max function evaluations.')
-            result = minimize(
-                fun=lambda *params: -1 * self._log_odds(self.estimator.predict_proba(
-                    X=preprocess_odds_maximization(self.estimator, fixed_poi, params, sample, self.param_dim, self.batch_size)
-                )),
-                x0=np.array([np.mean(bounds) for bounds in optimization_bounds]),  # use mid-point as initial guess
-                method='Nelder-Mead',
-                maxiter=len(optimization_bounds)*400,  # double the default
-                bounds=optimization_bounds
-            )
-        if argmax:
-            return result.x
+        if max_iter <= 0:
+            raise ValueError("max_iter must be positive")
+        assert fixed_poi.shape[0] in [0, self.poi_dim], f"fixed_poi should be either empty or have the same number of dimensions as the number of POIs, got {fixed_poi.shape[0]} and {self.poi_dim} respectively"
+
+        nominal_parameter = torch.tensor(
+            np.array([np.mean(bounds) for bounds in optimization_bounds])
+        )  # use mid-point as initial guess
+
+        # Global MLE over all parameters (POIs and nuisances)
+        if fixed_poi.shape[0] == 0:
+            opt_dims = range(self.param_dim)
+        # Restricted MLE over nuisances only, with POIs fixed to the value given by `fixed_poi`
         else:
-            return -1 * result.fun
+            opt_dims = range(self.poi_dim, self.param_dim)
+
+        for iteration in range(max_iter):
+            for pdx in opt_dims:
+                # Profile of likelihood along parameter dimension pdx
+                def objective(theta_j: float) -> float:
+                    return -1 * self._log_odds(self.estimator.predict_proba(
+                        X=preprocess_odds_maximization(self.estimator, nominal_parameter, theta_j, pdx, sample)
+                    ))[0, 1].item()
+
+                result = minimize_scalar(
+                    objective,
+                    bounds=optimization_bounds[pdx],
+                    method='bounded'
+                )
+                nominal_parameter[pdx] = result.x
+
+        # Evaluate likelihood at the solution
+        def log_lik():
+            return self._log_odds(self.estimator.predict_proba(
+                X=preprocess_for_odds_cv(nominal_parameter, sample.unsqueeze(0), self.param_dim, self.batch_size, self.data_dim, self.estimator)[2].float()
+            ))[0, 1].item()
+
+        if argmax:
+            return nominal_parameter
+        else:
+            return log_lik()
 
     def _compute_for_critical_values(
         self,

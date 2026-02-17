@@ -311,35 +311,42 @@ def preprocess_odds_integration(
     param_dim: int,
     batch_size: int
 ) -> Union[np.ndarray, torch.Tensor]:
-    if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
-        estimator_inputs = torch.hstack((
-            torch.repeat_interleave(torch.cat((fixed_poi, torch.Tensor(integ_params))).reshape(1, param_dim), repeats=batch_size).reshape(-1, param_dim), 
-            sample
-        ))
-    else:
-        estimator_inputs = np.hstack((
-            np.repeat(np.concatenate((to_np_if_torch(fixed_poi), np.array(integ_params))).reshape(1, param_dim), repeats=batch_size).reshape(-1, param_dim), 
-            sample
-        ))
-    return estimator_inputs
+    raise NotImplementedError
 
 
 def preprocess_odds_maximization(
     estimator: Any,
-    fixed_poi: Union[np.ndarray, torch.Tensor],
-    opt_params: Tuple[np.ndarray],
+    nominal_params: torch.Tensor,
+    opt_param: np.ndarray,
+    opt_param_index: int,
     sample: Union[np.ndarray, torch.Tensor],
-    param_dim: int,
-    batch_size: int
 ) -> Union[np.ndarray, torch.Tensor]:
+    """
+    Preprocessing for one-at-a-time optimization of the odds ratio. Given a 
+    sample, a nominal parameter vector, and a 
+    particular component j of the full parameter vector, concatenate the 
+    parameters by swapping the j-th component of the nominal parameter with the 
+    optimization variable.
+
+    Args:
+        estimator
+        nominal_params: Of shape (poi_dim + nuisance_dim,)
+        opt_param: Scalar value for the optimization variable (the j-th component of the parameter vector)
+        opt_param_index: Index of the optimization variable in the full parameter vector
+        sample: One sample, of shape (batch_size, data_dim)
+    """
+    batch_size, data_dim = sample.shape
+    param_dim = len(nominal_params)
+    opt_param = torch.tensor(opt_param, dtype=nominal_params.dtype)
+
     if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
-        estimator_inputs = torch.hstack((
-            torch.repeat_interleave(torch.cat((fixed_poi, torch.from_numpy(np.concatenate(opt_params)))).reshape(1, param_dim), repeats=batch_size).reshape(-1, param_dim), 
-            sample
-        ))
+        # Reshape to start
+        sample = sample.reshape(1, batch_size, data_dim)  # shape (1, batch_size, data_dim)
+        nominal_params[opt_param_index] = opt_param  # swap in the optimization variable
+        nominal_params = nominal_params.reshape(1, param_dim)  # shape (1, param_dim)
+        parameter_expanded = nominal_params.unsqueeze(1).expand(1, batch_size, param_dim)  # shape (1, batch_size, param_dim)
+        estimator_inputs = torch.cat([parameter_expanded, sample], dim=-1).float()  # shape (1, batch_size, param_dim + data_dim)
     else:
-        estimator_inputs = np.hstack((
-            np.repeat(np.concatenate((to_np_if_torch(fixed_poi), np.concatenate(opt_params))).reshape(1, param_dim), repeats=batch_size).reshape(-1, param_dim), 
-            sample
-        ))
+        pass
+
     return estimator_inputs
