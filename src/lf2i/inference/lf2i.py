@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 from lf2i.simulator import Simulator
-from lf2i.test_statistics import TestStatistic, ACORE, BFF, Waldo
+from lf2i.test_statistics import TestStatistic, ACORE, BFF, Waldo, Posterior
 from lf2i.calibration.critical_values import train_qr_algorithm
 from lf2i.calibration.p_values import augment_calibration_set, estimate_rejection_proba
 from lf2i.confidence_regions.neyman_inversion import compute_confidence_regions
@@ -50,10 +50,12 @@ class LF2I:
             self.test_statistic = BFF(**test_statistic_kwargs)
         elif test_statistic == 'waldo':
             self.test_statistic = Waldo(**test_statistic_kwargs)
+        elif test_statistic == 'posterior':
+            self.test_statistic = Posterior(**test_statistic_kwargs)
         elif isinstance(test_statistic, TestStatistic):
             self.test_statistic = test_statistic
         else:
-            raise ValueError(f"Expected one of `acore`, `bff`, `waldo` or an instance of a custom `lf2i.test_statistics._base.TestStatistic`, got {test_statistic}")
+            raise ValueError(f"Expected one of `acore`, `bff`, `waldo`, `posterior`, or an instance of a custom `lf2i.test_statistics._base.TestStatistic`, got {test_statistic}")
         self.calibration_model = {}
 
     def inference(
