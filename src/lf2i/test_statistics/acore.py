@@ -101,7 +101,8 @@ class ACORE(TestStatistic):
         parameters: Union[np.ndarray, torch.Tensor],
         samples:  Union[np.ndarray, torch.Tensor],
         mode: str,
-        param_space_bounds: Optional[List[Tuple[float]]] = None
+        param_space_bounds: Optional[List[Tuple[float]]] = None,
+        condition_on_poi: bool = False # TODO: implement evaluation mode for POI-conditional sets
     ) -> np.ndarray:
         r"""Evaluate the ACORE test statistic over the given parameters and samples. 
         Behaviour differs depending on mode: 
@@ -118,6 +119,8 @@ class ACORE(TestStatistic):
             Either 'critical_values', 'confidence_sets', 'diagnostics'.
         param_space_bounds : Optional[List[Tuple[float]]]
             Bounds of the parameter space, both POIs and nuisances. Must be in the same order as in `parameters`.
+        condition_on_poi : bool
+            Whether to condition on the POI when maximizing the likelihood for the denominator of the ACORE
 
         Returns
         -------
@@ -133,76 +136,20 @@ class ACORE(TestStatistic):
             param_space_bounds = self.param_space_bounds
 
         if mode == 'critical_values':
-            return self._compute_for_critical_values(parameters, samples, param_space_bounds)
+            return self._compute_for_critical_values(parameters, samples, param_space_bounds, condition_on_poi)
         elif mode == 'confidence_sets':
-            return self._compute_for_confidence_sets(parameters, samples, param_space_bounds)
+            return self._compute_for_confidence_sets(parameters, samples, param_space_bounds, condition_on_poi)
         elif mode == 'diagnostics':
-            return self._compute_for_diagnostics(parameters, samples, param_space_bounds)
+            return self._compute_for_diagnostics(parameters, samples, param_space_bounds, condition_on_poi)
         else:
             raise ValueError(f"Only `critical_values`, `confidence_sets`, and `diagnostics` are supported, got {mode}")
-        
-    def _log_odds(
-        self,
-        prob: Union[np.ndarray, torch.Tensor]
-    ) -> np.ndarray:
-        prob = to_np_if_torch(prob)
-        return np.log(prob / (1 - prob))
-
-    def _maximize_log_odds(
-        self,
-        sample: Union[np.ndarray, torch.Tensor],
-        fixed_poi: Union[np.ndarray, torch.Tensor],  # needed only if maximizing solely over nuisances; otherwise empty array
-        optimization_bounds: List[Tuple[float]],
-        argmax: bool = False,
-        max_iter: Optional[int] = 1
-    ) -> float:
-        if max_iter <= 0:
-            raise ValueError("max_iter must be positive")
-        assert fixed_poi.shape[0] in [0, self.poi_dim], f"fixed_poi should be either empty or have the same number of dimensions as the number of POIs, got {fixed_poi.shape[0]} and {self.poi_dim} respectively"
-
-        # Set nominal parameter based on global or restricted MLE
-        if fixed_poi.shape[0] > 0:
-            opt_dims = range(self.poi_dim, self.param_dim)
-            nominal_parameter = torch.cat((fixed_poi, torch.tensor(
-                np.array([np.mean(bounds) for bounds in optimization_bounds[self.poi_dim:]])
-            )))  # use mid-point as initial guess for nuisances
-        else:
-            opt_dims = range(self.param_dim)
-            nominal_parameter = torch.tensor(
-                np.array([np.mean(bounds) for bounds in optimization_bounds])
-            )  # use mid-point as initial guess
-
-        for iteration in range(max_iter):
-            for pdx in opt_dims:
-                # Profile of likelihood along parameter dimension pdx
-                def objective(theta_j: float) -> float:
-                    return -1 * self._log_odds(self.estimator.predict_proba(
-                        X=preprocess_odds_maximization(self.estimator, nominal_parameter, theta_j, pdx, sample)
-                    ))[0, 1].item()
-
-                result = minimize_scalar(
-                    objective,
-                    bounds=optimization_bounds[pdx],
-                    method='bounded'
-                )
-                nominal_parameter[pdx] = result.x
-
-        # Evaluate likelihood at the solution
-        def log_lik():
-            return self._log_odds(self.estimator.predict_proba(
-                X=preprocess_odds_maximization(self.estimator, nominal_parameter, nominal_parameter[0], 0, sample)
-            ))[0, 1].item()
-
-        if argmax:
-            return nominal_parameter
-        else:
-            return log_lik()
 
     def _compute_for_critical_values(
         self,
         parameters: Union[np.ndarray, torch.Tensor],
         samples: Union[np.ndarray, torch.Tensor, None],
-        param_space_bounds: Optional[List[Tuple[float]]]
+        param_space_bounds: Optional[List[Tuple[float]]],
+        condition_on_poi: bool = False
     ) -> Union[np.ndarray, Tuple[np.ndarray]]:
         # NOTE: this only considers simple null hypothesis with respect to the POI, which is what we need for confidence sets
         parameters, samples, params_samples = preprocess_for_odds_cv(parameters, samples, self.param_dim, self.batch_size, self.data_dim, self.estimator)
@@ -223,12 +170,13 @@ class ACORE(TestStatistic):
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
                 acore = np.array(Parallel(n_jobs=self.n_jobs)(delayed(do_one)(i) for i in it))
             return acore
-    
+
     def _compute_for_confidence_sets(
         self, 
         parameter_grid: Union[np.ndarray, torch.Tensor],
         samples: Union[np.ndarray, torch.Tensor],
-        param_space_bounds: List[List[float]]
+        param_space_bounds: List[List[float]],
+        condition_on_poi: bool = False
     ) -> np.ndarray:
         parameter_grid, samples, param_grid_samples = preprocess_for_odds_cs(parameter_grid, samples, self.param_dim, self.batch_size, self.data_dim, self.estimator)
         poi_grid = parameter_grid[:, :self.poi_dim]
@@ -262,9 +210,85 @@ class ACORE(TestStatistic):
         self,
         parameters: Union[np.ndarray, torch.Tensor],
         samples: Union[np.ndarray, torch.Tensor],
-        param_space_bounds: List[List[float]]
+        param_space_bounds: List[List[float]],
+        condition_on_poi: bool = False
     ) -> np.ndarray:
         return self._compute_for_critical_values(parameters, samples, param_space_bounds)
+
+    def _log_odds(
+        self,
+        prob: Union[np.ndarray, torch.Tensor]
+    ) -> np.ndarray:
+        """
+        Convert odds-scale input to log-likelihood-scale
+        """
+        prob = to_np_if_torch(prob)
+        return np.log(prob / (1 - prob))
+
+    def _log_lik(
+        self,
+        parameter: Union[np.ndarray, torch.Tensor],
+        sample: Union[np.ndarray, torch.Tensor]
+    ):
+        """
+        Evaluate the log-likelihood (up to a normalization constant) for a given parameter and sample, using the trained estimator for odds.
+        """
+        # TODO: move into _maximize_log_odds
+        return self._log_odds(self.estimator.predict_proba(
+            X=preprocess_odds_maximization(self.estimator, parameter, parameter[0], 0, sample)
+        ))[0, 1].item()
+
+    def _maximize_log_odds(
+        self,
+        sample: Union[np.ndarray, torch.Tensor],
+        fixed_poi: Union[np.ndarray, torch.Tensor],  # needed only if maximizing solely over nuisances; otherwise empty array
+        optimization_bounds: List[Tuple[float]],
+        argmax: bool = False,
+        max_iter: Optional[int] = 1,
+        condition_on_poi: bool = False # TODO: implement conditioning on the POI when maximizing the likelihood for the denominator of the ACORE
+    ) -> float:
+        if max_iter <= 0:
+            raise ValueError("max_iter must be positive")
+        assert fixed_poi.shape[0] in [0, self.poi_dim], f"fixed_poi should be either empty or have the same number of dimensions as the number of POIs, got {fixed_poi.shape[0]} and {self.poi_dim} respectively"
+
+        # Set nominal parameter based on global or restricted MLE
+        if fixed_poi.shape[0] > 0:
+            opt_dims = range(self.poi_dim, self.param_dim)
+            nominal_parameter = torch.cat((fixed_poi, torch.tensor(
+                np.array([np.mean(bounds) for bounds in optimization_bounds[self.poi_dim:]])
+            )))  # use mid-point as initial guess for nuisances
+        else:
+            opt_dims = range(self.param_dim)
+            nominal_parameter = torch.tensor(
+                np.array([np.mean(bounds) for bounds in optimization_bounds])
+            )  # use mid-point as initial guess
+
+        for iteration in range(max_iter):
+            for pdx in opt_dims:
+                # Profile of likelihood along parameter dimension pdx
+                def objective(theta_j: float) -> float:
+                    return -1 * self._log_odds(self.estimator.predict_proba(
+                        X=preprocess_odds_maximization(self.estimator, nominal_parameter, theta_j, pdx, sample)
+                    ))[0, 1].item()
+
+                result = minimize_scalar(
+                    objective,
+                    bounds=optimization_bounds[pdx],
+                    method='bounded'
+                )
+                nominal_parameter[pdx] = result.x
+
+        # # Evaluate likelihood at the solution
+        # def log_lik():
+        #     return self._log_odds(self.estimator.predict_proba(
+        #         X=preprocess_odds_maximization(self.estimator, nominal_parameter, nominal_parameter[0], 0, sample)
+        #     ))[0, 1].item()
+
+        if argmax:
+            return nominal_parameter
+        else:
+            # return log_lik()
+            return self._log_lik(nominal_parameter, sample)
 
     def _compute_restricted_mle_for_confidence_sets(
         self,
