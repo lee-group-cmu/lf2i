@@ -11,6 +11,7 @@ from catboost import CatBoostClassifier
 from lf2i.calibration.torch_utils import FeedForwardNN, LearnerClassification
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_fit_p_values
 from lf2i.utils.miscellanea import select_n_jobs
+from lf2i.calibration.parametric_cd import ParametricCDFEstimator
 
 
 def conditional_sampling(
@@ -414,6 +415,15 @@ def estimate_rejection_proba(
             inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm)
             learner_kwargs = {arg: algorithm_kwargs[arg] for arg in ['epochs', 'batch_size']}
             algorithm.fit(X=inputs, y=rejection_indicators, **learner_kwargs)
+        elif algorithm == 'parametric-nn':
+            inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm).reshape(-1, )
+            nn_kwargs  = algorithm_kwargs if algorithm_kwargs else {}
+            algorithm  = ParametricCDFEstimator(
+                acceptance_region = acceptance_region,
+                **nn_kwargs
+            )
+            algorithm.fit(test_statistics = inputs[:, 0],
+                          poi = inputs[:, 1:])
         else:
             raise ValueError(f"Only 'cat-gb', 'nn', 'logistic', 'gam' or custom algorithm (Any) are currently supported, got {algorithm}")
     else:

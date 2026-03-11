@@ -188,15 +188,23 @@ class LF2I:
                     n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2  # all cores minus 1
                 )
             else:
-                augmented_inputs, rejection_indicators = augment_calibration_set(
-                    test_statistics=self.test_statistics_calib,
-                    poi=self.parameters_calib,
-                    num_augment=num_augment,
-                    acceptance_region=self.test_statistic.acceptance_region
-                )
+                if calibration_model == 'parametric-nn':
+                    parameters_calib_np = to_np_if_torch(self.parameters_calib)
+                    if parameters_calib_np.ndim == 1:
+                        parameters_calib_np = parameters_calib_np.reshape(-1, 1)
+                    test_stats_np = to_np_if_torch(self.test_statistics_calib).reshape(-1, 1)
+                    inputs_for_calib             = np.hstack([test_stats_np, parameters_calib_np])
+                    rejection_indicators_for_calib = np.zeros(len(inputs_for_calib))  # unused by ParametricCDFEstimator
+                else:
+                    inputs_for_calib, rejection_indicators_for_calib = augment_calibration_set(
+                        test_statistics=self.test_statistics_calib,
+                        poi=self.parameters_calib,
+                        num_augment=num_augment,
+                        acceptance_region=self.test_statistic.acceptance_region
+                    )
                 self.calibration_model[calib_dict_key] = estimate_rejection_proba(
-                    inputs=augmented_inputs,
-                    rejection_indicators=rejection_indicators,
+                    inputs=inputs_for_calib,
+                    rejection_indicators=rejection_indicators_for_calib,
                     algorithm=calibration_model,
                     acceptance_region=self.test_statistic.acceptance_region,
                     algorithm_kwargs=self.calibration_model_kwargs,
