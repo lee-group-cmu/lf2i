@@ -112,19 +112,25 @@ def preprocess_odds_relabel(
         
         # Class 0: Second half with permuted parameters
         if use_distant_pairs:
-            # Calculate pairwise distances within second half
-            params_expanded = params_second.unsqueeze(1)  # (half, 1, param_dim)
-            params_tiled = params_second.unsqueeze(0)     # (1, half, param_dim)
-            distances = torch.norm(params_expanded - params_tiled, dim=2)  # (half, half)
-            
-            # For each sample, find a distant parameter (not necessarily the farthest to avoid always using same pairs)
-            distances.fill_diagonal_(float('-inf'))
-            # Get top-k farthest, then randomly choose from them
-            k = min(5, half - 1)  # Consider 5 farthest parameters
-            _, top_k_indices = torch.topk(distances, k, dim=1)
-            # Randomly select one from top-k for each sample
-            random_k_idx = torch.randint(0, k, (half,))
-            permutation = top_k_indices[torch.arange(half), random_k_idx]
+            # If half <= 1 there is no meaningful "distant" partner, fall back to random permutation
+            if half <= 1:
+                permutation = torch.randperm(half)
+            else:
+                # Calculate pairwise distances within second half
+                params_expanded = params_second.unsqueeze(1)  # (half, 1, param_dim)
+                params_tiled = params_second.unsqueeze(0)     # (1, half, param_dim)
+                distances = torch.norm(params_expanded - params_tiled, dim=2)  # (half, half)
+
+                # For each sample, find a distant parameter (not necessarily the farthest to avoid always using same pairs)
+                distances.fill_diagonal_(float('-inf'))
+                # Get top-k farthest, then randomly choose from them
+                k = min(5, half - 1)  # Consider up to 5 farthest parameters
+                # topk requires k >= 1; half > 1 ensures this
+                _, top_k_indices = torch.topk(distances, k, dim=1)
+                # Randomly select one from top-k for each sample (on the same device)
+                device = top_k_indices.device
+                random_k_idx = torch.randint(0, k, (half,), device=device)
+                permutation = top_k_indices[torch.arange(half, device=device), random_k_idx]
         else:
             # Random permutation ensuring no i->i mapping
             permutation = torch.randperm(half)
