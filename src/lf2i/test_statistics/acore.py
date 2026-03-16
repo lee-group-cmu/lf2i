@@ -75,7 +75,7 @@ class ACORE(TestStatistic):
         self.param_space_bounds = param_space_bounds
         self.max_iter = max_iter
         self.estimator_train_kwargs = estimator_train_kwargs
-    
+
     def estimate(
         self,
         parameters: Union[np.ndarray, torch.Tensor], 
@@ -100,8 +100,12 @@ class ACORE(TestStatistic):
         labels, params_samples = preprocess_odds_estimation(
             parameters, samples, self.param_dim, self.estimator
         )
-        self.estimator.fit(X=params_samples, y=labels, **(self.estimator_train_kwargs if self.estimator_train_kwargs is not None else {}))
+        train_validate_split = int(0.9 * len(labels))
+        X, y = params_samples[:train_validate_split], labels[:train_validate_split]
+        X_val, y_val = params_samples[train_validate_split:], labels[train_validate_split:]
+        history = self.estimator.fit(X=X, y=y, X_val=X_val, y_val=y_val, **(self.estimator_train_kwargs if self.estimator_train_kwargs is not None else {}))
         self._estimator_trained['odds'] = True
+        return history
 
     def evaluate(
         self,
