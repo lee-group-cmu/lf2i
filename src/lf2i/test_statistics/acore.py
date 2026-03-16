@@ -55,9 +55,13 @@ class ACORE(TestStatistic):
         estimator_kwargs: Dict = {},
         verbose: bool = True,
         n_jobs: int = -2,
-        param_space_bounds: List[Tuple[float]] = None
+        param_space_bounds: List[Tuple[float]] = None,
+        max_iter: Optional[int] = 1
     ) -> None:
         super().__init__(acceptance_region='right', estimation_method='likelihood')
+
+        if max_iter <= 0:
+            raise ValueError("max_iter must be positive")
 
         self.poi_dim = poi_dim
         self.nuisance_dim = nuisance_dim
@@ -68,6 +72,7 @@ class ACORE(TestStatistic):
         self.verbose = verbose
         self.n_jobs = n_jobs
         self.param_space_bounds = param_space_bounds
+        self.max_iter = max_iter
     
     def estimate(
         self,
@@ -261,7 +266,6 @@ class ACORE(TestStatistic):
         """
         Evaluate the log-likelihood (up to a normalization constant) for a given parameter and sample, using the trained estimator for odds.
         """
-        # TODO: move into _maximize_log_odds
         return self._log_odds(self.estimator.predict_proba(
             X=preprocess_odds_maximization(self.estimator, parameter, parameter[0], 0, sample)
         ))[0, 1].item()
@@ -272,11 +276,9 @@ class ACORE(TestStatistic):
         fixed_poi: Union[np.ndarray, torch.Tensor],  # needed only if maximizing solely over nuisances; otherwise empty array
         optimization_bounds: List[Tuple[float]],
         argmax: bool = False,
-        max_iter: Optional[int] = 1,
+        # max_iter: Optional[int] = 1,
         condition_on_poi: bool = False # TODO: implement conditioning on the POI when maximizing the likelihood for the denominator of the ACORE
     ) -> float:
-        if max_iter <= 0:
-            raise ValueError("max_iter must be positive")
         assert fixed_poi.shape[0] in [0, self.poi_dim], f"fixed_poi should be either empty or have the same number of dimensions as the number of POIs, got {fixed_poi.shape[0]} and {self.poi_dim} respectively"
 
         # Set nominal parameter based on global or restricted MLE
@@ -291,7 +293,7 @@ class ACORE(TestStatistic):
                 np.array([np.mean(bounds) for bounds in optimization_bounds])
             )  # use mid-point as initial guess
 
-        for iteration in range(max_iter):
+        for iteration in range(self.max_iter):
             for pdx in opt_dims:
                 # Profile of likelihood along parameter dimension pdx
                 def objective(theta_j: float) -> float:
@@ -310,6 +312,26 @@ class ACORE(TestStatistic):
             return nominal_parameter
         else:
             return self._log_lik(nominal_parameter, sample)
+
+    def _marginalize_log_odds(
+        self,
+        sample: Union[np.ndarray, torch.Tensor],
+        fixed_poi: Union[np.ndarray, torch.Tensor],
+        optimization_bounds: List[Tuple[float]],
+        # max_iter: Optional[int] = 1,
+        condition_on_poi: bool = False # TODO: implement conditioning on the POI when maximizing the likelihood for the denominator of the ACORE
+    ) -> float:
+        """
+        Algorithm
+        - Compute the max a posteriori estimator of via log p(x; mu, nu) + log f(mu)
+        - Approximate the determinant of the Hessian of the negative log-posterior at the MAP estimator on diagonal terms via finite differences
+        - Use Laplace approximation to compute the marginal likelihood,
+            log p(x; mu) = log p(x; mu, nu_hat) + log f(nu_hat) + (1/2) * log(2 * pi) - (1/2) * log(det(H_(mu, mu)(nu_hat))))
+         where nu_hat is the MAP estimator of the nuisance parameters, d is the number of nuisance parameters, and H is the Hessian of the negative log-posterior at the MAP estimator.
+         See https://en.wikipedia.org/wiki/Laplace%27s_method_(statistics) for more details on Laplace approximation.
+        """
+        # TODO
+        raise NotImplementedError("Marginalization of the likelihood over the nuisance parameters is not yet implemented. This would require integrating the likelihood over the nuisance parameters, which can be done via Monte Carlo integration or other numerical methods. For now, only profiling (maximization) is implemented for handling nuisance parameters in ACORE.")
 
     def _compute_restricted_mle_for_confidence_sets(
         self,
