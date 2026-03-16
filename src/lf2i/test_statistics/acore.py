@@ -56,7 +56,8 @@ class ACORE(TestStatistic):
         verbose: bool = True,
         n_jobs: int = -2,
         param_space_bounds: List[Tuple[float]] = None,
-        max_iter: Optional[int] = 1
+        max_iter: Optional[int] = 1,
+        estimator_train_kwargs: Optional[Dict] = None
     ) -> None:
         super().__init__(acceptance_region='right', estimation_method='likelihood')
 
@@ -98,7 +99,7 @@ class ACORE(TestStatistic):
         labels, params_samples = preprocess_odds_estimation(
             parameters, samples, self.param_dim, self.estimator
         )
-        self.estimator.fit(X=params_samples, y=labels)
+        self.estimator.fit(X=params_samples, y=labels, **(self.estimator_train_kwargs if self.estimator_train_kwargs is not None else {}))
         self._estimator_trained['odds'] = True
 
     def evaluate(
@@ -161,7 +162,7 @@ class ACORE(TestStatistic):
         if not condition_on_poi:
             if self.nuisance_dim == 0:
                 numerator = self._log_odds(self.estimator.predict_proba(X=params_samples))[:, 1]
-                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
+                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
                     denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
                         lambda idx: self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds) 
                         )(i) for i in it
@@ -173,14 +174,14 @@ class ACORE(TestStatistic):
                     den = self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
                     return (num - den)
 
-                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
+                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
                     acore = np.array(Parallel(n_jobs=self.n_jobs)(delayed(do_one)(i) for i in it))
                 return acore
 
         else:
             assert self.nuisance_dim > 0, "Conditioning on the POI when maximizing the likelihood for the denominator of the ACORE only makes sense if there are nuisance parameters to optimize over. Got nuisance_dim = 0."
             numerator = self._log_odds(self.estimator.predict_proba(X=params_samples))[:, 1]
-            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
                 denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
                     lambda idx: self._maximize_log_odds(sample=samples[idx], fixed_poi=parameters[idx, :self.poi_dim], optimization_bounds=param_space_bounds) 
                     )(i) for i in it
@@ -294,11 +295,13 @@ class ACORE(TestStatistic):
             )  # use mid-point as initial guess
 
         for iteration in range(self.max_iter):
+            current_nominal_parameter = nominal_parameter.clone()  # keep track of the current nominal parameter to check for convergence
+
             for pdx in opt_dims:
                 # Profile of likelihood along parameter dimension pdx
                 def objective(theta_j: float) -> float:
                     return -1 * self._log_odds(self.estimator.predict_proba(
-                        X=preprocess_odds_maximization(self.estimator, nominal_parameter, theta_j, pdx, sample)
+                        X=preprocess_odds_maximization(self.estimator, current_nominal_parameter, theta_j, pdx, sample)
                     ))[0, 1].item()
 
                 result = minimize_scalar(
@@ -306,7 +309,9 @@ class ACORE(TestStatistic):
                     bounds=optimization_bounds[pdx],
                     method='bounded'
                 )
-                nominal_parameter[pdx] = result.x
+                current_nominal_parameter[pdx] = result.x
+
+            nominal_parameter = current_nominal_parameter.clone()
 
         if argmax:
             return nominal_parameter
