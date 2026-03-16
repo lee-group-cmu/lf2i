@@ -74,6 +74,7 @@ class ACORE(TestStatistic):
         self.n_jobs = n_jobs
         self.param_space_bounds = param_space_bounds
         self.max_iter = max_iter
+        self.estimator_train_kwargs = estimator_train_kwargs
     
     def estimate(
         self,
