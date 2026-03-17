@@ -98,7 +98,7 @@ class ACORE(TestStatistic):
             Simulated samples to be used for training.
         """
         labels, params_samples = preprocess_odds_estimation(
-            parameters, samples, self.param_dim, self.estimator
+            parameters, samples, self.param_dim, self.estimator, self.param_space_bounds
         )
         train_validate_split = int(0.9 * len(labels))
         X, y = params_samples[:train_validate_split], labels[:train_validate_split]
@@ -163,7 +163,10 @@ class ACORE(TestStatistic):
         condition_on_poi: bool = False
     ) -> Union[np.ndarray, Tuple[np.ndarray]]:
         # NOTE: this only considers simple null hypothesis with respect to the POI, which is what we need for confidence sets
-        parameters, samples, params_samples = preprocess_for_odds_cv(parameters, samples, self.param_dim, self.batch_size, self.data_dim, self.estimator)
+        parameters, samples, params_samples = preprocess_for_odds_cv(
+            parameters, samples, self.param_dim, self.batch_size, self.data_dim, self.estimator, self.param_space_bounds
+        )
+
         if not condition_on_poi:
             if self.nuisance_dim == 0:
                 numerator = self._log_odds(self.estimator.predict_proba(X=params_samples))[:, 1]
@@ -200,7 +203,9 @@ class ACORE(TestStatistic):
         param_space_bounds: List[List[float]],
         condition_on_poi: bool = False
     ) -> np.ndarray:
-        parameter_grid, samples, param_grid_samples = preprocess_for_odds_cs(parameter_grid, samples, self.param_dim, self.batch_size, self.data_dim, self.estimator)
+        parameter_grid, samples, param_grid_samples = preprocess_for_odds_cs(
+            parameter_grid, samples, self.param_dim, self.batch_size, self.data_dim, self.estimator, self.param_space_bounds
+        )
         poi_grid = parameter_grid[:, :self.poi_dim]
 
         if not condition_on_poi:
@@ -273,7 +278,7 @@ class ACORE(TestStatistic):
         Evaluate the log-likelihood (up to a normalization constant) for a given parameter and sample, using the trained estimator for odds.
         """
         return self._log_odds(self.estimator.predict_proba(
-            X=preprocess_odds_maximization(self.estimator, parameter, parameter[0], 0, sample)
+            X=preprocess_odds_maximization(self.estimator, parameter, parameter[0], 0, sample, self.param_space_bounds)
         ))[0, 1].item()
 
     def _maximize_log_odds(
@@ -306,7 +311,7 @@ class ACORE(TestStatistic):
                 # Profile of likelihood along parameter dimension pdx
                 def objective(theta_j: float) -> float:
                     return -1 * self._log_odds(self.estimator.predict_proba(
-                        X=preprocess_odds_maximization(self.estimator, current_nominal_parameter, theta_j, pdx, sample)
+                        X=preprocess_odds_maximization(self.estimator, current_nominal_parameter, theta_j, pdx, sample, self.param_space_bounds)
                     ))[0, 1].item()
 
                 result = minimize_scalar(

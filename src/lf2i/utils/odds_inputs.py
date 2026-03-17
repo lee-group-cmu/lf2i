@@ -1,4 +1,4 @@
-from typing import Union, Tuple, Any, List
+from typing import Union, Tuple, Any, List, Optional
 import warnings
 
 import numpy as np
@@ -13,7 +13,8 @@ def preprocess_odds_estimation(
     parameters: Union[np.ndarray, torch.Tensor],
     samples: Union[np.ndarray, torch.Tensor],
     param_dim: int,
-    estimator: Any
+    estimator: Any,
+    parameter_space_bounds: Optional[List[Tuple[float]]] = None
 ) -> Tuple[Union[np.ndarray, torch.Tensor]]:
     check_for_nans(parameters)
     check_for_nans(samples)
@@ -30,6 +31,9 @@ def preprocess_odds_estimation(
             parameters = parameters.numpy()
         if isinstance(samples, torch.Tensor):
             samples = samples.numpy()
+
+    # Normalize parameters if bounds are provided
+    parameters = preprocess_normalize_parameters(parameters, parameter_space_bounds)
 
     # Relabel via permutation
     parameters, samples, labels = preprocess_odds_relabel(parameters, samples)
@@ -214,7 +218,8 @@ def preprocess_for_odds_cv(
     param_dim: int,
     batch_size: int,
     data_dim: int,
-    estimator: Any
+    estimator: Any,
+    parameter_space_bounds: Optional[List[Tuple[float]]] = None
 ) -> Tuple[Union[np.ndarray, torch.Tensor]]:
     """Flatten samples along `batch_size` dimension and stack them with corresponding repeated parameters column-wise.
     This is done to simultaneously estimate odds at all samples, given the corresponding parameters.
@@ -258,6 +263,9 @@ def preprocess_for_odds_cv(
         if isinstance(samples, np.ndarray):
             samples = torch.from_numpy(samples)
 
+        if parameter_space_bounds is not None:
+            parameters = preprocess_normalize_parameters(parameters, parameter_space_bounds)
+
         if samples.ndim == 3 and samples.shape[1] > 1:
             data_set_size, batch_size, data_dim = samples.shape
             parameters_expanded = parameters.unsqueeze(1).expand(data_set_size, batch_size, param_dim)
@@ -272,6 +280,9 @@ def preprocess_for_odds_cv(
             parameters = parameters.numpy()
         if isinstance(samples, torch.Tensor):
             samples = samples.numpy()
+
+        if parameter_space_bounds is not None:
+            parameters = preprocess_normalize_parameters(parameters, parameter_space_bounds)
 
         if samples.ndim == 3 and samples.shape[1] > 1:
             pass
@@ -290,7 +301,8 @@ def preprocess_for_odds_cs(
     param_dim: int,
     batch_size: int,
     data_dim: int,
-    estimator: Any
+    estimator: Any,
+    parameter_space_bounds: Optional[List[Tuple[float]]] = None
 ) -> Tuple[Union[np.ndarray, torch.Tensor]]:
     """Repeat and tile both parameter_grid and samples to achieve the following data structure:
         param_grid_0, samples_0_0
@@ -336,6 +348,9 @@ def preprocess_for_odds_cs(
         if isinstance(samples, np.ndarray):
             samples = torch.from_numpy(samples)
 
+        if parameter_space_bounds is not None:
+            parameter_grid = preprocess_normalize_parameters(parameter_grid, parameter_space_bounds)
+
         if samples.ndim == 3 and samples.shape[1] > 1:
             data_set_size, batch_size, data_dim = samples.shape
             parameter_grid_expanded = parameter_grid.unsqueeze(1).expand(-1, batch_size, param_dim)  # shape (param_grid_size, batch_size, param_dim)
@@ -355,6 +370,9 @@ def preprocess_for_odds_cs(
             parameter_grid = parameter_grid.numpy()
         if isinstance(samples, torch.Tensor):
             samples = samples.numpy()
+
+        if parameter_space_bounds is not None:
+            parameter_grid = preprocess_normalize_parameters(parameter_grid, parameter_space_bounds)
 
         if samples.ndim == 3 and samples.shape[1] > 1:
             pass
@@ -387,6 +405,7 @@ def preprocess_odds_maximization(
     opt_param: Union[np.ndarray, torch.Tensor],
     opt_param_index: int,
     sample: Union[np.ndarray, torch.Tensor],
+    parameter_space_bounds: Optional[List[Tuple[float]]] = None
 ) -> Union[np.ndarray, torch.Tensor]:
     """
     Preprocessing for one-at-a-time optimization of the odds ratio. Given a 
@@ -415,9 +434,28 @@ def preprocess_odds_maximization(
         sample = sample.reshape(1, batch_size, data_dim)  # shape (1, batch_size, data_dim)
         nominal_params[opt_param_index] = opt_param  # swap in the optimization variable
         nominal_params = nominal_params.reshape(1, param_dim)  # shape (1, param_dim)
-        parameter_expanded = nominal_params.unsqueeze(1).expand(1, batch_size, param_dim)  # shape (1, batch_size, param_dim)
+        nominal_params_clone = nominal_params.clone()  # Avoid in-place modification of original nominal_params
+
+        if parameter_space_bounds is not None:
+            nominal_params_clone = preprocess_normalize_parameters(nominal_params_clone, parameter_space_bounds)
+
+        parameter_expanded = nominal_params_clone.unsqueeze(1).expand(1, batch_size, param_dim)  # shape (1, batch_size, param_dim)
         estimator_inputs = torch.cat([parameter_expanded, sample], dim=-1).float()  # shape (1, batch_size, param_dim + data_dim)
     else:
         pass
 
     return estimator_inputs
+
+
+def preprocess_normalize_parameters(
+    parameters: Union[np.ndarray, torch.Tensor],
+    parameter_space_bounds: Optional[List[Tuple[float]]] = None
+) -> Union[np.ndarray, torch.Tensor]:
+    check_for_nans(parameters)
+    if parameter_space_bounds is not None:
+        for i, (lower, upper) in enumerate(parameter_space_bounds):
+            if lower < upper:
+                parameters[:, i] = (parameters[:, i] - lower) / (upper - lower)
+            else:
+                warnings.warn(f"Invalid bounds for parameter {i}: lower {lower} is not less than upper {upper}. Skipping normalization for this parameter.")
+    return parameters
