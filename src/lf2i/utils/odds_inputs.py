@@ -452,6 +452,12 @@ def preprocess_normalize_parameters(
     parameter_space_bounds: Optional[List[Tuple[float]]] = None
 ) -> Union[np.ndarray, torch.Tensor]:
     check_for_nans(parameters)
+
+    if isinstance(parameters, torch.Tensor):
+        parameters = parameters.clone()
+    else:
+        parameters = np.copy(parameters)
+
     if parameter_space_bounds is not None:
         for i, (lower, upper) in enumerate(parameter_space_bounds):
             if lower < upper:

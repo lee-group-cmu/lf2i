@@ -281,6 +281,20 @@ class ACORE(TestStatistic):
             X=preprocess_odds_maximization(self.estimator, parameter, parameter[0], 0, sample, self.param_space_bounds)
         ))[0, 1].item()
 
+    def _log_lik_batch(
+        self,
+        parameters: Union[np.ndarray, torch.Tensor],
+        samples: Union[np.ndarray, torch.Tensor]
+    ) -> np.ndarray:
+        """
+        Evaluate the log-likelihood (up to a normalization constant) for a given batch of parameters and samples, using the trained estimator for odds.
+        """
+        parameters, samples, params_samples = preprocess_for_odds_cv(
+            parameters, samples, self.param_dim, self.batch_size, self.data_dim, self.estimator, self.param_space_bounds
+        )
+        return self._log_odds(self.estimator.predict_proba(X=params_samples))[:, 1]
+
+
     def _maximize_log_odds(
         self,
         sample: Union[np.ndarray, torch.Tensor],
