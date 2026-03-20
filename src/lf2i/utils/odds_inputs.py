@@ -40,7 +40,7 @@ def preprocess_odds_estimation(
 
     if (len(samples.shape) == 3) and (samples.shape[1] > 1):
         if isinstance(parameters, np.ndarray):
-            pass
+            params_samples = np.concatenate([np.expand_dims(parameters, axis=1).repeat(samples.shape[1], axis=1), samples], axis=-1)
         else:
             data_set_size, batch_size, data_dim = samples.shape
             parameters_expanded = parameters.unsqueeze(1).expand(data_set_size, batch_size, param_dim)
