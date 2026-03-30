@@ -306,6 +306,21 @@ class GaussianMixture(Simulator):
 
         return torch.transpose(samples, 0, 1) # (size, batch_size, data_dim)
 
+    def __call__(self, params: torch.Tensor) -> torch.Tensor:
+        """Simulate data for a given set of parameters.
+
+        Parameters
+        ----------
+        params : torch.Tensor
+            Shape (size, poi_dim).
+
+        Returns
+        -------
+        torch.Tensor
+            Shape (size, batch_size, data_dim).
+        """
+        return self._simulate(params)
+
     def simulate_for_test_statistic(self, 
                                     size: int, 
                                     estimation_method: str) -> Tuple[torch.Tensor, torch.Tensor]:

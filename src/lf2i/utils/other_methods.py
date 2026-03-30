@@ -130,11 +130,9 @@ def monte_carlo_critical_values(
     test_statistic: TestStatistic,
     simulator,
     param_grid: torch.Tensor,
-    confidence_level: float,
-    monte_carlo_size: int,
+    confidence_level: Union[float, list],
+    monte_carlo_size: int
 ):
-    confidence_level = confidence_level if test_statistic.acceptance_region == 'left' else 1-confidence_level
-
     parameters_mc = param_grid.repeat_interleave(monte_carlo_size, dim=0)
     samples_mc = simulator(parameters_mc)
     ts_values_mc = test_statistic.evaluate(
@@ -142,8 +140,17 @@ def monte_carlo_critical_values(
         samples=samples_mc,
         mode='critical_values'
     ).reshape(-1, monte_carlo_size)
-    mc_critical_values = np.quantile(ts_values_mc, confidence_level, axis=1)
-    return mc_critical_values
+
+    # return a 1D array for a single confidence level, or a dict mapping each level to its 1D array of critical values
+    if np.ndim(confidence_level) == 0:
+        confidence_level = confidence_level if test_statistic.acceptance_region == 'left' else 1-confidence_level
+        mc_critical_values = np.quantile(ts_values_mc, confidence_level, axis=1)
+        return mc_critical_values
+    else:
+        q = np.asarray(confidence_level)
+        q = q if test_statistic.acceptance_region == 'left' else 1-q
+        mc_q = np.quantile(ts_values_mc, q, axis=1)  # shape (len(q), n_params)
+        return mc_q # {float(level): mc_q[i, :] for i, level in enumerate(confidence_level)}
 
 
 def gaussian_prediction_sets(
