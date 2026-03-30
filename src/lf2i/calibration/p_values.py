@@ -8,6 +8,15 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.calibration import CalibratedClassifierCV
 from catboost import CatBoostClassifier
 
+try:
+    import tabicl  # type: ignore
+    from tabicl import TabularClassifier  # optional convenience import
+    HAVE_TABICL = True
+except Exception:
+    tabicl = None
+    TabularClassifier = None
+    HAVE_TABICL = False
+
 from lf2i.calibration.torch_utils import FeedForwardNN, LearnerClassification
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_fit_p_values
 from lf2i.utils.miscellanea import select_n_jobs
@@ -189,9 +198,10 @@ def estimate_rejection_proba(
         Fitted probabilistic classifier.
     """
     n_jobs = select_n_jobs(n_jobs)
+    inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm).reshape(-1, )
+
     if isinstance(algorithm, str):
         if algorithm == 'cat-gb':
-            inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm).reshape(-1, )
             if ('cv' in algorithm_kwargs) or (algorithm_kwargs is None):
                 algorithm = RandomizedSearchCV(
                     estimator=CatBoostClassifier(
@@ -223,9 +233,6 @@ def estimate_rejection_proba(
             )
             algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
         elif algorithm == 'logistic':
-            inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm).reshape(-1, )
-            
-            # Use calibrated classifier for better probability estimates
             algorithm = CalibratedClassifierCV(
                 estimator=LogisticRegression(
                     max_iter=1000,
@@ -237,186 +244,12 @@ def estimate_rejection_proba(
                 n_jobs=n_jobs
             )
             algorithm.fit(X=inputs, y=rejection_indicators)
-        elif algorithm == 'gam':
-            inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm).reshape(-1, )
-            
-            from pygam import LogisticGAM, s, te
-            from sklearn.base import BaseEstimator, ClassifierMixin
-
-            class GAMWrapper(BaseEstimator, ClassifierMixin):
-                def __init__(self, gam_formula=None, lam=None, lam_range=None):
-                    """
-                    gam_formula: PyGAM formula object
-                    lam: Fixed lambda value(s) - scalar, tuple, list, or array
-                    lam_range: Range of lambdas for grid search
-                    """
-                    self.gam_formula = gam_formula
-                    self.lam = lam
-                    self.lam_range = lam_range
-                    self.classes_ = np.array([0, 1])
-                
-                def fit(self, X, y):
-                    """
-                    Fit a new GAM model. Called by CalibratedClassifierCV during CV folds.
-                    """
-                    from pygam import LogisticGAM
-                    
-                    # Add radius feature
-                    X_with_radius = np.column_stack([X, np.linalg.norm(X[:, [1, 2]], axis=1)])
-                    
-                    # Create new GAM with the formula
-                    self.gam_model_ = LogisticGAM(self.gam_formula)
-                    
-                    # Fit with appropriate lambda strategy
-                    if self.lam_range is not None and self.lam is None:
-                        # Grid search during CV
-                        self.gam_model_.gridsearch(X_with_radius, y, lam=self.lam_range)
-                    elif self.lam is not None:
-                        # DON'T set lambda - just fit and let PyGAM use defaults
-                        # Setting lambda after construction is fragile
-                        # Instead, do a quick "gridsearch" with just the one lambda value
-                        if isinstance(self.lam, (list, tuple)):
-                            lam_to_use = np.array(self.lam, dtype=object)  # Use object dtype for nested arrays
-                        elif isinstance(self.lam, np.ndarray):
-                            lam_to_use = self.lam
-                        else:
-                            lam_to_use = self.lam
-                        
-                        # Use gridsearch with single lambda value
-                        self.gam_model_.gridsearch(X_with_radius, y, lam=[lam_to_use])
-                    else:
-                        # Use default
-                        self.gam_model_.fit(X_with_radius, y)
-                    
-                    return self
-                
-                def predict(self, X):
-                    if not hasattr(self, 'gam_model_'):
-                        raise RuntimeError("GAMWrapper must be fitted before calling predict()")
-                    X_with_radius = np.column_stack([X, np.linalg.norm(X[:, [1, 2]], axis=1)])
-                    return self.gam_model_.predict(X_with_radius)
-                
-                def predict_proba(self, X):
-                    if not hasattr(self, 'gam_model_'):
-                        raise RuntimeError("GAMWrapper must be fitted before calling predict_proba()")
-                    X_with_radius = np.column_stack([X, np.linalg.norm(X[:, [1, 2]], axis=1)])
-                    probs = self.gam_model_.predict_proba(X_with_radius)
-                    return np.column_stack([1 - probs, probs])
-            
-            # Add radial distance feature
-            radius = np.linalg.norm(inputs[:, [1, 2]], axis=1)
-            inputs_with_radius = np.column_stack([inputs, radius])
-            
-            # Extract GAM hyperparameters or use defaults
-            gam_params = algorithm_kwargs if algorithm_kwargs is not None else {}
-
-            # (I) USER-CONTROLLED FORMULA
-            # Check if user provided a custom formula
-            if 'gam_formula' in gam_params:
-                gam_formula = gam_params['gam_formula']
-                if verbose:
-                    print(f"Using user-provided GAM formula: {gam_formula}")
-            else:
-                # Build default formula with configurable parameters
-                n_splines_T = gam_params.get('n_splines_T', 12)
-                n_splines_radius = gam_params.get('n_splines_radius', 5)
-                spline_order = gam_params.get('spline_order', 3)
-                include_interaction = gam_params.get('include_interaction', True)
-                
-                # Build GAM formula
-                monotone_constraint = 'monotonic_inc' if acceptance_region == 'right' else 'monotonic_dec'
-                
-                if include_interaction:
-                    gam_formula = (
-                        s(0, constraints=monotone_constraint, n_splines=n_splines_T, spline_order=spline_order) +
-                        s(3, n_splines=n_splines_radius, spline_order=spline_order) +
-                        te(0, 3)
-                    )
-                else:
-                    gam_formula = (
-                        s(0, constraints=monotone_constraint, n_splines=n_splines_T, spline_order=spline_order) +
-                        s(3, n_splines=n_splines_radius, spline_order=spline_order)
-                    )
-
-            lam_range = gam_params.get('lam_range', np.logspace(0, 5, 11))
-
-            # Fit base GAM for initial gridsearch
-            base_gam = LogisticGAM(gam_formula)
-
-            # Grid search over smoothing parameters
-            if verbose:
-                print(f"GAM grid search over {len(lam_range)} lambda values...")
-
-            base_gam.gridsearch(
-                inputs_with_radius, 
-                rejection_indicators, 
-                lam=lam_range,
-                progress=verbose
-            )
-
-            if verbose:
-                print(f"Best lambda: {base_gam.lam}")
-                print(f"AIC: {base_gam.statistics_['AIC']:.2f}")
-                print(f"Pseudo R²: {base_gam.statistics_['pseudo_r2']['McFadden']:.3f}")
-
-            # Store best_lam - keep original structure
-            best_lam = base_gam.lam
-
-            # (II) PLATT SCALING via CalibratedClassifierCV
-            use_calibration = gam_params.get('use_calibration', True)
-            calibration_method = gam_params.get('calibration_method', 'sigmoid')
-            calibration_cv = gam_params.get('calibration_cv', 5)
-
-            if use_calibration:
-                if verbose:
-                    print(f"Applying Platt scaling with method='{calibration_method}', cv={calibration_cv}")
-                
-                # Create wrapper that can refit for CV with the optimized lambda
-                wrapped_gam = GAMWrapper(
-                    gam_formula=gam_formula,
-                    # lam=best_lam  # Pass as-is, let gridsearch handle it
-                )
-                
-                algorithm = CalibratedClassifierCV(
-                    estimator=wrapped_gam,
-                    method=calibration_method,
-                    cv=calibration_cv,
-                    n_jobs=n_jobs
-                )
-                algorithm.fit(X=inputs, y=rejection_indicators)
-                
-                if verbose:
-                    print("GAM calibration complete")
-            else:
-                # No calibration - fit wrapper directly with optimized lambda
-                algorithm = GAMWrapper(
-                    gam_formula=gam_formula,
-                    lam=best_lam
-                )
-                algorithm.fit(X=inputs, y=rejection_indicators)
-        elif algorithm == 'nn':
-            raise NotImplementedError
-            # TODO: need to enforce monotonicity in the cutoffs, otherwise unreliable
-            # TODO: implement some form of hyperparameter tuning
-            nn_kwargs = {arg: algorithm_kwargs[arg] for arg in ['hidden_activation', 'dropout_p', 'batch_norm'] if arg in algorithm_kwargs}
-            feedforward_nn = FeedForwardNN(
-                input_d=inputs.shape[1], 
-                output_d=1,
-                hidden_layer_shapes=algorithm_kwargs['hidden_layer_shapes'], 
-                **nn_kwargs
-            )
-            algorithm = LearnerClassification(
-                model=feedforward_nn, 
-                optimizer=torch.optim.Adam, 
-                loss=BCEWithLogitsLoss(), 
-                device="cuda" if torch.cuda.is_available() else 'cpu',
-                verbose=verbose
-            )
-            inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm)
-            learner_kwargs = {arg: algorithm_kwargs[arg] for arg in ['epochs', 'batch_size']}
-            algorithm.fit(X=inputs, y=rejection_indicators, **learner_kwargs)
+        elif algorithm == 'tfm':
+            assert HAVE_TABICL, "TabICL is not installed. Please install it to use the 'tfm' algorithm."
+            tfm_kwargs = algorithm_kwargs if algorithm_kwargs else {}
+            algorithm = TabularClassifier(**tfm_kwargs)
+            algorithm.fit(X=inputs, y=rejection_indicators)
         elif algorithm == 'parametric-nn':
-            inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm).reshape(-1, )
             nn_kwargs  = algorithm_kwargs if algorithm_kwargs else {}
             algorithm  = ParametricCDFEstimator(
                 acceptance_region = acceptance_region,
@@ -425,7 +258,7 @@ def estimate_rejection_proba(
             algorithm.fit(test_statistics = inputs[:, 0],
                           poi = inputs[:, 1:])
         else:
-            raise ValueError(f"Only 'cat-gb', 'nn', 'logistic', 'gam' or custom algorithm (Any) are currently supported, got {algorithm}")
+            raise ValueError(f"Only 'cat-gb', 'logistic', or custom algorithm (Any) are currently supported, got {algorithm}")
     else:
         inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm)
         algorithm.fit(X=inputs, y=rejection_indicators)
