@@ -6,6 +6,13 @@ import torch
 from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 
+# ── I-spline support (optional) ───────────────────────────────────────────────
+try:
+    from lf2i.calibration.isplines import Isplines   # copy isplines.py here
+    _ISPLINES_AVAILABLE = True
+except ImportError:
+    _ISPLINES_AVAILABLE = False
+
 
 #TODO: Implement with custom grid for evaluation of the integral
 class BrierScoreLoss(nn.Module):
@@ -19,7 +26,7 @@ class BrierScoreLoss(nn.Module):
         indicators = (lambda_obs.unsqueeze(1) <= lambda_obs.unsqueeze(0)).float()
         return ((cdf_vals - indicators)**2).mean()
     
-# TODO: Verify this works properly (generated from Claude)
+# TODO: Check the weighting function
 class WeightedPinballLoss(nn.Module):
     """
     Pinball loss integrated over α ∈ (0, 1) with a smooth weight function w(α):
@@ -200,7 +207,109 @@ class BetaNetwork(nn.Module):
     def forward(self, theta: torch.Tensor) -> torch.Tensor:   # (n, 2)
         return self.net(theta)
     
-# TODO: Check that this is proper
+class ISplineWeightNetwork(nn.Module):
+    """
+    Feed-forward network mapping θ → (weights, w_lower) for an I-spline CDF.
+
+    Outputs:
+      - weights  : (n, n_basis) non-negative via softplus
+      - w_lower  : (n, 1)       CDF value at left boundary, in (0,1) via sigmoid
+    """
+    _ACTIVATIONS = {'tanh': nn.Tanh, 'elu': nn.ELU, 'silu': nn.SiLU, 'relu': nn.ReLU}
+
+    def __init__(
+        self,
+        theta_dim:  int,
+        n_basis:    int,
+        hidden_dim: int = 64,
+        n_hidden:   int = 2,
+        activation: str = 'tanh',
+    ):
+        super().__init__()
+        if activation not in self._ACTIVATIONS:
+            raise ValueError(f"activation must be one of {list(self._ACTIVATIONS)}, got '{activation}'.")
+        act_cls = self._ACTIVATIONS[activation]
+        layers  = [nn.Linear(theta_dim, hidden_dim), act_cls()]
+        for _ in range(n_hidden - 1):
+            layers += [nn.Linear(hidden_dim, hidden_dim), act_cls()]
+        layers += [nn.Linear(hidden_dim, n_basis + 1)]   # n_basis weights + w_lower
+        self.net     = nn.Sequential(*layers)
+        self.n_basis = n_basis
+
+    def forward(self, theta: torch.Tensor):
+        out      = self.net(theta)                                       # (n, n_basis+1)
+        weights  = nn.functional.softplus(out[:, :self.n_basis])        # (n, n_basis) ≥ 0
+        w_lower  = torch.sigmoid(out[:, self.n_basis:])                 # (n, 1) ∈ (0,1)
+        return weights, w_lower
+
+
+class ISplineCDFModel(nn.Module):
+    """
+    Evaluates a weighted I-spline sum as a CDF.
+
+    Basis functions are fixed (computed via numpy Isplines — no grad needed).
+    Gradients flow only through `weights` and `w_lower` from ISplineWeightNetwork.
+
+    The domain is normalized to [0,1] using the empirical min/max of the
+    training test statistics, stored on ParametricCDFEstimator after fit().
+
+    Parameters
+    ----------
+    n_knots : int
+        Number of equally-spaced interior+boundary knots on [0,1].
+        Number of basis functions = n_knots - 2 + order.
+    order : int
+        Spline order = degree + 1.  Default 3 (quadratic pieces, C1 joints).
+    """
+
+    def __init__(self, n_knots: int = 6, order: int = 3):
+        super().__init__()
+        if not _ISPLINES_AVAILABLE:
+            raise ImportError(
+                "ISplineCDFModel requires Isplines. "
+                "Copy isplines.py to lf2i/calibration/isplines.py first."
+            )
+        self.order   = order
+        self.n_knots = n_knots
+        self.mesh    = np.linspace(0.0, 1.0, n_knots)
+        self.n_basis = n_knots - 2 + order
+
+    # ── basis evaluation (numpy, no autograd) ─────────────────────────────────
+
+    def _eval_basis(self, lambda_norm: np.ndarray) -> np.ndarray:
+        """
+        Evaluate all n_basis I-spline basis functions at normalised λ values.
+        lambda_norm : (n,) float in [0, 1]
+        returns     : (n, n_basis)
+        """
+        lam = np.clip(lambda_norm, 1e-6, 1.0 - 1e-6)
+        isp = Isplines(self.order, self.mesh, lam)
+        return np.stack([isp.I(i + 1) for i in range(self.n_basis)], axis=1)
+
+    # ── forward: element-wise CDF (used in predict_proba) ─────────────────────
+
+    def forward(
+        self,
+        lambda_norm: np.ndarray,    # (n,) numpy — no grad needed
+        weights:     torch.Tensor,  # (n, n_basis)
+        w_lower:     torch.Tensor,  # (n, 1)
+    ) -> torch.Tensor:              # (n,) CDF values in [0, 1]
+        B   = torch.FloatTensor(self._eval_basis(lambda_norm)).to(weights.device)
+        cdf = w_lower.squeeze(1) + (B * weights).sum(dim=1)
+        return torch.clamp(cdf, 0.0, 1.0)
+
+    # ── forward_brier: full (n×n) cross-CDF matrix (used in Brier loss) ───────
+
+    def forward_brier(
+        self,
+        lambda_norm: np.ndarray,    # (n,) numpy
+        weights:     torch.Tensor,  # (n, n_basis)
+        w_lower:     torch.Tensor,  # (n, 1)
+    ) -> torch.Tensor:              # (n, n)  out[i,j] = F̃(λ_j; β(θ_i))
+        B   = torch.FloatTensor(self._eval_basis(lambda_norm)).to(weights.device)
+        cdf = w_lower + weights @ B.T      # (n,1) + (n,n_basis)@(n_basis,n) = (n,n)
+        return torch.clamp(cdf, 0.0, 1.0)
+
 class ParametricCDFEstimator:
     """
     Parametric CDF estimator for likelihood-free frequentist inference.
@@ -268,6 +377,10 @@ class ParametricCDFEstimator:
         activation:  str   = 'tanh',
         # loss
         loss:        str   = 'brier',
+        # ── CDF model ─────────────────────────────────────────────────────────────
+        cdf_model:   str   = 'sigmoid',   # 'sigmoid' or 'ispline'
+        n_knots:     int   = 6,           # ispline only: knots on [0,1]
+        spline_order:int   = 3,           # ispline only: order (degree+1)
         n_alpha:     int   = 500,
         weight_fn:   Union[str, callable] = 'gaussian',
         center:      float = 0.1,
@@ -289,6 +402,19 @@ class ParametricCDFEstimator:
             raise ValueError(
                 f"loss must be 'brier' or 'pinball', got '{loss}'."
             )
+
+        if cdf_model not in ('sigmoid', 'ispline'):
+            raise ValueError(
+                f"cdf_model must be 'sigmoid' or 'ispline', got '{cdf_model}'."
+            )
+        if cdf_model == 'ispline' and loss == 'pinball':
+            raise ValueError(
+                "I-spline CDF has no closed-form quantile function. "
+                "Use loss='brier' with cdf_model='ispline'."
+            )
+        self.cdf_model    = cdf_model
+        self.n_knots      = n_knots
+        self.spline_order = spline_order
 
         self.acceptance_region = acceptance_region
         self.hidden_dim        = hidden_dim
@@ -312,9 +438,13 @@ class ParametricCDFEstimator:
         )
 
         # set after fit()
-        self.beta_net_:  Optional[BetaNetwork] = None
-        self.cdf_model_: Optional[SigmoidCDF]  = None
-        self.history_:   Optional[list]         = None
+        self.beta_net_:     Optional[BetaNetwork]          = None
+        self.weight_net_:   Optional[ISplineWeightNetwork] = None
+        self.cdf_model_:    Optional[SigmoidCDF]           = None
+        self.ispline_model_: Optional[ISplineCDFModel]     = None
+        self.lambda_min_:   Optional[float]                = None
+        self.lambda_max_:   Optional[float]                = None
+        self.history_:      Optional[list]                 = None
 
     # ── fit ───────────────────────────────────────────────────────────────────
 
@@ -341,17 +471,36 @@ class ParametricCDFEstimator:
             poi = poi.reshape(-1, 1)
         theta_dim = poi.shape[1]
 
-        self.beta_net_  = BetaNetwork(
-            theta_dim, self.hidden_dim, self.n_hidden, self.activation
-        ).to(self.device)
-        self.cdf_model_ = SigmoidCDF().to(self.device)
+        # ── initialise model ──────────────────────────────────────────────────
+        if self.cdf_model == 'sigmoid':
+            self.beta_net_  = BetaNetwork(
+                theta_dim, self.hidden_dim, self.n_hidden, self.activation
+            ).to(self.device)
+            self.cdf_model_ = SigmoidCDF().to(self.device)
+            model_params    = self.beta_net_.parameters()
 
-        optimizer = torch.optim.Adam(self.beta_net_.parameters(), lr=self.lr)
+        else:   # ispline
+            self.ispline_model_ = ISplineCDFModel(
+                n_knots=self.n_knots, order=self.spline_order
+            ).to(self.device)
+            self.weight_net_ = ISplineWeightNetwork(
+                theta_dim   = theta_dim,
+                n_basis     = self.ispline_model_.n_basis,
+                hidden_dim  = self.hidden_dim,
+                n_hidden    = self.n_hidden,
+                activation  = self.activation,
+            ).to(self.device)
+            # store normalisation range from training data
+            self.lambda_min_ = float(test_statistics.min())
+            self.lambda_max_ = float(test_statistics.max())
+            model_params     = self.weight_net_.parameters()
+
+        optimizer = torch.optim.Adam(model_params, lr=self.lr)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=self.epochs
         )
 
-        # ── criterion ────────────────────────────────────────────────────────
+        # ── criterion ─────────────────────────────────────────────────────────
         if self.loss == 'brier':
             criterion = BrierScoreLoss()
         else:
@@ -364,7 +513,7 @@ class ParametricCDFEstimator:
                 beta_b    = self.beta_b,
             ).to(self.device)
 
-        # ── data ─────────────────────────────────────────────────────────────
+        # ── data ──────────────────────────────────────────────────────────────
         lambda_t = torch.FloatTensor(test_statistics).to(self.device)
         theta_t  = torch.FloatTensor(poi).to(self.device)
         loader   = DataLoader(
@@ -373,9 +522,12 @@ class ParametricCDFEstimator:
             shuffle    = True,
         )
 
-        # ── training loop ─────────────────────────────────────────────────────
+        # ── training loop ──────────────────────────────────────────────────────
         self.history_ = []
-        self.beta_net_.train()
+        if self.cdf_model == 'sigmoid':
+            self.beta_net_.train()
+        else:
+            self.weight_net_.train()
 
         for epoch in range(self.epochs):
             epoch_loss = 0.0
@@ -383,17 +535,27 @@ class ParametricCDFEstimator:
             for lam_b, theta_b in loader:
                 optimizer.zero_grad()
 
-                beta  = self.beta_net_(theta_b)   # (n, 2)
-                mu    = beta[:, 0:1]              # (n, 1)
-                log_kappa = beta[:, 1:2]              # (n, 1)
+                if self.cdf_model == 'sigmoid':
+                    # ── sigmoid path (unchanged) ──────────────────────────────
+                    beta      = self.beta_net_(theta_b)
+                    mu        = beta[:, 0:1]
+                    log_kappa = beta[:, 1:2]
+                    if isinstance(criterion, WeightedPinballLoss):
+                        alpha_row           = criterion.alpha_grid.unsqueeze(0)
+                        predicted_quantiles = self.cdf_model_.quantile(alpha_row, mu, log_kappa)
+                        batch_loss          = criterion(predicted_quantiles, lam_b)
+                    else:
+                        cdf_vals   = self.cdf_model_(lam_b.unsqueeze(0), mu, log_kappa)
+                        batch_loss = criterion(cdf_vals, lam_b)
 
-                if isinstance(criterion, WeightedPinballLoss):
-                    alpha_row           = criterion.alpha_grid.unsqueeze(0)
-                    predicted_quantiles = self.cdf_model_.quantile(alpha_row, mu, log_kappa)
-                    batch_loss          = criterion(predicted_quantiles, lam_b)
                 else:
-                    # brier: cdf_vals[i, j] = F̃(λ_j; β(θ_i))
-                    cdf_vals   = self.cdf_model_(lam_b.unsqueeze(0), mu, log_kappa)
+                    # ── ispline path (Brier only) ─────────────────────────────
+                    weights, w_lower = self.weight_net_(theta_b)
+                    lam_norm = (
+                        (lam_b.detach().cpu().numpy() - self.lambda_min_)
+                        / (self.lambda_max_ - self.lambda_min_ + 1e-8)
+                    )
+                    cdf_vals   = self.ispline_model_.forward_brier(lam_norm, weights, w_lower)
                     batch_loss = criterion(cdf_vals, lam_b)
 
                 batch_loss.backward()
@@ -403,11 +565,13 @@ class ParametricCDFEstimator:
             scheduler.step()
             avg = epoch_loss / len(loader)
             self.history_.append(avg)
-
             if self.verbose and (epoch + 1) % 100 == 0:
                 print(f"Epoch {epoch+1:4d}/{self.epochs}  |  loss: {avg:.5f}")
 
-        self.beta_net_.eval()
+        if self.cdf_model == 'sigmoid':
+            self.beta_net_.eval()
+        else:
+            self.weight_net_.eval()
         return self
 
     # ── predict_proba ─────────────────────────────────────────────────────────
@@ -432,7 +596,9 @@ class ParametricCDFEstimator:
             Shape (n, 2).
             Column 0 = 1 − p-value, column 1 = p-value.
         """
-        if self.beta_net_ is None:
+        if self.cdf_model == 'sigmoid' and self.beta_net_ is None:
+            raise RuntimeError("Call fit() before predict_proba().")
+        if self.cdf_model == 'ispline' and self.weight_net_ is None:
             raise RuntimeError("Call fit() before predict_proba().")
         if X is None:
             raise ValueError("X must be provided.")
@@ -445,12 +611,21 @@ class ParametricCDFEstimator:
             lambda_t = torch.FloatTensor(X[:, 0]).to(self.device)
             theta_t  = torch.FloatTensor(poi).to(self.device)
 
-            beta     = self.beta_net_(theta_t)                              # (n, 2)
-            mu       = beta[:, 0:1]
-            log_kappa    = beta[:, 1:2]
-            cdf_vals = self.cdf_model_(
-                lambda_t.unsqueeze(1), mu, log_kappa
-            ).squeeze(1)                                                    # (n,)
+            if self.cdf_model == 'sigmoid':
+                beta      = self.beta_net_(theta_t)
+                mu        = beta[:, 0:1]
+                log_kappa = beta[:, 1:2]
+                cdf_vals  = self.cdf_model_(
+                    lambda_t.unsqueeze(1), mu, log_kappa
+                ).squeeze(1)
+
+            else:   # ispline
+                weights, w_lower = self.weight_net_(theta_t)
+                lam_norm = (
+                    (X[:, 0] - self.lambda_min_)
+                    / (self.lambda_max_ - self.lambda_min_ + 1e-8)
+                )
+                cdf_vals = self.ispline_model_.forward(lam_norm, weights, w_lower)
 
         if self.acceptance_region == 'left':
             pvalues = 1.0 - cdf_vals.cpu().numpy()
