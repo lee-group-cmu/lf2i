@@ -64,7 +64,7 @@ class WeightedPinballLoss(nn.Module):
 
     def __init__(
         self,
-        n_alpha:    int             = 500,
+        n_alpha:    int             = 1000,
         weight_fn:  Union[str, callable] = 'gaussian',
         center:     float           = 0.1,
         bandwidth:  float           = 0.1,
@@ -201,7 +201,7 @@ class BetaNetwork(nn.Module):
         layers  = [nn.Linear(theta_dim, hidden_dim), act_cls()]
         for _ in range(n_hidden - 1):
             layers += [nn.Linear(hidden_dim, hidden_dim), act_cls()]
-        layers += [nn.Linear(hidden_dim, 2)]   # outputs: (μ, log s)
+        layers += [nn.Linear(hidden_dim, 2)]   # outputs: (μ, log s) # TODO: add dropout layers for regularization 
         self.net = nn.Sequential(*layers)
 
     def forward(self, theta: torch.Tensor) -> torch.Tensor:   # (n, 2)
@@ -543,7 +543,7 @@ class ParametricCDFEstimator:
                     if isinstance(criterion, WeightedPinballLoss):
                         alpha_row           = criterion.alpha_grid.unsqueeze(0)
                         predicted_quantiles = self.cdf_model_.quantile(alpha_row, mu, log_kappa)
-                        batch_loss          = criterion(predicted_quantiles, lam_b)
+                        batch_loss          = criterion(predicted_quantiles, lam_b) + log_kappa.mean() # <- This amounts to maximum entropy regularization (entropy for logistic is \propto -log(\kappa), so maximize entropy by minimizing \kappa)
                     else:
                         cdf_vals   = self.cdf_model_(lam_b.unsqueeze(0), mu, log_kappa)
                         batch_loss = criterion(cdf_vals, lam_b)
