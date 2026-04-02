@@ -320,11 +320,16 @@ def plot_parameter_region_1D(
 ) -> None:
     """Plot 1-dimensional parameter regions using the lower and upper bounds.
     """
-    
+
     if custom_ax is None:
         _, ax = plt.subplots(1, 1, figsize=figsize if figsize is not None else (3, 9))
     else:
         ax = custom_ax
+
+    if parameter_region is None or len(parameter_region) == 0:
+        if custom_ax is not None:
+            return ax.get_legend_handles_labels()
+        return
 
     ax.scatter(x=true_parameter, y=true_parameter, alpha=1, c="red", marker="*", s=250, zorder=10)
     ax.axhline(y=np.min(parameter_region.reshape(1, -1), axis=1), xmin=0.45, xmax=0.55, label=region_name, color=color, linestyle=linestyle)
@@ -368,7 +373,12 @@ def plot_parameter_region_2D(
         ax = plt.gca()
     else:
         ax = custom_ax
-    
+
+    if parameter_region is None or len(parameter_region) == 0:
+        if custom_ax is not None:
+            return ax.get_legend_handles_labels()
+        return
+
     if not scatter:
         warnings.warn("Contour might be unreliable if alpha is not chosen properly. Please plot scatter as well, and choose alpha appropriately (try from 1 to 20).")
 

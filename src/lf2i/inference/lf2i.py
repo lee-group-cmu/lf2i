@@ -126,6 +126,7 @@ class LF2I:
         """
         assert calibration_method in ['critical-values', 'p-values']
         self.test_statistic.verbose = verbose  # lf2i verbosity takes precedence
+        self.recalibrate_p_values = recalibrate_p_values or False
         
         # estimate test statistics
         if not self.test_statistic._check_is_trained():
@@ -140,18 +141,18 @@ class LF2I:
             self.calibration_model = calibration_model
 
             if T_prime is not None:
-                self.parameters_calib, samples_calib = T_prime[0], T_prime[1]
-                self.test_statistics_calib = self.test_statistic.evaluate(self.parameters_calib, samples_calib, mode='critical_values')
+                self.parameters_calib, self.samples_calib = T_prime[0], T_prime[1]
+                self.test_statistics_calib = self.test_statistic.evaluate(self.parameters_calib, self.samples_calib, mode='critical_values')
         if not self.calibration_model:  # need to evaluate test statistic for calibration only the first time the procedure is run
             if verbose:
                 print('\nCalibration ...', flush=True)
             # save parameters and test statistics for calibration to use them for future runs with different confidence levels
             if simulator:
                 # TODO: change methods name in simulators and test statistics -> calibration, no critical values
-                self.parameters_calib, samples_calib = simulator.simulate_for_critical_values(size=b_prime)
+                self.parameters_calib, self.samples_calib = simulator.simulate_for_critical_values(size=b_prime)
             else:
-                self.parameters_calib, samples_calib = T_prime[0], T_prime[1]
-            self.test_statistics_calib = self.test_statistic.evaluate(self.parameters_calib, samples_calib, mode='critical_values')
+                self.parameters_calib, self.samples_calib = T_prime[0], T_prime[1]
+            self.test_statistics_calib = self.test_statistic.evaluate(self.parameters_calib, self.samples_calib, mode='critical_values')
         else:
             if verbose:
                 print('\nCalibration already complete', flush=True)
@@ -161,12 +162,12 @@ class LF2I:
             holdout_set_size = min(1000, len(self.parameters_calib) // 10)  # use at most 10% of the calibration set for recalibration, and at most 1000 samples
             self.holdout_parameters_calib, self.holdout_samples_calib, self.holdout_test_statistics_calib = (
                 self.parameters_calib[-holdout_set_size:],
-                samples_calib[-holdout_set_size:],
+                self.samples_calib[-holdout_set_size:],
                 self.test_statistics_calib[-holdout_set_size:]
             )
-            self.parameters_calib, samples_calib, self.test_statistics_calib = (
+            self.parameters_calib, self.samples_calib, self.test_statistics_calib = (
                 self.parameters_calib[:-holdout_set_size],
-                samples_calib[:-holdout_set_size],
+                self.samples_calib[:-holdout_set_size],
                 self.test_statistics_calib[:-holdout_set_size]
             )
         else:
@@ -253,10 +254,10 @@ class LF2I:
         if self.holdout_parameters_calib is not None and self.holdout_test_statistics_calib is not None and self.holdout_samples_calib is not None:
             if verbose:
                 print('\nRe-calibrating p-values on holdout set ...', flush=True)
-            holdout_p_values = self.calibration_model[calib_dict_key].predict_proba(
+            self.holdout_p_values = self.calibration_model[calib_dict_key].predict_proba(
                 X=preprocess_predict_p_values('holdout_calibration', self.holdout_test_statistics_calib, self.holdout_parameters_calib, self.calibration_model[calib_dict_key])
             )[:, 1]
-            alpha = [np.quantile(holdout_p_values, a) for a in alpha]
+            alpha = [np.quantile(self.holdout_p_values, a) for a in alpha]
             if verbose:
                 for cl, a in zip(confidence_level, alpha):
                     print(f'Original alpha: {1-cl}, Re-calibrated alpha: {a}')
@@ -394,13 +395,23 @@ class LF2I:
                         X=preprocess_predict_p_values('diagnostics', test_statistics, parameters, self.calibration_model[calib_dict_key])
                     )[:, 1])
 
+                # Recalibrate if necessary
+                if calibration_method == 'p-values' and self.recalibrate_p_values and self.holdout_parameters_calib is not None and self.holdout_test_statistics_calib is not None and self.holdout_samples_calib is not None:
+                    if verbose:
+                        print('\nRe-calibrating p-values on holdout set ...', flush=True)
+                    alpha = np.quantile(self.holdout_p_values, 1-confidence_level)
+                    if verbose:
+                        print(f'Original alpha: {1-confidence_level}, Re-calibrated alpha: {holdout_alpha}')
+                else:
+                    alpha = 1-confidence_level
+
                 indicators = compute_indicators_lf2i(
                     calibration_method=calibration_method,
                     test_statistics=test_statistics,
                     parameters=parameters,
                     critical_values=critical_values,
                     p_values=p_values,
-                    alpha=1-confidence_level,
+                    alpha=alpha,
                     acceptance_region=self.test_statistic.acceptance_region,
                     param_dim=parameters.shape[1] if parameters.ndim > 1 else 1
                 )
