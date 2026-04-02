@@ -73,6 +73,7 @@ class LF2I:
         b_prime: Optional[int] = None,
         num_augment: int = 5,
         retrain_calibration: bool = False,
+        recalibrate_p_values: bool = False,  # only used if calibration_method == 'p-values'
         verbose: bool = True
     ) -> Union[List[np.ndarray], Dict[str, List[np.ndarray]]]:
         """Estimate test statistic and critical values, and construct a confidence region for all observations in `x`.
@@ -154,7 +155,23 @@ class LF2I:
         else:
             if verbose:
                 print('\nCalibration already complete', flush=True)
-        
+
+        # Recalibrate p-values?
+        if calibration_method == 'p-values' and recalibrate_p_values:
+            holdout_set_size = min(1000, len(self.parameters_calib) // 10)  # use at most 10% of the calibration set for recalibration, and at most 1000 samples
+            self.holdout_parameters_calib, self.holdout_samples_calib, self.holdout_test_statistics_calib = (
+                self.parameters_calib[-holdout_set_size:],
+                samples_calib[-holdout_set_size:],
+                self.test_statistics_calib[-holdout_set_size:]
+            )
+            self.parameters_calib, samples_calib, self.test_statistics_calib = (
+                self.parameters_calib[:-holdout_set_size],
+                samples_calib[:-holdout_set_size],
+                self.test_statistics_calib[:-holdout_set_size]
+            )
+        else:
+            self.holdout_parameters_calib, self.holdout_samples_calib, self.holdout_test_statistics_calib = None, None, None
+
         # TODO: calib_dict_key is necessary if training multiple quantile regressors separately at different levels alpha.
         # Eventually it should be removed because 
         #   1) no guarantee to avoid quantile crossings with separate estimation; 
@@ -231,8 +248,20 @@ class LF2I:
                 X=preprocess_predict_p_values('confidence_sets', test_statistics_x, evaluation_grid, self.calibration_model[calib_dict_key])
             )[:, 1]
 
-        # this alpha is used only if calibration_method == 'p-values'
+        # Compute alpha
         alpha = [1-confidence_level] if isinstance(confidence_level, float) else [1-cl for cl in confidence_level]
+        if self.holdout_parameters_calib is not None and self.holdout_test_statistics_calib is not None and self.holdout_samples_calib is not None:
+            if verbose:
+                print('\nRe-calibrating p-values on holdout set ...', flush=True)
+            holdout_p_values = self.calibration_model[calib_dict_key].predict_proba(
+                X=preprocess_predict_p_values('holdout_calibration', self.holdout_test_statistics_calib, self.holdout_parameters_calib, self.calibration_model[calib_dict_key])
+            )[:, 1]
+            alpha = [np.quantile(holdout_p_values, a) for a in alpha]
+            if verbose:
+                for cl, a in zip(confidence_level, alpha):
+                    print(f'Original alpha: {1-cl}, Re-calibrated alpha: {a}')
+            
+
         confidence_regions = []
         for idx, a in enumerate(alpha):
             if verbose:
