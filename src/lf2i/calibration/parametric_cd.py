@@ -391,6 +391,7 @@ class ParametricCDFEstimator:
         epochs:      int   = 500,
         lr:          float = 1e-3,
         batch_size:  int   = 512,
+        smooth_reg:  float = 0.0,    # ispline only: L2 penalty on consecutive weight differences
         device:      Optional[str] = None,
         verbose:     bool  = True,
     ):
@@ -430,6 +431,7 @@ class ParametricCDFEstimator:
         self.epochs            = epochs
         self.lr                = lr
         self.batch_size        = batch_size
+        self.smooth_reg        = smooth_reg
         self.verbose           = verbose
 
         self.device = torch.device(
@@ -557,6 +559,10 @@ class ParametricCDFEstimator:
                     )
                     cdf_vals   = self.ispline_model_.forward_brier(lam_norm, weights, w_lower)
                     batch_loss = criterion(cdf_vals, lam_b)
+                    if self.smooth_reg > 0.0:
+                        batch_loss = batch_loss + self.smooth_reg * (
+                            (weights[:, 1:] - weights[:, :-1]) ** 2
+                        ).sum(dim=1).mean()
 
                 batch_loss.backward()
                 optimizer.step()
