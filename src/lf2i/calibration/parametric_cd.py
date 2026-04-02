@@ -541,7 +541,7 @@ class ParametricCDFEstimator:
                     mu        = beta[:, 0:1]
                     log_kappa = beta[:, 1:2]
                     if isinstance(criterion, WeightedPinballLoss):
-                        alpha_row           = criterion.alpha_grid.unsqueeze(0)
+                        alpha_row           = torch.rand(criterion.n_alpha, device=lam_b.device)# criterion.alpha_grid.unsqueeze(0)
                         predicted_quantiles = self.cdf_model_.quantile(alpha_row, mu, log_kappa)
                         batch_loss          = criterion(predicted_quantiles, lam_b) + log_kappa.mean() # <- This amounts to maximum entropy regularization (entropy for logistic is \propto -log(\kappa), so maximize entropy by minimizing \kappa)
                     else:
