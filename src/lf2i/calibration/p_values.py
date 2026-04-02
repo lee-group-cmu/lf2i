@@ -9,12 +9,10 @@ from sklearn.calibration import CalibratedClassifierCV
 from catboost import CatBoostClassifier
 
 try:
-    import tabicl  # type: ignore
-    from tabicl import TabularClassifier  # optional convenience import
+    from tabicl import TabICLClassifier  # optional convenience import
     HAVE_TABICL = True
 except Exception:
-    tabicl = None
-    TabularClassifier = None
+    TabICLClassifier = None
     HAVE_TABICL = False
 
 from lf2i.calibration.torch_utils import FeedForwardNN, LearnerClassification
@@ -247,7 +245,7 @@ def estimate_rejection_proba(
         elif algorithm == 'tfm':
             assert HAVE_TABICL, "TabICL is not installed. Please install it to use the 'tfm' algorithm."
             tfm_kwargs = algorithm_kwargs if algorithm_kwargs else {}
-            algorithm = TabularClassifier(**tfm_kwargs)
+            algorithm = TabICLClassifier(**tfm_kwargs)
             algorithm.fit(X=inputs, y=rejection_indicators)
         elif algorithm == 'parametric-nn':
             nn_kwargs  = algorithm_kwargs if algorithm_kwargs else {}
