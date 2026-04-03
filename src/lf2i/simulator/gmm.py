@@ -208,6 +208,8 @@ class GaussianMixture(Simulator):
             self.likelihood_cov = torch.diagflat(likelihood_cov)
         elif isinstance(likelihood_cov, torch.Tensor) and likelihood_cov.shape == torch.Size([data_dim, data_dim]):
             self.likelihood_cov = likelihood_cov
+        elif (isinstance(likelihood_cov, torch.Tensor) and likelihood_cov.shape == torch.Size([n_components, data_dim, data_dim])):
+            self.likelihood_cov = likelihood_cov
         else:
             raise ValueError(f"'likelihood_cov' must be single variance value, torch.Tensor of with data_dim elements, or torch.Tensor of shape (data_dim, data_dim).")
 
@@ -276,12 +278,18 @@ class GaussianMixture(Simulator):
 
         component_means = self.mean_fn(params) # (size, n_components, data_dim)
 
-        component_cov = ( # (size, n_components, data_dim, data_dim)
-            self.likelihood_cov
-            .unsqueeze(0)
-            .unsqueeze(0)
-            .expand(size, self.n_components, self.data_dim, self.data_dim)
-        )
+        if self.likelihood_cov.ndim == 2:
+            component_cov = (
+                self.likelihood_cov
+                .unsqueeze(0).unsqueeze(0)
+                .expand(size, self.n_components, self.data_dim, self.data_dim)
+                             )
+        else:
+            component_cov = (
+                self.likelihood_cov
+                .unsqueeze(0)
+                .expand(size, self.n_components, self.data_dim, self.data_dim)
+            )
 
         mix = Categorical(probs=self.mixture_weights.expand(size, -1))
         comp = MultivariateNormal(loc=component_means, covariance_matrix=component_cov)
@@ -305,6 +313,21 @@ class GaussianMixture(Simulator):
         samples = likelihood.sample(sample_shape = (self.batch_size,)) # (batch_size, size, data_dim)
 
         return torch.transpose(samples, 0, 1) # (size, batch_size, data_dim)
+
+    def __call__(self, params: torch.Tensor) -> torch.Tensor:
+        """Simulate data for a given set of parameters.
+
+        Parameters
+        ----------
+        params : torch.Tensor
+            Shape (size, poi_dim).
+
+        Returns
+        -------
+        torch.Tensor
+            Shape (size, batch_size, data_dim).
+        """
+        return self._simulate(params)
 
     def simulate_for_test_statistic(self, 
                                     size: int, 
