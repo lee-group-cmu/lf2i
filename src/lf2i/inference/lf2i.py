@@ -275,7 +275,7 @@ class LF2I:
                 p_values=p_values,
                 alpha=a,
                 acceptance_region=self.test_statistic.acceptance_region,
-                poi_dim=self.test_statistic.poi_dim
+                poi_dim=self.test_statistic.param_dim
             ))
         return confidence_regions if len(alpha) > 1 else confidence_regions[0]
 
@@ -401,7 +401,7 @@ class LF2I:
                         print('\nRe-calibrating p-values on holdout set ...', flush=True)
                     alpha = np.quantile(self.holdout_p_values, 1-confidence_level)
                     if verbose:
-                        print(f'Original alpha: {1-confidence_level}, Re-calibrated alpha: {holdout_alpha}')
+                        print(f'Original alpha: {1-confidence_level}, Re-calibrated alpha: {alpha}')
                 else:
                     alpha = 1-confidence_level
 
