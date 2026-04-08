@@ -575,7 +575,7 @@ class LF2I:
             If True, a probabilistic regressor (`coverage_estimator`) is fitted at each level
             to smooth the 0/1 indicators into continuous coverage probabilities across the
             parameter space. The returned `probabilities[i]` will contain predicted
-            probabilities rather than raw indicators. Default False.
+            probabilities rather than raw indicators. Default True.
         coverage_estimator : str, optional
             Identifier for the coverage probability estimator. Currently supports 'cat-gb'.
             Only used if `fit_coverage_estimator=True`. Default 'cat-gb'.
@@ -658,30 +658,7 @@ class LF2I:
             test_statistics = self.test_statistic.evaluate(parameters, samples, mode='diagnostics')
 
             if calibration_method == 'critical-values':
-                ck = f'{cl:.2f}' if f'{cl:.2f}' in self.calibration_model else calib_dict_key
-                raw_cv = to_np_if_torch(to_np_if_pd(
-                    self.calibration_model[ck].predict(
-                        preprocess_predict_quantile_regression(
-                            parameters, self.calibration_model[ck], param_dim
-                        )
-                    )
-                ))
-
-                if raw_cv.ndim > 1:
-                    all_alphas = np.array(
-                        self.calibration_model[ck].estimator
-                        .get_params()['loss_function']
-                        .split('=')[1].split(','),
-                        dtype=float
-                    )
-                    col = int(np.argmin(np.abs(
-                        (cl if self.test_statistic.acceptance_region == 'left' else 1 - cl) - all_alphas
-                    )))
-                    critical_values = raw_cv[:, col]
-                else:
-                    critical_values = raw_cv
-                p_values = None
-                alpha    = None
+                raise NotImplementedError("coverage_profile() does not currently support 'critical-values'")
 
             else:
                 ck = f'{cl:.2f}' if f'{cl:.2f}' in self.calibration_model else calib_dict_key
