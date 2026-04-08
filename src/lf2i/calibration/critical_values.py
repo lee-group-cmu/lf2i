@@ -109,7 +109,7 @@ def train_qr_algorithm(
             feedforward_nn = FeedForwardNN(
                 input_d=parameters.shape[1], 
                 output_d=len(quantiles),
-                hidden_layer_shapes=algorithm_kwargs['hidden_layer_shapes'], 
+                hidden_layer_shapes=algorithm_kwargs.get('hidden_layer_shapes', [64, 64]),
                 **nn_kwargs
             )
             algorithm = LearnerRegression(
@@ -120,7 +120,13 @@ def train_qr_algorithm(
                 verbose=verbose
             )
             test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)
-            learner_kwargs = {arg: algorithm_kwargs[arg] for arg in ['epochs', 'batch_size']}
+
+            learner_kwargs = {arg: algorithm_kwargs[arg] for arg in ['epochs', 'batch_size'] if arg in algorithm_kwargs}
+            if 'epochs' not in learner_kwargs:
+                learner_kwargs['epochs'] = 100
+            if 'batch_size' not in learner_kwargs:
+                learner_kwargs['batch_size'] = 64
+
             algorithm.fit(X=parameters, y=test_statistics, **learner_kwargs)
         else:
             raise ValueError(f"Only 'cat-gb', 'nn' or custom algorithm (Any) are currently supported, got {algorithm}")

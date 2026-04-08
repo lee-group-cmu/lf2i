@@ -12,7 +12,8 @@ def compute_confidence_regions(
     p_values: Optional[np.ndarray],
     alpha: Optional[float],
     acceptance_region: Optional[str],
-    poi_dim: int
+    poi_dim: int,
+    return_indices: bool = False
 ) -> List[np.ndarray]:
     """Compute LF2I confidence regions via Neyman inversion of hypothesis tests.
 
@@ -60,4 +61,8 @@ def compute_confidence_regions(
             raise ValueError(f"Acceptance region must be either `left` or `right`, got {acceptance_region}")
     else:
         which_parameters = p_values >= alpha
-    return [parameter_grid[which_parameters[idx, :].reshape(-1, ), :] for idx in range(num_obs)]
+
+    if return_indices:
+        return [which_parameters[idx, :].nonzero()[0] for idx in range(num_obs)]
+    else:
+        return [parameter_grid[which_parameters[idx, :].reshape(-1, ), :] for idx in range(num_obs)]
