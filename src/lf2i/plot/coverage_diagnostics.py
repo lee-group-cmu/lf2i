@@ -446,6 +446,73 @@ def coverage_boxplot(
         plt.savefig(save_fig_path, bbox_inches='tight')
     plt.show()
 
+def coverage_nominal_actual_boxplot(
+        probabilities: Sequence[np.ndarray],
+        confidence_levels: np.ndarray,
+        whiskers_loc: Union[Tuple[float, float], float] = 1.5,
+        plot_fliers: bool = True,
+        ylim: Optional[Sequence[float]] = None,
+        save_fig_path: Optional[str] = None,
+        figsize: Tuple = (5, 5)
+) -> None:
+    plt.figure(figsize=figsize)
+
+    positions = np.arange(1, len(confidence_levels) + 1)
+
+    plt.boxplot(
+        x=probabilities,
+        positions=positions,
+        notch=False,
+        whis=whiskers_loc,
+        sym=None if plot_fliers else '',
+        widths=0.4,
+        patch_artist=True
+    )
+
+    ref = np.linspace(confidence_levels.min(), confidence_levels.max(), 200)
+    plt.plot(
+        np.interp(ref, confidence_levels, positions),
+        ref,
+        linestyle='--', linewidth=1, color='red', label='Nominal = Actual'
+    )
+    plt.scatter(positions, confidence_levels, color='red', s=20, zorder=5)
+    
+    
+    whiskers_vals = (f'0.25-{round(whiskers_loc, 1)}IQR', f'0.75+{round(whiskers_loc, 1)}IQR') if isinstance(whiskers_loc, float) else (whiskers_loc[0]/100, whiskers_loc[1]/100)
+    plt.plot([], [], ' ', label=f"\nBox: (0.25, 0.5, 0.75) \nWhiskers: {whiskers_vals}")
+
+    sns.set_style('whitegrid')
+    plt.title('Nominal vs. Actual Coverage', fontsize=20)
+
+    plt.xticks(
+        ticks=positions,
+        labels=[f'{round(cl * 100, 1)}%' for cl in confidence_levels],
+        fontsize=11,
+        rotation=45 if len(confidence_levels) > 6 else 0,
+    )
+    plt.xlabel('Nominal Coverage', fontsize=14)
+    plt.ylabel('Actual Coverage', fontsize=14)
+
+    if ylim:
+        plt.ylim(*ylim)
+        yticks = np.arange(start=ylim[0], stop=ylim[1] + 0.01, step=0.05)
+    else:
+        plt.ylim(0, 1.05)
+        yticks = np.arange(0, 1.05, 0.1)
+
+    plt.yticks(
+        ticks=yticks,
+        labels=[f'{round(v * 100, 0):.0f}%' for v in yticks],
+        fontsize=11,
+    )
+
+    plt.tick_params(axis='both', labelsize=11)
+    plt.legend(loc='lower right', fontsize=9)
+    plt.tight_layout()
+
+    if save_fig_path is not None:
+        plt.savefig(save_fig_path, bbox_inches='tight')
+    plt.show()
 
 class PinGreenNormalize(mcolors.Normalize):
     def __init__(self, vmin=0, vmax=100, vcenter=40, green_index=0.35, clip=False):
