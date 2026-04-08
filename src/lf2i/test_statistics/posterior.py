@@ -27,7 +27,7 @@ class Posterior(TestStatistic):
         """
         # Accept for high values, i.e. if posterior is very high
         super().__init__(acceptance_region='right', estimation_method='posterior')
-        self.poi_dim = poi_dim
+        self.poi_dim = self.param_dim = poi_dim
         self.estimator = self._choose_estimator(estimator, estimator_kwargs, 'posterior')
         self.posterior_kwargs = posterior_kwargs
         self.n_jobs = n_jobs

@@ -56,7 +56,7 @@ class Waldo(TestStatistic):
     ) -> None:
         super().__init__(acceptance_region='left', estimation_method=estimation_method)
 
-        self.poi_dim = poi_dim
+        self.poi_dim = self.param_dim = poi_dim
         if estimation_method == 'prediction':
             self.estimator = self._choose_estimator(estimator, estimator_kwargs, 'conditional_mean')
             assert cond_variance_estimator is not None, "Need to specify a model to estimate the conditional variance"
