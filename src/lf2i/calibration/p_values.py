@@ -200,7 +200,7 @@ def estimate_rejection_proba(
 
     if isinstance(algorithm, str):
         if algorithm == 'cat-gb':
-            if ('cv' in algorithm_kwargs) or (algorithm_kwargs is None):
+            if 'cv' in algorithm_kwargs:
                 algorithm = RandomizedSearchCV(
                     estimator=CatBoostClassifier(
                         loss_function='CrossEntropy',
@@ -215,20 +215,26 @@ def estimate_rejection_proba(
                     verbose=1 if verbose else 0
                 )
                 algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
-            
-            # TODO: not sure this is "kosher", because the best params are chosen via CV on the same data. Maybe we should leave out a subset for CLF calib.
-            algorithm = CalibratedClassifierCV(
-                estimator=CatBoostClassifier(
+
+                # Retrain with CV-selected hyperparameters and isotonic calibration
+                algorithm = CalibratedClassifierCV(
+                    estimator=CatBoostClassifier(
+                        loss_function='CrossEntropy',
+                        silent=True,
+                        # 1 (-1) means non-decreasing (non-increasing) function of cutoffs (always 0-th column of inputs)
+                        monotone_constraints="0:1" if acceptance_region == 'right' else "0:-1",
+                        **(algorithm.best_params_ if 'cv' in algorithm_kwargs else algorithm_kwargs)
+                    ),
+                    method='isotonic',
+                    cv=5,
+                    n_jobs=n_jobs
+                )
+            else:
+                algorithm = CatBoostClassifier(
                     loss_function='CrossEntropy',
                     silent=True,
-                    # 1 (-1) means non-decreasing (non-increasing) function of cutoffs (always 0-th column of inputs)
-                    monotone_constraints="0:1" if acceptance_region == 'right' else "0:-1",
-                    **(algorithm.best_params_ if 'cv' in algorithm_kwargs else algorithm_kwargs)
-                ),
-                method='isotonic',
-                cv=5,
-                n_jobs=n_jobs
-            )
+                    monotone_constraints="0:1",  # 1 means non-decreasing function of cutoffs (always 0-th column of inputs),
+                )
             algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
         elif algorithm == 'logistic':
             algorithm = CalibratedClassifierCV(

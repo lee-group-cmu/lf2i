@@ -125,6 +125,16 @@ class Learner:
         self.loss_trajectory: List[np.ndarray] = []
         self.verbose = verbose
     
+    def __getstate__(self):
+        # The optimizer is only needed during training; drop it to avoid pickling
+        # torch.backends.* ConfigModuleInstance objects that live in its closure chain.
+        state = self.__dict__.copy()
+        state['optimizer'] = None
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
     def fit(
         self,
         X: torch.Tensor, 
