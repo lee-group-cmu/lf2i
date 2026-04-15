@@ -6,7 +6,7 @@ import torch
 from sklearn.base import BaseEstimator
 from xgboost.sklearn import XGBModel
 
-from lf2i.utils.miscellanea import check_for_nans
+from lf2i.utils.miscellanea import check_for_nans, to_np_if_torch
 
 
 def preprocess_waldo_estimation(
@@ -29,9 +29,9 @@ def preprocess_waldo_estimation(
         if isinstance(estimator, (BaseEstimator, XGBModel)):
             # Scikit-Learn or XGBoost models
             if isinstance(parameters, torch.Tensor):
-                parameters = parameters.numpy()
+                parameters = to_np_if_torch(parameters)
             if isinstance(samples, torch.Tensor):
-                samples = samples.numpy()
+                samples = to_np_if_torch(samples)
     else:
         # for posterior estimation we currently support `SBI` from mackelab, which uses PyTorch
         if isinstance(parameters, np.ndarray):
@@ -85,7 +85,7 @@ def preprocess_waldo_computation(
     param_dim: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     if isinstance(parameters, torch.Tensor):
-        parameters = parameters.numpy()
+        parameters = to_np_if_torch(parameters)
     if param_dim == 1:
         parameters = parameters.reshape(-1, param_dim)
         if isinstance(conditional_mean, (List, Tuple)):

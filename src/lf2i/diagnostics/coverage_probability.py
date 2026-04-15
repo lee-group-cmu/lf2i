@@ -23,6 +23,7 @@ from lf2i.utils.calibration_diagnostics_inputs import (
 )
 from lf2i.utils.other_methods import hpd_region, gaussian_prediction_sets
 from lf2i.utils.parallel import tqdm_joblib
+from lf2i.utils.miscellanea import to_np_if_torch
 
 
 def estimate_coverage_proba(
@@ -162,7 +163,6 @@ def compute_indicators_lf2i(
     ValueError
         `acceptance_region` must be either `left` or `right`.
     """
-    # TODO: convert torch Tensors into numpy arrays
     test_statistics, critical_values, p_values, parameters = \
         preprocess_indicators_lf2i(test_statistics, critical_values, p_values, parameters, param_dim)
     
@@ -268,7 +268,7 @@ def compute_indicators_posterior(
         return indicators, credible_regions
     else:
         if return_size:
-            return indicators, np.array([100*cr.shape[0]/parameter_grid.numpy().shape[0] for cr in credible_regions])
+            return indicators, np.array([100*cr.shape[0]/to_np_if_torch(parameter_grid).shape[0] for cr in credible_regions])
         else:
             return indicators
 

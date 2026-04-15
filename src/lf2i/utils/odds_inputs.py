@@ -28,9 +28,9 @@ def preprocess_odds_estimation(
     if isinstance(estimator, (BaseEstimator, XGBModel)):
         # Scikit-Learn or XGBoost models
         if isinstance(parameters, torch.Tensor):
-            parameters = parameters.numpy()
+            parameters = to_np_if_torch(parameters)
         if isinstance(samples, torch.Tensor):
-            samples = samples.numpy()
+            samples = to_np_if_torch(samples)
 
     # Normalize parameters if bounds are provided
     parameters = preprocess_normalize_parameters(parameters, parameter_space_bounds)
@@ -277,9 +277,9 @@ def preprocess_for_odds_cv(
             ))
     else:
         if isinstance(parameters, torch.Tensor):
-            parameters = parameters.numpy()
+            parameters = to_np_if_torch(parameters)
         if isinstance(samples, torch.Tensor):
-            samples = samples.numpy()
+            samples = to_np_if_torch(samples)
 
         if parameter_space_bounds is not None:
             parameters = preprocess_normalize_parameters(parameters, parameter_space_bounds)
@@ -367,9 +367,9 @@ def preprocess_for_odds_cs(
             ))
     else:
         if isinstance(parameter_grid, torch.Tensor):
-            parameter_grid = parameter_grid.numpy()
+            parameter_grid = to_np_if_torch(parameter_grid)
         if isinstance(samples, torch.Tensor):
-            samples = samples.numpy()
+            samples = to_np_if_torch(samples)
 
         if parameter_space_bounds is not None:
             parameter_grid = preprocess_normalize_parameters(parameter_grid, parameter_space_bounds)
