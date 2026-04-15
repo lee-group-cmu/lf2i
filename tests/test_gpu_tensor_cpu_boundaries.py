@@ -213,3 +213,17 @@ def test_augment_calibration_set_cuda_tensor_to_numpy():
     )
     assert isinstance(inputs, np.ndarray)
     assert isinstance(rejection_indicators, np.ndarray)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="no GPU")
+def test_augment_calibration_set_conditional_resampling_cuda_tensor_to_numpy():
+    inputs, rejection_indicators = augment_calibration_set(
+        test_statistics=torch.randn(8, device="cuda"),
+        poi=torch.randn(8, 1, device="cuda"),
+        num_augment=2,
+        acceptance_region="right",
+        conditional_resampling=True,
+        min_points_per_bin=2,
+    )
+    assert isinstance(inputs, np.ndarray)
+    assert isinstance(rejection_indicators, np.ndarray)
