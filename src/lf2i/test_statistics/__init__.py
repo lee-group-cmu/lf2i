@@ -1,7 +1,8 @@
 from lf2i.test_statistics._base import TestStatistic
 from lf2i.test_statistics.acore import ACORE
+from lf2i.test_statistics.fts import FTS
 from lf2i.test_statistics.bff import BFF
 from lf2i.test_statistics.waldo import Waldo
 from lf2i.test_statistics.posterior import Posterior
 
-__all__ = ["TestStatistic", "ACORE", "BFF", "Waldo", "Posterior"]
+__all__ = ["TestStatistic", "ACORE", "FTS", "BFF", "Waldo", "Posterior"]

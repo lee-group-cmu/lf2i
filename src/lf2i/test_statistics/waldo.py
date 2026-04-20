@@ -9,6 +9,7 @@ import torch
 from lf2i.test_statistics._base import TestStatistic
 from lf2i.utils.parallel import tqdm_joblib
 from lf2i.utils.waldo_inputs import preprocess_waldo_estimation, preprocess_waldo_evaluation, preprocess_waldo_computation
+from lf2i.utils.miscellanea import _estimator_on_gpu
 
 
 class Waldo(TestStatistic):
@@ -204,11 +205,11 @@ class Waldo(TestStatistic):
             def sampling_loop(idx):
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
-                    posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).numpy()
+                    posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).cpu().numpy()
                 cond_mean = np.mean(posterior_samples, axis=0).reshape(1, self.poi_dim)
                 cond_var = np.cov(posterior_samples.T)  # need samples.shape = (data_d, num_samples)
                 return cond_mean, cond_var
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Approximating conditional mean and covariance for {samples.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
-                out = list(zip(*Parallel(n_jobs=self.n_jobs)(delayed(sampling_loop)(idx) for idx in it)))  # axis 0 indexes different simulations/observations
+                out = list(zip(*Parallel(n_jobs=self.n_jobs, prefer='threading' if _estimator_on_gpu(self.estimator) else 'loky')(delayed(sampling_loop)(idx) for idx in it)))  # axis 0 indexes different simulations/observations
                 conditional_mean, conditional_var = out[0], out[1]
         return self._compute(parameters, conditional_mean, conditional_var, mode)

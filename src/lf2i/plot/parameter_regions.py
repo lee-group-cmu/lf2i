@@ -54,9 +54,12 @@ def plot_parameter_regions(
         colors = colors or cm.rainbow(np.linspace(0, 1, len(region_names)))
         assert len(region_names) == len(colors) == len(parameter_regions)
         for i, param_reg in enumerate(parameter_regions):
-            leg_handles, leg_labels = plot_parameter_region_1D(
-                param_reg, true_parameter, parameter_space_bounds, color=colors[i], region_name=region_names[i], linestyle=next(linestyles), custom_ax=ax
-            )
+            try:
+                leg_handles, leg_labels = plot_parameter_region_1D(
+                    param_reg, true_parameter, parameter_space_bounds, color=colors[i], region_name=region_names[i], linestyle=next(linestyles), custom_ax=ax
+                )
+            except Exception as e:
+                warnings.warn(f"Failed to plot 1D region {i}: {e}")
         
         if parameter_space_bounds is not None:
             ax.set_ylim(parameter_space_bounds['low'], parameter_space_bounds['high'])
@@ -89,37 +92,40 @@ def plot_parameter_regions(
             ax.contour(xx, yy, density, levels=contour_levels, colors='darkgrey', linewidths=0.5, linestyles='-', zorder=1)
 
         for i, param_reg in enumerate(parameter_regions):
-            leg_handles, _ = plot_parameter_region_2D(
-                parameter_region=param_reg, 
-                true_parameter=true_parameter, 
-                parameter_space_bounds=parameter_space_bounds, 
-                labels=labels,
-                param_names=param_names,
-                color=colors[i],
-                linestyle=next(linestyles),
-                region_name=region_names[i],
-                alpha_shape=alpha_shape,
-                alpha=alpha,
-                scatter=scatter,
-                custom_ax=ax
-            )
-            merged_handle = mpatches.Patch()
-            merged_handle.patches = leg_handles
-            leg_handles = [merged_handle]
-            leg_labels = [region_names[0].split(' ')[0] + ' ' + '-'.join([rn.split(' ')[1][:-2] for rn in region_names]) + '\%']
+            try:
+                leg_handles, _ = plot_parameter_region_2D(
+                    parameter_region=param_reg,
+                    true_parameter=true_parameter,
+                    parameter_space_bounds=parameter_space_bounds,
+                    labels=labels,
+                    param_names=param_names,
+                    color=colors[i],
+                    linestyle=next(linestyles),
+                    region_name=region_names[i],
+                    alpha_shape=alpha_shape,
+                    alpha=alpha,
+                    scatter=scatter,
+                    custom_ax=ax
+                )
+                merged_handle = mpatches.Patch()
+                merged_handle.patches = leg_handles
+                leg_handles = [merged_handle]
+                leg_labels = [region_names[0].split(' ')[0] + ' ' + '-'.join([rn.split(' ')[1][:-2] for rn in region_names]) + '\%']
+            except Exception as e:
+                warnings.warn(f"Failed to plot 2D region {i}: {e}")
 
         if prior_samples is not None and 'FreB' not in region_names[0]:
             leg_handles += [mpatches.Patch(edgecolor='darkgrey', facecolor=plt.cm.Greys(80), linewidth=2, label='Prior')]
             leg_labels += ['Prior']
-        legend = ax.legend(
-            leg_handles, leg_labels, handler_map={leg_handles[0]: MergedPatchHandler(num_patches=len(parameter_regions), gap_ratio=0.1)}, 
-            prop={'size': 18}, loc='lower left', handlelength=3
-        )
-        if alpha_shape:
-            legend.legend_handles[0]._sizes = [40]
-        if remove_legend:
-            ax.get_legend().remove()
         
+        if not remove_legend:
+            legend = ax.legend(
+                leg_handles, leg_labels, handler_map={leg_handles[0]: MergedPatchHandler(num_patches=len(parameter_regions), gap_ratio=0.1)}, 
+                prop={'size': 18}, loc='lower left', handlelength=3
+            )
+            if alpha_shape:
+                legend.legend_handles[0]._sizes = [40]
+
         ax.set_xlabel(r'$\theta_0$' if labels is None else labels[0], fontsize=25, labelpad=3)
         ax.tick_params(axis='x', labelsize=18)
         ax.set_ylabel(r'$\theta_1$' if labels is None else labels[1], fontsize=25, labelpad=10, rotation=0)
@@ -205,94 +211,96 @@ def plot_parameter_regions(
         for i in range(param_dim):
             for j in range(param_dim):
                 ax = axes[i, j] if param_dim > 1 else axes
-                
-                if i == j and show_diagonal:
-                    # Diagonal: show 1D distribution
-                    if diagonal_type == 'hist':
+                try:
+                    if i == j and show_diagonal:
+                        # Diagonal: show 1D distribution
+                        if diagonal_type == 'hist':
+                            for k, param_reg in enumerate(parameter_regions):
+                                # Filter to subset if enabled
+                                filtered_reg = filter_by_proximity(param_reg, [i])
+                                if len(filtered_reg) > 0:
+                                    ax.hist(filtered_reg[:, i], bins=30, alpha=0.5, color=colors[k],
+                                           label=region_names[k] if i == 0 else None, density=True)
+                            if true_parameter is not None:
+                                ax.axvline(true_parameter[i], color='red', linestyle='--', linewidth=2, label='True' if i == 0 else None)
+                        elif diagonal_type == 'kde':
+                            for k, param_reg in enumerate(parameter_regions):
+                                # Filter to subset if enabled
+                                filtered_reg = filter_by_proximity(param_reg, [i])
+                                if len(filtered_reg) > 0:
+                                    kde = gaussian_kde(filtered_reg[:, i])
+                                    x_range = np.linspace(filtered_reg[:, i].min(), filtered_reg[:, i].max(), 100)
+                                    ax.plot(x_range, kde(x_range), color=colors[k],
+                                           linestyle=linestyles_list[k % len(linestyles_list)],
+                                           label=region_names[k] if i == 0 else None)
+                            if true_parameter is not None:
+                                ax.axvline(true_parameter[i], color='red', linestyle='--', linewidth=2, label='True' if i == 0 else None)
+
+                        ax.set_ylabel('Density', fontsize=12)
+                        if i == 0 and diagonal_type != 'none':
+                            ax.legend(prop={'size': 10}, loc='upper right')
+
+                    elif i > j:
+                        # Lower triangle: scatter plots with 2D regions
+                        # Plot prior samples if provided
+                        if prior_samples is not None:
+                            kde = gaussian_kde(prior_samples[:, [j, i]].T)
+                            if param_names is not None and parameter_space_bounds is not None:
+                                x = np.linspace(*parameter_space_bounds[param_names[j]].values(), 100)
+                                y = np.linspace(*parameter_space_bounds[param_names[i]].values(), 100)
+                            else:
+                                x = np.linspace(prior_samples[:, j].min(), prior_samples[:, j].max(), 100)
+                                y = np.linspace(prior_samples[:, i].min(), prior_samples[:, i].max(), 100)
+                            xx, yy = np.meshgrid(x, y)
+                            grid_coords = np.vstack([xx.ravel(), yy.ravel()])
+                            density = kde(grid_coords).reshape(xx.shape)
+                            contour_levels = [lvl for lvl in np.linspace(density.min(), density.max(), 9) if lvl > 1e-10]
+                            ax.contourf(xx, yy, density, levels=contour_levels, cmap=sns.color_palette('Greys', as_cmap=True),
+                                       alpha=0.5, zorder=1, locator=ticker.MaxNLocator(prune='lower'))
+
+                        # Plot parameter regions
+                        linestyles_cycle = cycle(linestyles_list)
                         for k, param_reg in enumerate(parameter_regions):
                             # Filter to subset if enabled
-                            filtered_reg = filter_by_proximity(param_reg, [i])
+                            filtered_reg = filter_by_proximity(param_reg, [j, i])
+
                             if len(filtered_reg) > 0:
-                                ax.hist(filtered_reg[:, i], bins=30, alpha=0.5, color=colors[k], 
-                                       label=region_names[k] if i == 0 else None, density=True)
-                        if true_parameter is not None:
-                            ax.axvline(true_parameter[i], color='red', linestyle='--', linewidth=2, label='True' if i == 0 else None)
-                    elif diagonal_type == 'kde':
-                        for k, param_reg in enumerate(parameter_regions):
-                            # Filter to subset if enabled
-                            filtered_reg = filter_by_proximity(param_reg, [i])
-                            if len(filtered_reg) > 0:
-                                kde = gaussian_kde(filtered_reg[:, i])
-                                x_range = np.linspace(filtered_reg[:, i].min(), filtered_reg[:, i].max(), 100)
-                                ax.plot(x_range, kde(x_range), color=colors[k], 
-                                       linestyle=linestyles_list[k % len(linestyles_list)],
-                                       label=region_names[k] if i == 0 else None)
-                        if true_parameter is not None:
-                            ax.axvline(true_parameter[i], color='red', linestyle='--', linewidth=2, label='True' if i == 0 else None)
-                    
-                    ax.set_ylabel('Density', fontsize=12)
-                    if i == 0 and diagonal_type != 'none':
-                        ax.legend(prop={'size': 10}, loc='upper right')
-                    
-                elif i > j:
-                    # Lower triangle: scatter plots with 2D regions
-                    # Plot prior samples if provided
-                    if prior_samples is not None:
-                        kde = gaussian_kde(prior_samples[:, [j, i]].T)
-                        if param_names is not None and parameter_space_bounds is not None:
-                            x = np.linspace(*parameter_space_bounds[param_names[j]].values(), 100)
-                            y = np.linspace(*parameter_space_bounds[param_names[i]].values(), 100)
-                        else:
-                            x = np.linspace(prior_samples[:, j].min(), prior_samples[:, j].max(), 100)
-                            y = np.linspace(prior_samples[:, i].min(), prior_samples[:, i].max(), 100)
-                        xx, yy = np.meshgrid(x, y)
-                        grid_coords = np.vstack([xx.ravel(), yy.ravel()])
-                        density = kde(grid_coords).reshape(xx.shape)
-                        contour_levels = [lvl for lvl in np.linspace(density.min(), density.max(), 9) if lvl > 1e-10]
-                        ax.contourf(xx, yy, density, levels=contour_levels, cmap=sns.color_palette('Greys', as_cmap=True), 
-                                   alpha=0.5, zorder=1, locator=ticker.MaxNLocator(prune='lower'))
-                    
-                    # Plot parameter regions
-                    linestyles_cycle = cycle(linestyles_list)
-                    for k, param_reg in enumerate(parameter_regions):
-                        # Filter to subset if enabled
-                        filtered_reg = filter_by_proximity(param_reg, [j, i])
-                        
-                        if len(filtered_reg) > 0:
-                            # Extract 2D projection
-                            param_reg_2d = filtered_reg[:, [j, i]]
-                            true_param_2d = true_parameter[[j, i]] if true_parameter is not None else None
-                            param_names_2d = [param_names[j], param_names[i]] if param_names is not None else None
-                            labels_2d = [labels[j], labels[i]]
-                            
-                            plot_parameter_region_2D(
-                                parameter_region=param_reg_2d,
-                                true_parameter=true_param_2d,
-                                parameter_space_bounds=parameter_space_bounds,
-                                labels=labels_2d,
-                                param_names=param_names_2d,
-                                color=colors[k],
-                                linestyle=next(linestyles_cycle),
-                                region_name=region_names[k],
-                                alpha_shape=alpha_shape,
-                                alpha=alpha,
-                                scatter=scatter,
-                                custom_ax=ax
-                            )
-                else:
-                    # Upper triangle: hide or show correlation/info
-                    ax.axis('off')
-                
-                # Set labels only on edges
-                if i == param_dim - 1:
-                    ax.set_xlabel(labels[j], fontsize=14)
-                else:
-                    ax.set_xticklabels([])
-                
-                if j == 0 and i != j:
-                    ax.set_ylabel(labels[i], fontsize=14, rotation=0, labelpad=20)
-                elif i != j:
-                    ax.set_yticklabels([])
+                                # Extract 2D projection
+                                param_reg_2d = filtered_reg[:, [j, i]]
+                                true_param_2d = true_parameter[[j, i]] if true_parameter is not None else None
+                                param_names_2d = [param_names[j], param_names[i]] if param_names is not None else None
+                                labels_2d = [labels[j], labels[i]]
+
+                                plot_parameter_region_2D(
+                                    parameter_region=param_reg_2d,
+                                    true_parameter=true_param_2d,
+                                    parameter_space_bounds=parameter_space_bounds,
+                                    labels=labels_2d,
+                                    param_names=param_names_2d,
+                                    color=colors[k],
+                                    linestyle=next(linestyles_cycle),
+                                    region_name=region_names[k],
+                                    alpha_shape=alpha_shape,
+                                    alpha=alpha,
+                                    scatter=scatter,
+                                    custom_ax=ax
+                                )
+                    else:
+                        # Upper triangle: hide or show correlation/info
+                        ax.axis('off')
+
+                    # Set labels only on edges
+                    if i == param_dim - 1:
+                        ax.set_xlabel(labels[j], fontsize=14)
+                    else:
+                        ax.set_xticklabels([])
+
+                    if j == 0 and i != j:
+                        ax.set_ylabel(labels[i], fontsize=14, rotation=0, labelpad=20)
+                    elif i != j:
+                        ax.set_yticklabels([])
+                except Exception as e:
+                    warnings.warn(f"Failed to plot panel (i={i}, j={j}): {e}")
         
         plt.tight_layout()
         if title is not None:

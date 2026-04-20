@@ -13,7 +13,7 @@ from lf2i.utils.odds_inputs import (
     preprocess_for_odds_cs, 
     preprocess_odds_integration
 )
-from lf2i.utils.miscellanea import to_np_if_torch
+from lf2i.utils.miscellanea import to_np_if_torch, _estimator_on_gpu
 from lf2i.utils.parallel import tqdm_joblib
 
 
@@ -183,7 +183,7 @@ class BFF(TestStatistic):
             else:
                 numerator = self._odds(self.estimator.predict_proba(X=params_samples))
                 with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
-                    denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
+                    denominator = np.array(Parallel(n_jobs=self.n_jobs, prefer='threading' if _estimator_on_gpu(self.estimator) else 'loky')(delayed(
                         lambda idx: self._integrate_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), integration_bounds=param_space_bounds[:self.poi_dim]) 
                         )(i) for i in it
                     ))
@@ -195,7 +195,7 @@ class BFF(TestStatistic):
                 return num / den
             
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
-                bff = np.array(Parallel(n_jobs=self.n_jobs)(delayed(do_one)(i) for i in it))
+                bff = np.array(Parallel(n_jobs=self.n_jobs, prefer='threading' if _estimator_on_gpu(self.estimator) else 'loky')(delayed(do_one)(i) for i in it))
             return bff
     
     def _compute_for_confidence_sets(
@@ -215,7 +215,7 @@ class BFF(TestStatistic):
                 numerator = self._odds(self.estimator.predict_proba(X=param_grid_samples)).reshape(samples.shape[0], parameter_grid.shape[0])
                 # denominator is the same regardless of parameter grid value
                 with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
-                    denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
+                    denominator = np.array(Parallel(n_jobs=self.n_jobs, prefer='threading' if _estimator_on_gpu(self.estimator) else 'loky')(delayed(
                         lambda idx: self._integrate_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), integration_bounds=param_space_bounds[:self.poi_dim]) 
                         )(i) for i in it
                     )).reshape(-1, 1)
@@ -228,7 +228,7 @@ class BFF(TestStatistic):
                 return numerator / denominator
             
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
-                out = np.vstack(Parallel(n_jobs=self.n_jobs)(delayed(lambda idx: param_grid_loop(
+                out = np.vstack(Parallel(n_jobs=self.n_jobs, prefer='threading' if _estimator_on_gpu(self.estimator) else 'loky')(delayed(lambda idx: param_grid_loop(
                     sample=samples[idx, :, :], 
                     denominator=self._integrate_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), integration_bounds=param_space_bounds)
                     ).reshape(1, -1))(i) for i in it

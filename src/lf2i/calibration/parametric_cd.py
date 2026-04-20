@@ -74,7 +74,7 @@ class WeightedPinballLoss(nn.Module):
         super().__init__()
         self.n_alpha = n_alpha
 
-        alpha_grid = torch.linspace(1e-4, 1 - 1e-4, n_alpha)   # (M,)
+        alpha_grid = (1-2e-4)*torch.rand(n_alpha) + 1e-4 # torch.linspace(1e-4, 1 - 1e-4, n_alpha)   # (M,)
         self.register_buffer('alpha_grid', alpha_grid)
 
         # ── build weight vector ───────────────────────────────────────────────
@@ -543,7 +543,7 @@ class ParametricCDFEstimator:
                     mu        = beta[:, 0:1]
                     log_kappa = beta[:, 1:2]
                     if isinstance(criterion, WeightedPinballLoss):
-                        alpha_row           = torch.rand(criterion.n_alpha, device=lam_b.device)# criterion.alpha_grid.unsqueeze(0)
+                        alpha_row           = criterion.alpha_grid.unsqueeze(0).to(lam_b.device) # (1, M)
                         predicted_quantiles = self.cdf_model_.quantile(alpha_row, mu, log_kappa)
                         batch_loss          = criterion(predicted_quantiles, lam_b) + log_kappa.mean() # <- This amounts to maximum entropy regularization (entropy for logistic is \propto -log(\kappa), so maximize entropy by minimizing \kappa)
                     else:

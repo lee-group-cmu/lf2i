@@ -35,9 +35,9 @@ def preprocess_train_quantile_regression(
     else:
         # numpy-based models
         if isinstance(test_statistics, torch.Tensor):
-            test_statistics = test_statistics.numpy()
+            test_statistics = to_np_if_torch(test_statistics)
         if isinstance(parameters, torch.Tensor):
-            parameters = parameters.numpy()
+            parameters = to_np_if_torch(parameters)
 
     if drop_nans_and_infs:
         nans_and_infs = find_nans_and_infs(test_statistics) | find_nans_and_infs(parameters)
@@ -62,7 +62,7 @@ def preprocess_predict_quantile_regression(
     else:
         # numpy-based models
         if isinstance(parameters, torch.Tensor):
-            parameters = parameters.numpy()
+            parameters = to_np_if_torch(parameters)
     return parameters.reshape(-1, param_dim)
 
 
@@ -80,7 +80,7 @@ def preprocess_fit_p_values(
     else:  # assume anything else works with numpy arrays
         # Scikit-Learn, XGBoost, CatBoost, etc...
         if isinstance(inp, torch.Tensor):
-            inp = inp.numpy()
+            inp = to_np_if_torch(inp)
         if inp.ndim == 1:
             inp = np.expand_dims(inp, axis=1)
     return inp
@@ -108,9 +108,9 @@ def preprocess_predict_p_values(
     else:  # assume anything else works with numpy arrays
         # Scikit-Learn, XGBoost, CatBoost, etc...
         if isinstance(test_stats, torch.Tensor):
-            test_stats = test_stats.numpy()
+            test_stats = to_np_if_torch(test_stats)
         if isinstance(poi, torch.Tensor):
-            poi = poi.numpy()
+            poi = to_np_if_torch(poi)
         if poi.ndim == 1:
             poi = np.expand_dims(poi, axis=1)
         if mode == 'confidence_sets':
@@ -163,21 +163,21 @@ def preprocess_diagnostics(
     if new_parameters is not None:
         check_for_nans(new_parameters)
     if isinstance(indicators, torch.Tensor):
-        indicators = indicators.numpy()
+        indicators = to_np_if_torch(indicators)
     if isinstance(parameters, torch.Tensor):
-        parameters = parameters.numpy()
+        parameters = to_np_if_torch(parameters)
     if isinstance(new_parameters, torch.Tensor):
-        new_parameters = new_parameters.numpy()
+        new_parameters = to_np_if_torch(new_parameters)
     if new_parameters is not None:
         new_parameters = new_parameters.reshape(-1, param_dim)
     return indicators.reshape(-1, ), parameters.reshape(-1, param_dim), new_parameters
 
 
 def preprocess_indicators_lf2i(
-    test_statistics: np.ndarray,
-    critical_values: Optional[np.ndarray],
-    p_values: Optional[np.ndarray],
-    parameters: np.ndarray,
+    test_statistics: Union[np.ndarray, torch.Tensor],
+    critical_values: Optional[Union[np.ndarray, torch.Tensor]],
+    p_values: Optional[Union[np.ndarray, torch.Tensor]],
+    parameters: Union[np.ndarray, torch.Tensor],
     param_dim: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     check_for_nans(test_statistics)
@@ -186,6 +186,12 @@ def preprocess_indicators_lf2i(
     if p_values is not None:
         check_for_nans(p_values)
     check_for_nans(parameters)
+    test_statistics = to_np_if_torch(test_statistics)
+    if critical_values is not None:
+        critical_values = to_np_if_torch(critical_values)
+    if p_values is not None:
+        p_values = to_np_if_torch(p_values)
+    parameters = to_np_if_torch(parameters)
     return (
         test_statistics.reshape(-1, ),
         critical_values.reshape(-1, ) if critical_values is not None else None,
@@ -223,9 +229,9 @@ def preprocess_indicators_prediction(
     check_for_nans(parameters)
     check_for_nans(samples)
     if isinstance(parameters, torch.Tensor):
-        parameters = parameters.numpy()
+        parameters = to_np_if_torch(parameters)
     if isinstance(samples, torch.Tensor):
-        samples = samples.numpy()
+        samples = to_np_if_torch(samples)
     if (len(samples.shape) == 3) and (samples.shape[1] > 1):
         warnings.warn(f"You provided a simulated set with single-sample size = {samples.shape[1]}. This dimension will be flattened to compute indicators. Is this the desired behaviour?")
     return parameters.reshape(-1, param_dim), samples.reshape(-1, samples.shape[-1])

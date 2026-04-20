@@ -116,7 +116,7 @@ def train_qr_algorithm(
                 model=feedforward_nn, 
                 optimizer=torch.optim.Adam, 
                 loss=QuantileLoss(quantiles=quantiles), 
-                device='cpu', # "cuda" if torch.cuda.is_available() else 'cpu',
+                device="cuda" if torch.cuda.is_available() else "cpu",
                 verbose=verbose
             )
             test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)

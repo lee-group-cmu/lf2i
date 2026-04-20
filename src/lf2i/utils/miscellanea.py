@@ -22,6 +22,21 @@ def to_torch_if_np(inp: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
     return inp if isinstance(inp, torch.Tensor) else torch.from_numpy(inp)
 
 
+def _estimator_on_gpu(estimator) -> bool:
+    """Return True if estimator is a PyTorch nn.Module with parameters on CUDA."""
+    if isinstance(estimator, torch.nn.Module):
+        try:
+            return next(estimator.parameters()).device.type == 'cuda'
+        except StopIteration:
+            return False
+    if hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module):
+        try:
+            return next(estimator.model.parameters()).device.type == 'cuda'
+        except StopIteration:
+            return False
+    return False
+
+
 def check_for_nans(inp: Union[np.ndarray, pd.Series, pd.DataFrame, torch.Tensor]) -> Union[np.ndarray, pd.Series, pd.DataFrame, torch.Tensor]:
     if isinstance(inp, np.ndarray):
         if np.isnan(inp).sum() > 0:

@@ -17,7 +17,7 @@ except Exception:
 
 from lf2i.calibration.torch_utils import FeedForwardNN, LearnerClassification
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_fit_p_values
-from lf2i.utils.miscellanea import select_n_jobs
+from lf2i.utils.miscellanea import select_n_jobs, to_np_if_torch
 from lf2i.calibration.parametric_cd import ParametricCDFEstimator
 
 
@@ -123,9 +123,9 @@ def augment_calibration_set(
     """
     assert test_statistics.shape[0] == poi.shape[0], 'Shape mismatch between test statistics and POIs'
     if isinstance(test_statistics, torch.Tensor):
-        test_statistics = test_statistics.numpy()
+        test_statistics = to_np_if_torch(test_statistics)
     if isinstance(poi, torch.Tensor):
-        poi = poi.numpy()
+        poi = to_np_if_torch(poi)
     
     # sample cutoffs from empirical distribution and repeat poi/ts to match size
     if poi.ndim == 1:
