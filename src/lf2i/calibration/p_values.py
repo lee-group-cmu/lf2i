@@ -250,7 +250,14 @@ def estimate_rejection_proba(
             algorithm.fit(X=inputs, y=rejection_indicators)
         elif algorithm == 'tfm':
             assert HAVE_TABICL, "TabICL is not installed. Please install it to use the 'tfm' algorithm."
-            tfm_kwargs = algorithm_kwargs if algorithm_kwargs else {}
+            tfm_kwargs = algorithm_kwargs if algorithm_kwargs else {
+                'n_estimators': 1,
+                'feat_shuffle_method': 'none',
+                'class_shuffle_method': 'none',
+                'outlier_threshold': 3.0,
+                'support_many_classes': False,
+                'n_jobs': n_jobs
+            }
             algorithm = TabICLClassifier(**tfm_kwargs)
             algorithm.fit(X=inputs, y=rejection_indicators)
         elif algorithm == 'parametric-nn':
