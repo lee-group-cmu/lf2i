@@ -177,7 +177,7 @@ class ACORE(TestStatistic):
             if self.nuisance_dim == 0:
                 numerator = self._log_odds(self.estimator.predict_proba(X=params_samples))[:, 1]
                 with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
-                    denominator = np.array(Parallel(n_jobs=self.n_jobs, prefer='threading' if _estimator_on_gpu(self.estimator) else 'loky')(delayed(
+                    denominator = np.array(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(
                         lambda idx: self._denominator_method_selector(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds) 
                         )(i) for i in it
                     ))
@@ -189,14 +189,14 @@ class ACORE(TestStatistic):
                     return (num - den)
 
                 with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
-                    acore = np.array(Parallel(n_jobs=self.n_jobs, prefer='threading' if _estimator_on_gpu(self.estimator) else 'loky')(delayed(do_one)(i) for i in it))
+                    acore = np.array(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(do_one)(i) for i in it))
                 return acore
 
         else:
             assert self.nuisance_dim > 0, "Conditioning on the POI when maximizing the likelihood for the denominator of the ACORE only makes sense if there are nuisance parameters to optimize over. Got nuisance_dim = 0."
             numerator = self._log_odds(self.estimator.predict_proba(X=params_samples))[:, 1]
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
-                denominator = np.array(Parallel(n_jobs=self.n_jobs, prefer='threading' if _estimator_on_gpu(self.estimator) else 'loky')(delayed(
+                denominator = np.array(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(
                     lambda idx: self._denominator_method_selector(sample=samples[idx], fixed_poi=parameters[idx, :self.poi_dim], optimization_bounds=param_space_bounds) 
                     )(i) for i in it
                 ))
@@ -220,7 +220,7 @@ class ACORE(TestStatistic):
                 numerator = self._log_odds(self.estimator.predict_proba(X=param_grid_samples)).reshape(samples.shape[0], parameter_grid.shape[0])
                 # denominator is the same regardless of parameter grid value
                 with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
-                    denominator = np.array(Parallel(n_jobs=self.n_jobs, prefer='threading' if _estimator_on_gpu(self.estimator) else 'loky')(delayed(
+                    denominator = np.array(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(
                         lambda idx: self._denominator_method_selector(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds) 
                         )(i) for i in it
                     )).reshape(-1, 1)
@@ -233,7 +233,7 @@ class ACORE(TestStatistic):
                     return (numerator - denominator)
                 
                 with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
-                    out = np.vstack(Parallel(n_jobs=self.n_jobs, prefer='threading' if _estimator_on_gpu(self.estimator) else 'loky')(delayed(lambda idx: param_grid_loop(
+                    out = np.vstack(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(lambda idx: param_grid_loop(
                         sample=samples[idx], 
                         denominator=self._denominator_method_selector(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
                         ).reshape(1, -1))(i) for i in it
@@ -249,7 +249,7 @@ class ACORE(TestStatistic):
                 return (numerator - denominator)
 
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
-                out = np.vstack(Parallel(n_jobs=self.n_jobs, prefer='threading' if _estimator_on_gpu(self.estimator) else 'loky')(delayed(lambda idx: param_grid_loop(
+                out = np.vstack(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(lambda idx: param_grid_loop(
                     sample=samples[idx], 
                     denominator=self._denominator_method_selector(sample=samples[idx], fixed_poi=poi_grid[idx, :], optimization_bounds=param_space_bounds)
                     ).reshape(1, -1))(i) for i in it
@@ -396,7 +396,7 @@ class ACORE(TestStatistic):
                 return mle
             
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
-                out = np.vstack(Parallel(n_jobs=self.n_jobs, prefer='threading' if _estimator_on_gpu(self.estimator) else 'loky')(delayed(lambda idx: param_grid_loop(
+                out = np.vstack(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(lambda idx: param_grid_loop(
                     sample=samples[idx], 
                     denominator=self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
                     ).reshape(1, parameter_grid.shape[0], self.param_dim))(i) for i in it
