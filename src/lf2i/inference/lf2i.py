@@ -536,166 +536,43 @@ class LF2I:
 
         return b_double_prime_sizes
 
-    def coverage_profile(
+    def mc_diagnostics(
         self,
-        confidence_levels: np.ndarray,
+        simulator,
+        evaluation_grid: np.ndarray,
+        confidence_level: float,
         calibration_method: str,
-        T_double_prime: Optional[Tuple[Union[np.ndarray, torch.Tensor]]] = None,
-        simulator: Optional[Simulator] = None,
-        b_double_prime_per_level: Optional[int] = None,
-        fit_coverage_estimator: bool = True,
-        coverage_estimator: str = 'cat-gb',
-        coverage_estimator_kwargs: Dict = {},
-        verbose: bool = True
-    ) -> Tuple[List[np.ndarray], np.ndarray, Optional[List[Any]]]:
-        """Sweep coverage diagnostics across multiple confidence levels, producing data
-        directly consumable by `coverage_nominal_actual_boxplot`.
+        monte_carlo_size: int = 500,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """MC-exact coverage diagnostics on a parameter grid.
 
-        For each level in `confidence_levels`, computes per-sample indicators of whether
-        the true parameter is covered by the LF2I confidence set, then returns an array
-        of coverage probabilities (raw indicators, or smoothed if `fit_coverage_estimator=True`)
-        across the diagnostic parameter space.
+        Thin wrapper around :func:`lf2i.utils.other_methods.monte_carlo_coverage`.
 
         Parameters
         ----------
-        confidence_levels : np.ndarray
-            Sequence of confidence levels to sweep over, e.g. [0.68, 0.90, 0.95].
+        simulator : Simulator
+            lf2i Simulator used to draw samples.
+        evaluation_grid : np.ndarray, shape (n_grid, param_dim)
+            Grid of parameter values at which to evaluate coverage.
+        confidence_level : float
+            Nominal confidence level.
         calibration_method : str
-            Either 'critical-values' or 'p-values'. Must match how `self` was calibrated.
-        T_double_prime : Tuple[np.ndarray, np.ndarray], optional
-            Pre-generated diagnostic dataset as (parameters, samples). If provided,
-            it is split evenly across levels. Mutually exclusive with `simulator`.
-        simulator : Simulator, optional
-            If provided, `b_double_prime_per_level` samples are freshly simulated per level.
-            Mutually exclusive with `T_double_prime`.
-        b_double_prime_per_level : int, optional
-            Number of diagnostic simulations to generate per confidence level.
-            Required if `simulator` is provided.
-        fit_coverage_estimator : bool, optional
-            If True, a probabilistic regressor (`coverage_estimator`) is fitted at each level
-            to smooth the 0/1 indicators into continuous coverage probabilities across the
-            parameter space. The returned `probabilities[i]` will contain predicted
-            probabilities rather than raw indicators. Default True.
-        coverage_estimator : str, optional
-            Identifier for the coverage probability estimator. Currently supports 'cat-gb'.
-            Only used if `fit_coverage_estimator=True`. Default 'cat-gb'.
-        coverage_estimator_kwargs : Dict, optional
-            Keyword arguments forwarded to `estimate_coverage_proba`. Default {}.
-        verbose : bool, optional
-            Whether to print progress. Default True.
+            Either 'critical-values' or 'p-values'.
+        monte_carlo_size : int, optional
+            Number of MC draws per grid point. Default 500.
 
         Returns
         -------
-        probabilities : List[np.ndarray]
-            List of length `len(confidence_levels)`. The i-th array contains per-sample
-            coverage probabilities (raw indicators or smoothed) for `confidence_levels[i]`.
-            Passed directly as the first argument of `coverage_nominal_actual_boxplot`.
-        confidence_levels : np.ndarray
-            Echo of the input, for convenience when calling the plotting function.
-        coverage_estimators : List[Any] or None
-            If `fit_coverage_estimator=True`, a list of fitted estimators (one per level)
-            whose `.predict_proba(parameters)[:, 1]` gives coverage probabilities at new
-            parameter values. None otherwise.
-
-        Raises
-        ------
-        ValueError
-            If neither `simulator` nor `T_double_prime` is provided, or if the calibration
-            model has not yet been fitted via `self.inference(...)`.
+        Tuple[np.ndarray, np.ndarray]
+            ``(evaluation_grid, coverage_per_grid_point)``.
         """
-        assert calibration_method in ['critical-values', 'p-values'], \
-            "calibration_method must be 'critical-values' or 'p-values'"
-        assert self.calibration_model, \
-            "No calibration model found. Run self.inference() before coverage_profile."
-        assert (simulator is not None) or (T_double_prime is not None), \
-            "Provide either a simulator or a pre-generated T_double_prime dataset."
-
-        confidence_levels = np.asarray(confidence_levels)
-        n_levels = len(confidence_levels)
-        param_dim = (
-            self.parameters_calib.shape[1] 
-            if self.parameters_calib.ndim > 1 
-            else 1
+        from lf2i.utils.other_methods import monte_carlo_coverage
+        return monte_carlo_coverage(
+            test_statistic=self.test_statistic,
+            calibration_model=self.calibration_model,
+            simulator=simulator,
+            evaluation_grid=evaluation_grid,
+            confidence_level=confidence_level,
+            calibration_method=calibration_method,
+            monte_carlo_size=monte_carlo_size,
         )
-
-        if simulator is not None:
-            assert b_double_prime_per_level is not None, \
-                "Must specify b_double_prime_per_level when using a simulator."
-            if verbose:
-                print(f"Simulating {b_double_prime_per_level} diagnostic samples × {n_levels} levels ...", flush=True)
-            level_datasets = [
-                simulator.simulate_for_diagnostics(size=b_double_prime_per_level)
-                for _ in confidence_levels
-            ]
-        else:
-            params_all, samples_all = to_np_if_torch(T_double_prime[0]), to_np_if_torch(T_double_prime[1])
-            n_total = params_all.shape[0]
-            chunk = n_total // n_levels
-            level_datasets = [
-                (params_all[i * chunk: (i + 1) * chunk], samples_all[i * chunk: (i + 1) * chunk])
-                for i in range(n_levels)
-            ]
-            if verbose:
-                print(f"Splitting T_double_prime into {n_levels} chunks of {chunk} samples each.", flush=True)
-
-        if 'multiple_levels' in self.calibration_model:
-            calib_dict_key = 'multiple_levels'
-        else:
-            available_keys = [k for k in self.calibration_model if k != 'multiple_levels']
-            calib_dict_key = available_keys[0] if len(available_keys) == 1 else None
-
-        probabilities: List[np.ndarray] = []
-        fitted_estimators: List[Any] = [] if fit_coverage_estimator else None
-
-        for idx, cl in enumerate(confidence_levels):
-            if verbose:
-                print(f"\n[coverage_profile] Level {idx+1}/{n_levels}: {cl:.3f}", flush=True)
-
-            parameters, samples = level_datasets[idx]
-            parameters = to_np_if_torch(parameters)
-            samples    = to_np_if_torch(samples)
-
-            test_statistics = self.test_statistic.evaluate(parameters, samples, mode='diagnostics')
-
-            if calibration_method == 'critical-values':
-                raise NotImplementedError("coverage_profile() does not currently support 'critical-values'")
-
-            else:
-                ck = f'{cl:.2f}' if f'{cl:.2f}' in self.calibration_model else calib_dict_key
-                critical_values = None
-                p_values = to_np_if_torch(
-                    self.calibration_model[ck].predict_proba(
-                        X=preprocess_predict_p_values('diagnostics', test_statistics, parameters, self.calibration_model[ck])
-                    )[:, 1]
-                )
-                alpha = 1 - cl
-
-            indicators = compute_indicators_lf2i(
-                calibration_method=calibration_method,
-                test_statistics=test_statistics,
-                parameters=parameters,
-                critical_values=critical_values,
-                p_values=p_values,
-                alpha=alpha,
-                acceptance_region=self.test_statistic.acceptance_region,
-                param_dim=param_dim
-            )
-
-            if fit_coverage_estimator:
-                estimator, out_params, mean_proba, _, _ = estimate_coverage_proba(
-                    indicators=indicators,
-                    parameters=parameters,
-                    estimator=coverage_estimator,
-                    estimator_kwargs=coverage_estimator_kwargs,
-                    param_dim=param_dim,
-                    new_parameters=None
-                )
-                probabilities.append(mean_proba)
-                fitted_estimators.append(estimator)
-            else: # TODO: fix this by calcuating proportions across the parameter space (if user doesn't train a coverage estimator)
-                probabilities.append(indicators.astype(float))
-
-        if verbose:
-            print("\n[coverage_profile] Done.", flush=True)
-
-        return probabilities, confidence_levels, fitted_estimators

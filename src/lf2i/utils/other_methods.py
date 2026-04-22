@@ -1,4 +1,4 @@
-from typing import Union, Tuple, Any
+from typing import Union, Tuple, Any, Optional
 import warnings
 
 import numpy as np
@@ -151,6 +151,166 @@ def monte_carlo_critical_values(
         q = q if test_statistic.acceptance_region == 'left' else 1-q
         mc_q = np.quantile(ts_values_mc, q, axis=1)  # shape (len(q), n_params)
         return mc_q # {float(level): mc_q[i, :] for i, level in enumerate(confidence_level)}
+
+
+def monte_carlo_coverage(
+    test_statistic: TestStatistic,
+    calibration_model,
+    simulator,
+    evaluation_grid: np.ndarray,
+    confidence_level: float,
+    calibration_method: str,
+    monte_carlo_size: int = 500,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """MC-exact coverage at each point of ``evaluation_grid``.
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        ``(evaluation_grid, coverage_per_grid_point)`` where coverage values are in [0, 1].
+    """
+    # Deferred to avoid circular import: coverage_probability imports from other_methods
+    from lf2i.diagnostics.coverage_probability import compute_indicators_lf2i
+    from lf2i.utils.calibration_diagnostics_inputs import (
+        preprocess_predict_p_values,
+        preprocess_predict_quantile_regression,
+    )
+
+    assert calibration_method in ['critical-values', 'p-values'], \
+        "calibration_method must be 'critical-values' or 'p-values'"
+
+    evaluation_grid = np.asarray(evaluation_grid)
+    n_grid = evaluation_grid.shape[0]
+    param_dim = evaluation_grid.shape[1] if evaluation_grid.ndim > 1 else 1
+
+    parameters_mc = np.repeat(evaluation_grid.reshape(n_grid, param_dim), monte_carlo_size, axis=0)
+    parameters_mc_torch = to_torch_if_np(parameters_mc)
+    samples_mc = simulator(parameters_mc_torch)
+    ts_values = to_np_if_torch(
+        test_statistic.evaluate(parameters=parameters_mc_torch, samples=samples_mc, mode='diagnostics')
+    ).reshape(-1)
+
+    calib_key = (
+        'multiple_levels' if 'multiple_levels' in calibration_model
+        else f'{confidence_level:.2f}'
+    )
+
+    if calibration_method == 'critical-values':
+        critical_values = to_np_if_torch(calibration_model[calib_key].predict(
+            preprocess_predict_quantile_regression(parameters_mc, calibration_model[calib_key], param_dim)
+        ))
+        if calib_key == 'multiple_levels':
+            idx_cl = np.argmin(np.abs(
+                confidence_level - (1 - np.array(
+                    calibration_model['multiple_levels'].estimator.get_params()['loss_function']
+                    .split('=')[1].split(',')
+                ).astype(float))
+            ))
+            critical_values = critical_values[:, idx_cl]
+        p_values = None
+        alpha = None
+    else:
+        critical_values = None
+        p_values = to_np_if_torch(calibration_model[calib_key].predict_proba(
+            X=preprocess_predict_p_values('diagnostics', ts_values, parameters_mc, calibration_model[calib_key])
+        )[:, 1])
+        alpha = 1 - confidence_level
+
+    indicators = compute_indicators_lf2i(
+        calibration_method=calibration_method,
+        test_statistics=ts_values,
+        parameters=parameters_mc,
+        critical_values=critical_values,
+        p_values=p_values,
+        alpha=alpha,
+        acceptance_region=test_statistic.acceptance_region,
+        param_dim=param_dim,
+    )
+
+    coverage = indicators.reshape(n_grid, monte_carlo_size).mean(axis=1)
+    return evaluation_grid, coverage
+
+
+def monte_carlo_pvalue_error(
+    test_statistic: TestStatistic,
+    calibration_model,
+    simulator,
+    evaluation_grid: np.ndarray,
+    x: np.ndarray,
+    monte_carlo_size: int = 1_000,
+    viz: bool = False,
+    ax=None,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """MC-based absolute error between calibration-model p-values and true MC p-values.
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+        ``(evaluation_grid, mc_pvalues, estimated_pvalues, abs_errors)``.
+        All output arrays have shape ``(n_grid,)``.
+    """
+    from lf2i.utils.calibration_diagnostics_inputs import preprocess_predict_p_values
+
+    evaluation_grid = np.asarray(evaluation_grid)
+    n_grid = evaluation_grid.shape[0]
+    param_dim = evaluation_grid.shape[1] if evaluation_grid.ndim > 1 else 1
+
+    # TS at the observed data for each grid point
+    grid_torch = to_torch_if_np(evaluation_grid)
+    x_torch = to_torch_if_np(np.asarray(x))
+    ts_obs = to_np_if_torch(
+        test_statistic.evaluate(parameters=grid_torch, samples=x_torch, mode='confidence_sets')
+    ).reshape(-1)  # (n_grid,)
+
+    # Simulate MC null distributions
+    parameters_mc = np.repeat(evaluation_grid.reshape(n_grid, param_dim), monte_carlo_size, axis=0)
+    parameters_mc_torch = to_torch_if_np(parameters_mc)
+    samples_mc = simulator(parameters_mc_torch)
+    ts_sim = to_np_if_torch(
+        test_statistic.evaluate(parameters=parameters_mc_torch, samples=samples_mc, mode='diagnostics')
+    ).reshape(n_grid, monte_carlo_size)
+
+    ts_obs_col = ts_obs.reshape(n_grid, 1)
+    if test_statistic.acceptance_region == 'left':
+        mc_pvalues = (ts_sim >= ts_obs_col).mean(axis=1)
+    else:
+        mc_pvalues = (ts_sim <= ts_obs_col).mean(axis=1)
+
+    # Estimated p-values from the calibration model
+    calib_key = (
+        'multiple_levels' if 'multiple_levels' in calibration_model
+        else next(k for k in calibration_model)
+    )
+    estimated_pvalues = to_np_if_torch(calibration_model[calib_key].predict_proba(
+        X=preprocess_predict_p_values('diagnostics', ts_obs, evaluation_grid, calibration_model[calib_key])
+    )[:, 1])
+
+    abs_errors = np.abs(mc_pvalues - estimated_pvalues)
+
+    if viz:
+        import matplotlib.pyplot as plt
+        if ax is None:
+            _, ax = plt.subplots(1, 1, figsize=(8, 4) if param_dim == 1 else (7, 6))
+        if param_dim == 1:
+            grid_1d = evaluation_grid.reshape(-1)
+            order = np.argsort(grid_1d)
+            ax.plot(grid_1d[order], mc_pvalues[order], label='MC p-value', color='steelblue')
+            ax.plot(grid_1d[order], estimated_pvalues[order], label='Estimated p-value', color='crimson', linestyle='--')
+            ax.fill_between(grid_1d[order], mc_pvalues[order], estimated_pvalues[order],
+                            alpha=0.2, color='gray', label='Error')
+            ax.set_xlabel(r'$\theta$', fontsize=20)
+            ax.set_ylabel('p-value', fontsize=16)
+            ax.legend()
+        else:
+            sc = ax.scatter(evaluation_grid[:, 0], evaluation_grid[:, 1],
+                            c=abs_errors, cmap='viridis', s=15)
+            plt.colorbar(sc, ax=ax, label='|MC p-value − estimated p-value|')
+            ax.set_xlabel(r'$\theta_0$', fontsize=16)
+            ax.set_ylabel(r'$\theta_1$', fontsize=16)
+        plt.tight_layout()
+        plt.show()
+
+    return evaluation_grid, mc_pvalues, estimated_pvalues, abs_errors
 
 
 def gaussian_prediction_sets(
