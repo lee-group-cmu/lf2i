@@ -446,73 +446,58 @@ def coverage_boxplot(
         plt.savefig(save_fig_path, bbox_inches='tight')
     plt.show()
 
-def coverage_nominal_actual_boxplot(
-        probabilities: Sequence[np.ndarray],
-        confidence_levels: np.ndarray,
-        whiskers_loc: Union[Tuple[float, float], float] = 1.5,
-        plot_fliers: bool = True,
-        ylim: Optional[Sequence[float]] = None,
-        save_fig_path: Optional[str] = None,
-        figsize: Tuple = (5, 5)
+def coverage_nominal_actual_band(
+    probabilities: Sequence[np.ndarray],
+    confidence_levels: np.ndarray,
+    color: str = 'steelblue',
+    fill_alpha: float = 0.25,
+    ylim: Optional[Sequence[float]] = None,
+    save_fig_path: Optional[str] = None,
+    figsize: Tuple = (5, 5),
+    ax: Optional[Axes] = None,
 ) -> None:
-    plt.figure(figsize=figsize)
+    cls = np.asarray(confidence_levels)
+    min_coverage = np.array([np.min(p) for p in probabilities])
+    max_coverage = np.array([np.max(p) for p in probabilities])
 
-    positions = np.arange(1, len(confidence_levels) + 1)
+    own_fig = ax is None
+    if own_fig:
+        _, ax = plt.subplots(figsize=figsize)
 
-    plt.boxplot(
-        x=probabilities,
-        positions=positions,
-        notch=False,
-        whis=whiskers_loc,
-        sym=None if plot_fliers else '',
-        widths=0.4,
-        patch_artist=True
-    )
+    ax.plot(cls, min_coverage, color=color, linewidth=1.5, solid_capstyle='round')
+    ax.plot(cls, max_coverage, color=color, linewidth=1.5, solid_capstyle='round',
+            label='Min / Max coverage')
+    ax.fill_between(cls, min_coverage, max_coverage, color=color, alpha=fill_alpha)
+    ax.plot([0, 1], [0, 1], linestyle='--', linewidth=1, color='red', label='Nominal = Actual')
 
-    ref = np.linspace(confidence_levels.min(), confidence_levels.max(), 200)
-    plt.plot(
-        np.interp(ref, confidence_levels, positions),
-        ref,
-        linestyle='--', linewidth=1, color='red', label='Nominal = Actual'
-    )
-    plt.scatter(positions, confidence_levels, color='red', s=20, zorder=5)
-    
-    
-    whiskers_vals = (f'0.25-{round(whiskers_loc, 1)}IQR', f'0.75+{round(whiskers_loc, 1)}IQR') if isinstance(whiskers_loc, float) else (whiskers_loc[0]/100, whiskers_loc[1]/100)
-    plt.plot([], [], ' ', label=f"\nBox: (0.25, 0.5, 0.75) \nWhiskers: {whiskers_vals}")
-
-    sns.set_style('whitegrid')
-    plt.title('Nominal vs. Actual Coverage', fontsize=20)
-
-    plt.xticks(
-        ticks=positions,
-        labels=[f'{round(cl * 100, 1)}%' for cl in confidence_levels],
+    ax.set_xlim(0., 1.)
+    ax.set_xticks(cls)
+    ax.set_xticklabels(
+        [f'{round(cl * 100, 1):.0f}%' for cl in cls],
         fontsize=11,
-        rotation=45 if len(confidence_levels) > 6 else 0,
+        rotation=45 if len(cls) > 6 else 0,
     )
-    plt.xlabel('Nominal Coverage', fontsize=14)
-    plt.ylabel('Actual Coverage', fontsize=14)
+    ax.set_xlabel('Nominal Coverage', fontsize=14)
+    ax.set_ylabel('Actual Coverage', fontsize=14)
+    ax.set_title('Nominal vs. Actual Coverage', fontsize=20)
 
     if ylim:
-        plt.ylim(*ylim)
+        ax.set_ylim(*ylim)
         yticks = np.arange(start=ylim[0], stop=ylim[1] + 0.01, step=0.05)
     else:
-        plt.ylim(0, 1.05)
-        yticks = np.arange(0, 1.05, 0.1)
+        ax.set_ylim(0, 1.0)
+        yticks = np.arange(0, 1.0, 0.1)
+    ax.set_yticks(yticks)
+    ax.set_yticklabels([f'{round(v * 100, 0):.0f}%' for v in yticks], fontsize=11)
 
-    plt.yticks(
-        ticks=yticks,
-        labels=[f'{round(v * 100, 0):.0f}%' for v in yticks],
-        fontsize=11,
-    )
+    ax.tick_params(axis='both', labelsize=11)
+    ax.legend(loc='lower right', fontsize=9)
 
-    plt.tick_params(axis='both', labelsize=11)
-    plt.legend(loc='lower right', fontsize=9)
-    plt.tight_layout()
-
-    if save_fig_path is not None:
-        plt.savefig(save_fig_path, bbox_inches='tight')
-    plt.show()
+    if own_fig:
+        plt.tight_layout()
+        if save_fig_path is not None:
+            plt.savefig(save_fig_path, bbox_inches='tight')
+        plt.show()
 
 class PinGreenNormalize(mcolors.Normalize):
     def __init__(self, vmin=0, vmax=100, vcenter=40, green_index=0.35, clip=False):

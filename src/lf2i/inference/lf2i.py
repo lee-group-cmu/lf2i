@@ -540,13 +540,15 @@ class LF2I:
         self,
         simulator,
         evaluation_grid: np.ndarray,
-        confidence_level: float,
+        confidence_level: Union[float, Sequence[float]],
         calibration_method: str,
         monte_carlo_size: int = 500,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, Dict[float, np.ndarray]]]:
         """MC-exact coverage diagnostics on a parameter grid.
 
         Thin wrapper around :func:`lf2i.utils.other_methods.monte_carlo_coverage`.
+        Simulation and test-statistic evaluation are performed only once regardless
+        of how many confidence levels are requested.
 
         Parameters
         ----------
@@ -554,8 +556,8 @@ class LF2I:
             lf2i Simulator used to draw samples.
         evaluation_grid : np.ndarray, shape (n_grid, param_dim)
             Grid of parameter values at which to evaluate coverage.
-        confidence_level : float
-            Nominal confidence level.
+        confidence_level : Union[float, Sequence[float]]
+            Nominal confidence level(s), each in (0, 1).
         calibration_method : str
             Either 'critical-values' or 'p-values'.
         monte_carlo_size : int, optional
@@ -564,7 +566,11 @@ class LF2I:
         Returns
         -------
         Tuple[np.ndarray, np.ndarray]
-            ``(evaluation_grid, coverage_per_grid_point)``.
+            ``(evaluation_grid, coverage_per_grid_point)`` if ``confidence_level``
+            is a scalar float.
+        Tuple[np.ndarray, Dict[float, np.ndarray]]
+            ``(evaluation_grid, {cl: coverage_per_grid_point, ...})`` if
+            ``confidence_level`` is a sequence.
         """
         from lf2i.utils.other_methods import monte_carlo_coverage
         return monte_carlo_coverage(
