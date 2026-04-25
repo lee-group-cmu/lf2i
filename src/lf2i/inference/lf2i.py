@@ -69,8 +69,9 @@ class LF2I:
         b: Optional[int] = None, 
         b_prime: Optional[int] = None, 
         re_estimate_test_statistics: bool = False,
-        re_estimate_critical_values: bool = False
-    ) -> List[np.ndarray]:
+        re_estimate_critical_values: bool = False,
+        return_point_estimate: bool = False
+    ) -> Union[List[np.ndarray], Tuple[List[np.ndarray], np.ndarray]]:
         """Estimate test statistic and critical values, and construct a confidence region for all observations in `x`.
 
         Parameters
@@ -107,11 +108,19 @@ class LF2I:
             Whether to re-estimate the test statistics if a previous call to `.infer()` was made, by default False.
         re_estimate_critical_values : bool, optional
             Whether to re-estimate the critical values if a previous call to `.infer()` was made, by default False.
+        return_point_estimate : bool, optional
+            Whether to also return the point estimate for each observation, by default False.
+            The point estimate is the "maximum p-value estimate": the grid point in `evaluation_grid` for which the
+            test statistic is most inside the acceptance region (i.e. the p-value is maximised). Concretely:
+            - If `acceptance_region == 'left'`: the grid point with the smallest test statistic value.
+            - If `acceptance_region == 'right'`: the grid point with the largest test statistic value.
 
         Returns
         -------
         List[np.ndarray]
             The `i`-th element is a confidence region for the `i`-th sample in `x`.
+            If `return_point_estimate` is True, returns a tuple `(confidence_regions, point_estimates)` where
+            `point_estimates` is an array of shape `(n_observations, param_dim)` with one point estimate per observation.
         """
         if (quantile_regressor == 'gb') and (quantile_regressor_kwargs == {}):
             quantile_regressor_kwargs = { # random search over max depth and number of trees via 5-fold CV
@@ -155,6 +164,17 @@ class LF2I:
             acceptance_region=self.test_statistic.acceptance_region,
             poi_dim=self.test_statistic.poi_dim
         )
+
+        if return_point_estimate:
+            eval_grid_np = to_np_if_torch(evaluation_grid).reshape(-1, self.test_statistic.poi_dim)
+            ts_np = to_np_if_torch(test_statistics_x).reshape(-1, eval_grid_np.shape[0])
+            if self.test_statistic.acceptance_region == 'left':
+                mpe_indices = np.argmin(ts_np, axis=1)
+            else:
+                mpe_indices = np.argmax(ts_np, axis=1)
+            point_estimates = eval_grid_np[mpe_indices, :]
+            return confidence_regions, point_estimates
+
         return confidence_regions
 
     def diagnostics(
