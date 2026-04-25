@@ -556,6 +556,93 @@ class LF2I:
 
         return b_double_prime_sizes
 
+    def oat_intervals(
+        self,
+        x: Union[np.ndarray, torch.Tensor],
+        point_estimates: np.ndarray,
+        confidence_level: float,
+        calibration_method: str = 'p-values',
+        grid_size: int = 200,
+        grid_bounds: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        """Compute exact one-at-a-time (OAT) 1D intervals for each parameter dimension.
+
+        For each observation and each dimension d, constructs a 1D evaluation grid that
+        varies θ_d while holding all other dimensions fixed at θ^MPE, then finds the
+        interval where the p-value exceeds alpha.  This avoids the resolution artifacts of
+        slicing an existing ND evaluation grid.
+
+        Parameters
+        ----------
+        x : Union[np.ndarray, torch.Tensor]
+            Observed sample(s), same as passed to ``inference``.
+        point_estimates : np.ndarray, shape (n_obs, param_dim)
+            Maximum-p-value estimates θ^MPE, as returned by ``inference(..., return_point_estimate=True)``.
+        confidence_level : float
+            Nominal confidence level, must be in (0, 1).
+        calibration_method : str, optional
+            Must be ``'p-values'``. Default ``'p-values'``.
+        grid_size : int, optional
+            Number of points in each 1D grid. Default 200.
+        grid_bounds : np.ndarray, shape (param_dim, 2), optional
+            Per-dimension ``[lo, hi]`` bounds for the 1D grid.  If None, derived from
+            the min/max of ``self.parameters_calib``.
+
+        Returns
+        -------
+        np.ndarray, shape (n_obs, param_dim, 2)
+            ``result[i, d, 0]`` and ``result[i, d, 1]`` are the lower and upper endpoints
+            of the OAT interval for observation ``i`` and dimension ``d``.  NaN when the
+            interval is empty (no grid point accepted).
+        """
+        if calibration_method != 'p-values':
+            raise ValueError("oat_intervals only supports calibration_method='p-values'")
+        if not self.calibration_model:
+            raise RuntimeError("Calibration model not found. Call inference() before oat_intervals().")
+
+        calib_dict_key = f'{confidence_level:.2f}'
+        if calib_dict_key not in self.calibration_model:
+            calib_dict_key = 'multiple_levels'
+
+        alpha = 1.0 - confidence_level
+        if self.recalibrate_p_values and hasattr(self, 'holdout_p_values') and self.holdout_p_values is not None:
+            alpha = float(np.quantile(self.holdout_p_values, alpha))
+
+        point_estimates = to_np_if_torch(point_estimates)
+        if point_estimates.ndim == 1:
+            point_estimates = point_estimates.reshape(1, -1)
+        n_obs, param_dim = point_estimates.shape
+
+        if grid_bounds is None:
+            params_np = to_np_if_torch(self.parameters_calib)
+            if params_np.ndim == 1:
+                params_np = params_np.reshape(-1, 1)
+            grid_bounds = np.stack([params_np.min(axis=0), params_np.max(axis=0)], axis=1)
+
+        x_np = to_np_if_torch(x)
+        if x_np.ndim == 1:
+            x_np = x_np.reshape(1, -1)
+
+        result = np.full((n_obs, param_dim, 2), np.nan)
+        for i in range(n_obs):
+            pe = point_estimates[i]
+            xi = x_np[i:i+1]
+            for d in range(param_dim):
+                lo, hi = grid_bounds[d]
+                grid_1d = np.tile(pe, (grid_size, 1)).astype(float)
+                grid_1d[:, d] = np.linspace(lo, hi, grid_size)
+
+                ts = self.test_statistic.evaluate(grid_1d, xi, mode='confidence_sets')
+                p_vals = self.calibration_model[calib_dict_key].predict_proba(
+                    X=preprocess_predict_p_values('confidence_sets', ts, grid_1d, self.calibration_model[calib_dict_key])
+                )[:, 1]
+
+                accepted = grid_1d[p_vals >= alpha, d]
+                if len(accepted) > 0:
+                    result[i, d, 0] = accepted.min()
+                    result[i, d, 1] = accepted.max()
+        return result
+
     def mc_diagnostics(
         self,
         simulator,

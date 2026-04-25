@@ -489,6 +489,7 @@ def plot_parameter_intervals(
     param_dim: int,
     point_estimates: Optional[Sequence[np.ndarray]] = None,
     interval_type: str = 'projection',
+    oat_intervals: Optional[Sequence[np.ndarray]] = None,
     param_names: Optional[Sequence[str]] = None,
     colors: Optional[Sequence] = None,
     region_names: Optional[Sequence[str]] = None,
@@ -521,6 +522,12 @@ def plot_parameter_intervals(
         * ``'projection'`` (default) — take ``[min, max]`` of each column.
         * ``'slice'`` — fix all dimensions except *d* at the nearest grid value to
           θ^MPE, then take ``[min, max]`` of column *d*.  Requires ``point_estimates``.
+        * ``'oat'`` — use pre-computed OAT intervals passed via ``oat_intervals``.
+    oat_intervals : sequence of np.ndarray, optional
+        Pre-computed one-at-a-time intervals from ``LF2I.oat_intervals``.  Each element
+        has shape ``(param_dim, 2)`` and corresponds to one region.  When provided,
+        ``interval_type`` is ignored for interval derivation and ``*parameter_regions``
+        may be omitted.
     param_names : sequence of str, optional
         Axis labels; falls back to ``θ_0, θ_1, …`` if not supplied.
     colors : sequence, optional
@@ -538,13 +545,16 @@ def plot_parameter_intervals(
     """
     if interval_type == 'slice' and point_estimates is None:
         raise ValueError("interval_type='slice' requires point_estimates")
+    if oat_intervals is not None and len(parameter_regions) == 0:
+        n_regions = len(oat_intervals)
+    else:
+        n_regions = len(parameter_regions)
 
-    n_regions = len(parameter_regions)
     colors = list(colors) if colors is not None else list(cm.rainbow(np.linspace(0, 1, n_regions)))
     region_names = list(region_names) if region_names is not None else [f'Region {i}' for i in range(n_regions)]
     param_names = list(param_names) if param_names is not None else [rf'$\theta_{{{d}}}$' for d in range(param_dim)]
 
-    # Normalise regions to 2D arrays
+    # Normalise regions to 2D arrays (only needed when deriving intervals from ND sets)
     regions_2d = []
     for cs in parameter_regions:
         cs = to_np_if_torch(cs)
@@ -569,17 +579,23 @@ def plot_parameter_intervals(
         return slice_pts.min(), slice_pts.max()
 
     # intervals[k][d] = (lo, hi)
-    intervals = []
-    for k, cs in enumerate(regions_2d):
-        pe = to_np_if_torch(point_estimates[k]) if point_estimates is not None else None
-        row = []
-        for d in range(param_dim):
-            if interval_type == 'slice':
-                lo, hi = _slice_interval(cs, d, pe)
-            else:
-                lo, hi = _projection_interval(cs, d)
-            row.append((lo, hi))
-        intervals.append(row)
+    if oat_intervals is not None:
+        intervals = [
+            [(float(oat_intervals[k][d, 0]), float(oat_intervals[k][d, 1])) for d in range(param_dim)]
+            for k in range(n_regions)
+        ]
+    else:
+        intervals = []
+        for k, cs in enumerate(regions_2d):
+            pe = to_np_if_torch(point_estimates[k]) if point_estimates is not None else None
+            row = []
+            for d in range(param_dim):
+                if interval_type == 'slice':
+                    lo, hi = _slice_interval(cs, d, pe)
+                else:
+                    lo, hi = _projection_interval(cs, d)
+                row.append((lo, hi))
+            intervals.append(row)
 
     # --- layout ---
     dist_in = 0.9
