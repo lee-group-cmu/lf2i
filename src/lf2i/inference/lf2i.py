@@ -74,6 +74,7 @@ class LF2I:
         num_augment: int = 5,
         retrain_calibration: bool = False,
         recalibrate_p_values: bool = False,  # only used if calibration_method == 'p-values'
+        return_point_estimate: bool = False,
         verbose: bool = True
     ) -> Union[List[np.ndarray], Dict[str, List[np.ndarray]]]:
         """Estimate test statistic and critical values, and construct a confidence region for all observations in `x`.
@@ -83,7 +84,7 @@ class LF2I:
         x : Union[np.ndarray, torch.Tensor]
             Observed sample(s).
         evaluation_grid: Union[np.ndarray, torch.Tensor]
-            Grid of points over the parameter space over which to invert hypothesis tests and construct the confidence regions. 
+            Grid of points over the parameter space over which to invert hypothesis tests and construct the confidence regions.
             Each confidence set will be a subset of this grid.
         confidence_level : Union[float, Sequence[float]]
             Desired confidence level(s), must be in :math:`(0, 1)`.
@@ -111,10 +112,13 @@ class LF2I:
         b_prime : int, optional
             Number of simulations used to estimate the critical values. Used only if `simulator` is provided.
         num_augment : int
-            If `calibration_method = p-values', indicates the number of cutoffs to resample for each value in `test_statistics`. 
+            If `calibration_method = p-values', indicates the number of cutoffs to resample for each value in `test_statistics`.
             The augmented calibration set will be of size `num_augment` :math:`\times B^\prime`, where :math:`B^\prime` is the size of the original calibration set.
         retrain_calibration: bool, optional
-            Whether to retrain the calibration model or not, even at a previously done confidence level. 
+            Whether to retrain the calibration model or not, even at a previously done confidence level.
+        return_point_estimate: bool, optional
+            If True, also return the maximum p-value estimate (MPE) θ^MPE = argmax_θ p̂(θ | x) for each observation.
+            Only supported when ``calibration_method='p-values'``. Default False.
         verbose: bool, optional
             Whether to print checkpoints and progress bars or not, by default True.
 
@@ -123,8 +127,12 @@ class LF2I:
         Union[List[np.ndarray], List[List[np.ndarray]]]
             If `confidence_level` is a single value, the `i`-th element is a confidence region for the `i`-th sample in `x`.
             If `confidence_level` is a sequence of values, the `j`-th element is a list containing the confidence regions (indexed as above) at the `j`-th confidence level.
+            If ``return_point_estimate=True``, returns a tuple ``(confidence_regions, point_estimates)`` where
+            ``point_estimates`` has shape ``(n_obs, param_dim)``.
         """
         assert calibration_method in ['critical-values', 'p-values']
+        if return_point_estimate and calibration_method != 'p-values':
+            raise ValueError("return_point_estimate=True is only supported with calibration_method='p-values'")
         self.test_statistic.verbose = verbose  # lf2i verbosity takes precedence
         self.recalibrate_p_values = recalibrate_p_values or False
         
@@ -249,6 +257,15 @@ class LF2I:
                 X=preprocess_predict_p_values('confidence_sets', test_statistics_x, evaluation_grid, self.calibration_model[calib_dict_key])
             )[:, 1]
 
+        # Compute point estimates (MPE): argmax_θ p̂(θ | x) for each observation
+        if return_point_estimate:
+            evaluation_grid_np = to_np_if_torch(evaluation_grid)
+            n_obs = len(x) if hasattr(x, '__len__') else 1
+            grid_size = len(evaluation_grid_np)
+            p_values_matrix = p_values.reshape(n_obs, grid_size)
+            pe_idx = np.argmax(p_values_matrix, axis=1)
+            point_estimates = evaluation_grid_np[pe_idx]
+
         # Compute alpha
         alpha = [1-confidence_level] if isinstance(confidence_level, float) else [1-cl for cl in confidence_level]
         if self.holdout_parameters_calib is not None and self.holdout_test_statistics_calib is not None and self.holdout_samples_calib is not None:
@@ -277,7 +294,10 @@ class LF2I:
                 acceptance_region=self.test_statistic.acceptance_region,
                 poi_dim=self.test_statistic.param_dim
             ))
-        return confidence_regions if len(alpha) > 1 else confidence_regions[0]
+        result = confidence_regions if len(alpha) > 1 else confidence_regions[0]
+        if return_point_estimate:
+            return result, point_estimates
+        return result
 
     def diagnostics(
         self,

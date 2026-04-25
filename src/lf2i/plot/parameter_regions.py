@@ -484,6 +484,192 @@ def parameter_regions_pairplot(
     plt.show()
 
 
+def plot_parameter_intervals(
+    *parameter_regions: np.ndarray,
+    param_dim: int,
+    point_estimates: Optional[Sequence[np.ndarray]] = None,
+    interval_type: str = 'projection',
+    param_names: Optional[Sequence[str]] = None,
+    colors: Optional[Sequence] = None,
+    region_names: Optional[Sequence[str]] = None,
+    parameter_space_bounds: Optional[Dict] = None,
+    title: Optional[str] = None,
+    figsize: Optional[Tuple[int, int]] = None,
+    save_fig_path: Optional[str] = None,
+) -> None:
+    """Plot 1D interval summaries of ND confidence sets.
+
+    Each parameter dimension gets its own horizontal number line showing the interval
+    as a closed segment with bracket-style endpoint markers and an optional point estimate
+    indicator.
+
+    Parameters
+    ----------
+    *parameter_regions : np.ndarray
+        One or more confidence sets for a **single** observation, each of shape
+        ``(n_grid_pts, param_dim)``.  For 1D parameters, shape ``(n_grid_pts,)`` is
+        also accepted.
+    param_dim : int
+        Number of parameter dimensions.
+    point_estimates : sequence of np.ndarray, optional
+        One array of shape ``(param_dim,)`` per region giving the maximum-p-value
+        estimate θ^MPE for that region.  Used both to label the indicator and (when
+        ``interval_type='slice'``) to construct the slice intervals.
+    interval_type : str, optional
+        How to derive 1D intervals from the ND confidence set:
+
+        * ``'projection'`` (default) — take ``[min, max]`` of each column.
+        * ``'slice'`` — fix all dimensions except *d* at the nearest grid value to
+          θ^MPE, then take ``[min, max]`` of column *d*.  Requires ``point_estimates``.
+    param_names : sequence of str, optional
+        Axis labels; falls back to ``θ_0, θ_1, …`` if not supplied.
+    colors : sequence, optional
+        One colour per region; defaults to a rainbow palette.
+    region_names : sequence of str, optional
+        Legend labels for the regions.
+    parameter_space_bounds : dict, optional
+        ``{param_name: {'low': float, 'high': float}}`` used to set per-axis xlim.
+    title : str, optional
+        Figure suptitle.
+    figsize : tuple of int, optional
+        ``(width, height)`` in inches.  Defaults to ``(8, 0.9 * param_dim)``.
+    save_fig_path : str, optional
+        If given, save the figure to this path.
+    """
+    if interval_type == 'slice' and point_estimates is None:
+        raise ValueError("interval_type='slice' requires point_estimates")
+
+    n_regions = len(parameter_regions)
+    colors = list(colors) if colors is not None else list(cm.rainbow(np.linspace(0, 1, n_regions)))
+    region_names = list(region_names) if region_names is not None else [f'Region {i}' for i in range(n_regions)]
+    param_names = list(param_names) if param_names is not None else [rf'$\theta_{{{d}}}$' for d in range(param_dim)]
+
+    # Normalise regions to 2D arrays
+    regions_2d = []
+    for cs in parameter_regions:
+        cs = to_np_if_torch(cs)
+        if cs.ndim == 1:
+            cs = cs.reshape(-1, 1)
+        regions_2d.append(cs)
+
+    # --- compute intervals for each region and dimension ---
+    def _projection_interval(cs, d):
+        col = cs[:, d]
+        return col.min(), col.max()
+
+    def _slice_interval(cs, d, pe):
+        other_dims = [j for j in range(param_dim) if j != d]
+        mask = np.ones(len(cs), dtype=bool)
+        for j in other_dims:
+            nearest_val = cs[np.argmin(np.abs(cs[:, j] - pe[j])), j]
+            mask &= (cs[:, j] == nearest_val)
+        slice_pts = cs[mask, d]
+        if len(slice_pts) == 0:
+            return np.nan, np.nan
+        return slice_pts.min(), slice_pts.max()
+
+    # intervals[k][d] = (lo, hi)
+    intervals = []
+    for k, cs in enumerate(regions_2d):
+        pe = to_np_if_torch(point_estimates[k]) if point_estimates is not None else None
+        row = []
+        for d in range(param_dim):
+            if interval_type == 'slice':
+                lo, hi = _slice_interval(cs, d, pe)
+            else:
+                lo, hi = _projection_interval(cs, d)
+            row.append((lo, hi))
+        intervals.append(row)
+
+    # --- layout ---
+    dist_in = 0.9
+    if figsize is None:
+        figsize = (8, max(dist_in * param_dim, 1.5))
+
+    fig, axs = plt.subplots(param_dim, 1, figsize=figsize)
+    if param_dim == 1:
+        axs = [axs]
+
+    thickness = 0.18
+    # vertical offsets so multiple regions don't overlap
+    y_offsets = np.linspace(-thickness * (n_regions - 1) / 2,
+                             thickness * (n_regions - 1) / 2, n_regions)
+
+    legend_handles = []
+    for k in range(n_regions):
+        patch = mpatches.Patch(color=colors[k], label=region_names[k])
+        legend_handles.append(patch)
+
+    for d, ax in enumerate(axs):
+        ax.yaxis.set_visible(False)
+        for spine in ['left', 'right', 'top']:
+            ax.spines[spine].set_visible(False)
+        ax.spines['bottom'].set_position(('data', 0))
+
+        # determine xlim for this dimension
+        if parameter_space_bounds is not None and param_names[d] in parameter_space_bounds:
+            bounds = parameter_space_bounds[param_names[d]]
+            xlim = (bounds['low'], bounds['high'])
+        else:
+            all_vals = []
+            for k in range(n_regions):
+                lo, hi = intervals[k][d]
+                if not (np.isnan(lo) or np.isnan(hi)):
+                    all_vals.extend([lo, hi])
+                if point_estimates is not None:
+                    pe = to_np_if_torch(point_estimates[k])
+                    all_vals.append(float(pe[d]) if param_dim > 1 else float(pe))
+            if all_vals:
+                span = max(all_vals) - min(all_vals)
+                pad = span * 0.15 if span > 0 else 1.0
+                xlim = (min(all_vals) - pad, max(all_vals) + pad)
+            else:
+                xlim = (-1, 1)
+        ax.set_xlim(*xlim)
+        ax.set_ylim(-thickness * 2, thickness * 2)
+
+        for k in range(n_regions):
+            lo, hi = intervals[k][d]
+            y = y_offsets[k]
+            color = colors[k]
+
+            if not (np.isnan(lo) or np.isnan(hi)):
+                # filled rectangle
+                ax.add_patch(mpatches.Rectangle(
+                    (lo, y - thickness / 2), hi - lo, thickness,
+                    linewidth=0, color=color, zorder=2
+                ))
+                # closed-interval bracket markers (vertical lines at endpoints)
+                bracket_hw = thickness * 0.7
+                ax.vlines([lo, hi], y - bracket_hw, y + bracket_hw,
+                          colors=color, linewidths=2, zorder=3)
+
+            # point estimate marker
+            if point_estimates is not None:
+                pe = to_np_if_torch(point_estimates[k])
+                pe_val = float(pe[d]) if param_dim > 1 else float(pe)
+                ax.vlines(pe_val, y - thickness, y + thickness,
+                          colors='black', linewidths=1.5, linestyles='--', zorder=4)
+
+        ax.set_xlabel(param_names[d], fontsize=12, labelpad=4)
+        ax.tick_params(axis='x', labelsize=10)
+
+    if title is not None:
+        fig.suptitle(title, fontsize=13, y=1.01)
+
+    if n_regions > 0:
+        fig.legend(handles=legend_handles, loc='upper right', fontsize=10,
+                   bbox_to_anchor=(1.0, 1.0))
+
+    plt.tight_layout()
+
+    if save_fig_path is not None:
+        plt.savefig(save_fig_path, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+
+
 class MergedPatchHandler(HandlerPatch):
     def __init__(self, num_patches, gap_ratio=0.05, **kwargs):
         self.num_patches = num_patches
