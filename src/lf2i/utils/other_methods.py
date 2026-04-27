@@ -324,7 +324,6 @@ def monte_carlo_pvalue_diagnostics(
     ts_grid = ts_all.reshape(n_grid, M)
     p_hat_grid = p_hat_all.reshape(n_grid, M)
 
-    mse = np.zeros(n_grid)
     crps = np.zeros(n_grid)
     pinball_per_alpha = {alpha: np.zeros(n_grid) for alpha in pinball_levels}
 
@@ -336,8 +335,9 @@ def monte_carlo_pvalue_diagnostics(
         # Empirical CDF: midpoint estimate (i - 0.5) / M for i = 1, ..., M
         u = (np.arange(1, M + 1) - 0.5) / M
         residuals = p_hat_sorted - u  # predicted minus empirical
-
-        mse[j] = np.mean(residuals ** 2)
+        # p-value = 1-F for 'left', F for 'right'; match target to direction
+        u_target = 1.0 - u if test_statistic.acceptance_region == 'left' else u
+        residuals = p_hat_sorted - u_target
 
         # CRPS: trapezoid integral of (F_hat(t) - F_emp(t))^2 over the MC sample range
         dT = np.diff(T_sorted)  # (M-1,)
@@ -351,7 +351,7 @@ def monte_carlo_pvalue_diagnostics(
                 np.where(residuals >= 0, (1 - alpha) * residuals, -alpha * residuals)
             )
 
-    estimation_errors = {'mse': mse, 'crps': crps}
+    estimation_errors = {'crps': crps}
     for alpha, pb in pinball_per_alpha.items():
         estimation_errors[f'pinball_{alpha:.2f}'] = pb
     return evaluation_grid, estimation_errors

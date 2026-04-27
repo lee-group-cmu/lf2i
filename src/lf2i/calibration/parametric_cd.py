@@ -108,8 +108,8 @@ class WeightedPinballLoss(nn.Module):
         alpha_row = self.alpha_grid.unsqueeze(0)                    # (1, M)
         pinball   = torch.where(
             residuals >= 0,
-            alpha_row * residuals,
-            (alpha_row - 1) * residuals,
+            (1 - alpha_row) * residuals,
+            -alpha_row * residuals,
         )
         # weight each α level, then average over samples
         return 2 * (pinball * self.weights.unsqueeze(0)).sum(dim=1).mean()
@@ -424,7 +424,7 @@ class ParametricCDFEstimator:
         self.loss              = loss
         self.n_alpha           = n_alpha
         self.weight_fn         = weight_fn
-        self.center            = center
+        self.center            = center if acceptance_region == 'right' else 1 - center   # match target to direction
         self.bandwidth         = bandwidth
         self.beta_a            = beta_a
         self.beta_b            = beta_b

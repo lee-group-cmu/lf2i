@@ -233,7 +233,7 @@ def estimate_rejection_proba(
                 algorithm = CatBoostClassifier(
                     loss_function='CrossEntropy',
                     silent=True,
-                    monotone_constraints="0:1",  # 1 means non-decreasing function of cutoffs (always 0-th column of inputs),
+                    monotone_constraints="0:1" if acceptance_region == 'right' else "0:-1",
                 )
             algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
         elif algorithm == 'logistic':
