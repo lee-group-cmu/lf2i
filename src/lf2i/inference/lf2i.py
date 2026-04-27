@@ -629,10 +629,10 @@ class LF2I:
             xi = x_np[i:i+1]
             for d in range(param_dim):
                 lo, hi = grid_bounds[d]
-                grid_1d = np.tile(pe, (grid_size, 1)).astype(float)
+                grid_1d = np.tile(pe, (grid_size, 1)).astype(np.float32)
                 grid_1d[:, d] = np.linspace(lo, hi, grid_size)
 
-                ts = self.test_statistic.evaluate(grid_1d, xi, mode='confidence_sets')
+                ts = self.test_statistic.evaluate(grid_1d, xi.astype(np.float32), mode='confidence_sets')
                 p_vals = self.calibration_model[calib_dict_key].predict_proba(
                     X=preprocess_predict_p_values('confidence_sets', ts, grid_1d, self.calibration_model[calib_dict_key])
                 )[:, 1]

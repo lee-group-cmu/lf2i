@@ -488,6 +488,7 @@ def plot_parameter_intervals(
     *parameter_regions: np.ndarray,
     param_dim: int,
     point_estimates: Optional[Sequence[np.ndarray]] = None,
+    true_parameters: Optional[Sequence[np.ndarray]] = None,
     interval_type: str = 'projection',
     oat_intervals: Optional[Sequence[np.ndarray]] = None,
     param_names: Optional[Sequence[str]] = None,
@@ -516,6 +517,9 @@ def plot_parameter_intervals(
         One array of shape ``(param_dim,)`` per region giving the maximum-p-value
         estimate θ^MPE for that region.  Used both to label the indicator and (when
         ``interval_type='slice'``) to construct the slice intervals.
+    true_parameters : sequence of np.ndarray, optional
+        One array of shape ``(param_dim,)`` per region giving the true parameter
+        values for that region.  Plotted as a red star.
     interval_type : str, optional
         How to derive 1D intervals from the ND confidence set:
 
@@ -650,22 +654,36 @@ def plot_parameter_intervals(
             color = colors[k]
 
             if not (np.isnan(lo) or np.isnan(hi)):
-                # filled rectangle
+                # filled rectangle (semitransparent)
                 ax.add_patch(mpatches.Rectangle(
                     (lo, y - thickness / 2), hi - lo, thickness,
-                    linewidth=0, color=color, zorder=2
+                    linewidth=0, color=color, alpha=0.4, zorder=2
                 ))
-                # closed-interval bracket markers (vertical lines at endpoints)
-                bracket_hw = thickness * 0.7
-                ax.vlines([lo, hi], y - bracket_hw, y + bracket_hw,
-                          colors=color, linewidths=2, zorder=3)
 
-            # point estimate marker
+                # bracket symbols at endpoints
+                bracket_fs = 14
+                ax.text(lo, y, '[', ha='right', va='center', color=color,
+                        fontsize=bracket_fs, fontweight='bold', zorder=3,
+                        transform=ax.transData)
+                ax.text(hi, y, ']', ha='left', va='center', color=color,
+                        fontsize=bracket_fs, fontweight='bold', zorder=3,
+                        transform=ax.transData)
+
+            # point estimate: star in region color
             if point_estimates is not None:
                 pe = to_np_if_torch(point_estimates[k])
                 pe_val = float(pe[d]) if param_dim > 1 else float(pe)
-                ax.vlines(pe_val, y - thickness, y + thickness,
-                          colors='black', linewidths=1.5, linestyles='--', zorder=4)
+                ax.plot(pe_val, y, marker='*', color=color,
+                        markersize=10, zorder=4, linestyle='none',
+                        label='MPE')
+
+            # true parameter: red star
+            if true_parameters is not None:
+                tp = to_np_if_torch(true_parameters[k])
+                tp_val = float(tp[d]) if param_dim > 1 else float(tp)
+                ax.plot(tp_val, y, marker='*', color='red',
+                        markersize=10, zorder=5, linestyle='none',
+                        label='Truth')
 
         ax.set_xlabel(param_names[d], fontsize=12, labelpad=4)
         ax.tick_params(axis='x', labelsize=10)
