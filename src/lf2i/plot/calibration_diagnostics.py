@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from matplotlib.axes._axes import Axes
+from matplotlib.lines import Line2D
 
 # ---------------------------------------------------------------------------
 # Calibration-quality score plots (MSE / CRPS / pinball loss)
@@ -203,6 +204,233 @@ def calibration_score_panel(
 
     if title is not None:
         fig.suptitle(title, fontsize=16, y=1.02)
+
+    simplefilter(action='ignore', category=UserWarning)
+    fig.tight_layout()
+    if save_fig_path is not None:
+        plt.savefig(save_fig_path, bbox_inches='tight')
+    plt.show()
+
+
+def plot_cdf_comparison(
+    test_statistic: Any,
+    calib_model: Any,
+    acceptance_region: str,
+    theta_eval: np.ndarray,
+    simulator: Any,
+    monte_carlo_size: int = 2000,
+    n_grid: int = 500,
+    title: Optional[str] = None,
+    figsize: Tuple = (7, 5),
+    save_fig_path: Optional[str] = None,
+    custom_ax: Optional[Axes] = None,
+) -> None:
+    """Plot the MC empirical CDF vs. the calibration model's predicted CDF at a fixed theta.
+
+    Parameters
+    ----------
+    test_statistic : TestStatistic
+        Fitted test statistic with an ``evaluate`` method.
+    calib_model : Any
+        A single calibration model (a value from ``lf2i.calibration_model``), must have ``predict_proba``.
+    acceptance_region : str
+        ``'left'`` or ``'right'``.
+    theta_eval : np.ndarray, shape (param_dim,) or (1, param_dim)
+        The parameter value at which to evaluate.
+    simulator : Simulator
+        lf2i Simulator used to draw MC samples.
+    monte_carlo_size : int
+        Number of MC draws. Default 2000.
+    n_grid : int
+        Resolution of the lambda grid for the parametric CDF curve. Default 500.
+    title : str, optional
+    figsize : Tuple
+    save_fig_path : str, optional
+    custom_ax : Axes, optional
+        If provided, draw onto this axes without calling ``plt.show()``.
+    """
+    import torch
+    from lf2i.utils.calibration_diagnostics_inputs import preprocess_predict_p_values
+    from lf2i.utils.miscellanea import to_np_if_torch
+
+    theta_eval = np.asarray(theta_eval, dtype=np.float32)
+    if theta_eval.ndim == 1:
+        theta_eval = theta_eval.reshape(1, -1)
+
+    theta_mc = torch.tensor(theta_eval).repeat(monte_carlo_size, 1)
+    samples_mc = simulator(theta_mc)
+    ts_mc = to_np_if_torch(
+        test_statistic.evaluate(parameters=theta_mc, samples=samples_mc, mode='diagnostics')
+    ).reshape(-1)
+
+    ts_sorted = np.sort(ts_mc)
+    ecdf = np.arange(1, monte_carlo_size + 1) / monte_carlo_size
+
+    lambda_grid = np.linspace(ts_sorted.min(), ts_sorted.max(), n_grid)
+    theta_rep = np.tile(theta_eval, (n_grid, 1))
+    X_eval = preprocess_predict_p_values('diagnostics', lambda_grid, theta_rep, calib_model)
+    proba = calib_model.predict_proba(X=X_eval)
+    # For acceptance_region='right': col 1 = P(T <= lambda | theta) = CDF
+    # For acceptance_region='left':  col 0 = 1 - P(T >= lambda | theta) = CDF
+    cdf_hat = proba[:, 1] if acceptance_region == 'right' else proba[:, 0]
+
+    own_fig = custom_ax is None
+    if own_fig:
+        _, ax = plt.subplots(1, 1, figsize=figsize)
+    else:
+        ax = custom_ax
+
+    ax.step(ts_sorted, ecdf, label='MC empirical CDF', color='steelblue', lw=2, where='post')
+    ax.plot(lambda_grid, cdf_hat, label='Parametric (NN)', color='tomato', lw=2, ls='--')
+    ax.set_xlabel(r'Test statistic $\lambda$')
+    ax.set_ylabel(r'$F(\lambda \mid \theta)$')
+    ax.legend(fontsize=9)
+
+    if title is not None:
+        ax.set_title(title, fontsize=12)
+
+    if own_fig:
+        simplefilter(action='ignore', category=UserWarning)
+        plt.tight_layout()
+        if save_fig_path is not None:
+            plt.savefig(save_fig_path, bbox_inches='tight')
+        plt.show()
+
+
+def calibration_cdf_panel(
+    evaluation_grid: np.ndarray,
+    estimation_errors: Dict[str, np.ndarray],
+    test_statistic: Any,
+    calibration_model: Dict,
+    simulator: Any,
+    param_dim: int,
+    score_key: str = 'crps',
+    monte_carlo_size: int = 2000,
+    n_grid: int = 500,
+    xlims: Optional[Tuple[float, float]] = None,
+    ylims: Optional[Tuple[float, float]] = None,
+    params_labels: Optional[Union[Tuple[str], List[str]]] = None,
+    title: Optional[str] = None,
+    figsize: Optional[Tuple] = None,
+    save_fig_path: Optional[str] = None,
+) -> None:
+    """Three-panel diagnostic figure combining a calibration score heatmap with CDF comparisons.
+
+    Panels
+    ------
+    Left   : calibration score heatmap (from :func:`calibration_score_plot`).
+    Middle : CDF comparison at the worst-match theta (highest ``score_key`` value).
+    Right  : CDF comparison at the best-match theta (lowest ``score_key`` value).
+
+    Parameters
+    ----------
+    evaluation_grid : np.ndarray
+        Grid of parameter values, as returned by :func:`monte_carlo_pvalue_diagnostics`.
+    estimation_errors : Dict[str, np.ndarray]
+        Per-theta error arrays, as returned by :func:`monte_carlo_pvalue_diagnostics`.
+    test_statistic : TestStatistic
+        Fitted test statistic.
+    calibration_model : Dict
+        The ``lf2i.calibration_model`` dict (key -> model).
+    simulator : Simulator
+        lf2i Simulator used to draw MC samples.
+    param_dim : int
+        Dimensionality of the parameter.
+    score_key : str
+        Key in ``estimation_errors`` used to rank thetas. Default ``'crps'``.
+    monte_carlo_size : int
+        MC draws per theta for the CDF panels. Default 2000.
+    n_grid : int
+        Lambda-grid resolution for parametric CDF curves. Default 500.
+    xlims, ylims : Tuple[float, float], optional
+        Axis limits for the score heatmap.
+    params_labels : list of str, optional
+    title : str, optional
+        Overall figure suptitle.
+    figsize : Tuple, optional
+    save_fig_path : str, optional
+    """
+    from lf2i.utils.miscellanea import to_np_if_torch
+
+    scores = estimation_errors[score_key]
+    worst_idx = int(np.argmax(scores))
+    best_idx = int(np.argmin(scores))
+
+    calib_key = (
+        'multiple_levels' if 'multiple_levels' in calibration_model
+        else next(iter(calibration_model))
+    )
+    calib_model_single = calibration_model[calib_key]
+    acceptance_region = test_statistic.acceptance_region
+
+    grid_np = to_np_if_torch(evaluation_grid)
+    if grid_np.ndim == 1:
+        grid_np = grid_np.reshape(-1, 1)
+
+    worst_theta = grid_np[worst_idx:worst_idx + 1]
+    best_theta = grid_np[best_idx:best_idx + 1]
+
+    score_label = _score_label(score_key)
+
+    if figsize is None:
+        figsize = (18, 5)
+
+    fig, axes = plt.subplots(1, 3, figsize=figsize)
+
+    # Left: calibration score heatmap
+    mesh = calibration_score_plot(
+        parameters=grid_np,
+        scores=scores,
+        score_label=score_label,
+        param_dim=param_dim,
+        xlims=xlims,
+        ylims=ylims,
+        params_labels=params_labels,
+        custom_ax=axes[0],
+    )
+    if mesh is not None:
+        cbar = fig.colorbar(mesh, ax=axes[0])
+        cbar.set_label(score_label, fontsize=12, labelpad=6)
+        cbar.ax.tick_params(labelsize=10)
+
+    # Annotate worst/best on the heatmap for 2-D parameter spaces
+    if param_dim == 2:
+        axes[0].scatter(
+            worst_theta[0, 0], worst_theta[0, 1],
+            color='black', marker='v', s=80, zorder=5,
+        )
+        axes[0].scatter(
+            best_theta[0, 0], best_theta[0, 1],
+            color='white', marker='^', s=80, zorder=5,
+            edgecolors='black', linewidths=1,
+        )
+        legend_elements = [
+            Line2D([0], [0], marker='v', color='w', markerfacecolor='black', markersize=8, label='Worst'),
+            Line2D([0], [0], marker='^', color='w', markerfacecolor='white',
+                   markeredgecolor='black', markersize=8, label='Best'),
+        ]
+        axes[0].legend(handles=legend_elements, fontsize=8)
+
+    # Middle/right: CDF comparisons
+    for ax, theta, label in [
+        (axes[1], worst_theta, 'Worst match'),
+        (axes[2], best_theta, 'Best match'),
+    ]:
+        theta_str = ', '.join(f'{v:.2f}' for v in theta[0])
+        plot_cdf_comparison(
+            test_statistic=test_statistic,
+            calib_model=calib_model_single,
+            acceptance_region=acceptance_region,
+            theta_eval=theta,
+            simulator=simulator,
+            monte_carlo_size=monte_carlo_size,
+            n_grid=n_grid,
+            title=rf'{label}  ($\theta = ({theta_str})$)',
+            custom_ax=ax,
+        )
+
+    if title is not None:
+        fig.suptitle(title, fontsize=14, y=1.02)
 
     simplefilter(action='ignore', category=UserWarning)
     fig.tight_layout()
