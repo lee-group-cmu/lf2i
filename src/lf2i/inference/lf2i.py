@@ -117,7 +117,7 @@ class LF2I:
         retrain_calibration: bool, optional
             Whether to retrain the calibration model or not, even at a previously done confidence level.
         return_point_estimate: bool, optional
-            If True, also return the maximum p-value estimate (MPE) θ^MPE = argmax_θ p̂(θ | x) for each observation.
+            If True, also return the maximum p-value estimate (Focal) θ^Focal = argmax_θ p̂(θ | x) for each observation.
             Only supported when ``calibration_method='p-values'``. Default False.
         verbose: bool, optional
             Whether to print checkpoints and progress bars or not, by default True.
@@ -257,7 +257,7 @@ class LF2I:
                 X=preprocess_predict_p_values('confidence_sets', test_statistics_x, evaluation_grid, self.calibration_model[calib_dict_key])
             )[:, 1]
 
-        # Compute point estimates (MPE): argmax_θ p̂(θ | x) for each observation
+        # Compute point estimates (Focal): argmax_θ p̂(θ | x) for each observation
         if return_point_estimate:
             evaluation_grid_np = to_np_if_torch(evaluation_grid)
             n_obs = len(x) if hasattr(x, '__len__') else 1
@@ -278,7 +278,6 @@ class LF2I:
             if verbose:
                 for cl, a in zip(confidence_level, alpha):
                     print(f'Original alpha: {1-cl}, Re-calibrated alpha: {a}')
-            
 
         confidence_regions = []
         for idx, a in enumerate(alpha):
@@ -568,7 +567,7 @@ class LF2I:
         """Compute exact one-at-a-time (OAT) 1D intervals for each parameter dimension.
 
         For each observation and each dimension d, constructs a 1D evaluation grid that
-        varies θ_d while holding all other dimensions fixed at θ^MPE, then finds the
+        varies θ_d while holding all other dimensions fixed at θ^Focal, then finds the
         interval where the p-value exceeds alpha.  This avoids the resolution artifacts of
         slicing an existing ND evaluation grid.
 
@@ -577,7 +576,7 @@ class LF2I:
         x : Union[np.ndarray, torch.Tensor]
             Observed sample(s), same as passed to ``inference``.
         point_estimates : np.ndarray, shape (n_obs, param_dim)
-            Maximum-p-value estimates θ^MPE, as returned by ``inference(..., return_point_estimate=True)``.
+            Maximum-p-value estimates θ^Focal, as returned by ``inference(..., return_point_estimate=True)``.
         confidence_level : float
             Nominal confidence level, must be in (0, 1).
         calibration_method : str, optional
@@ -648,14 +647,16 @@ class LF2I:
         simulator,
         evaluation_grid: np.ndarray,
         confidence_level: Union[float, Sequence[float]],
-        calibration_method: str,
+        calibration_method: str = None,
         monte_carlo_size: int = 500,
+        region_type: str = 'lf2i',
+        posterior_estimator=None,
+        parameter_grid: torch.Tensor = None,
+        num_level_sets: int = 10_000,
+        n_jobs: int = -2,
+        **posterior_kwargs
     ) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, Dict[float, np.ndarray]]]:
         """MC-exact coverage diagnostics on a parameter grid.
-
-        Thin wrapper around :func:`lf2i.utils.other_methods.monte_carlo_coverage`.
-        Simulation and test-statistic evaluation are performed only once regardless
-        of how many confidence levels are requested.
 
         Parameters
         ----------
@@ -665,10 +666,24 @@ class LF2I:
             Grid of parameter values at which to evaluate coverage.
         confidence_level : Union[float, Sequence[float]]
             Nominal confidence level(s), each in (0, 1).
-        calibration_method : str
-            Either 'critical-values' or 'p-values'.
+        calibration_method : str, optional
+            Either 'critical-values' or 'p-values'. Required when ``region_type='lf2i'``.
         monte_carlo_size : int, optional
             Number of MC draws per grid point. Default 500.
+        region_type : str, optional
+            ``'lf2i'`` (default) uses the calibration model; ``'posterior'`` evaluates
+            HPD credible region coverage via :func:`lf2i.utils.other_methods.monte_carlo_coverage_posterior`.
+        posterior_estimator : optional
+            Trained posterior with a ``log_prob`` method. Required when ``region_type='posterior'``.
+        parameter_grid : torch.Tensor, optional
+            Dense grid over the parameter space for HPD approximation.
+            Required when ``region_type='posterior'``.
+        num_level_sets : int, optional
+            HPD binary-search resolution. Default 10_000. Used only for ``region_type='posterior'``.
+        n_jobs : int, optional
+            Joblib parallelism for HPD computation. Default -2. Used only for ``region_type='posterior'``.
+        **posterior_kwargs
+            Forwarded to the posterior's ``log_prob`` when ``region_type='posterior'``.
 
         Returns
         -------
@@ -679,6 +694,25 @@ class LF2I:
             ``(evaluation_grid, {cl: coverage_per_grid_point, ...})`` if
             ``confidence_level`` is a sequence.
         """
+        if region_type == 'posterior':
+            if posterior_estimator is None or parameter_grid is None:
+                raise ValueError(
+                    "region_type='posterior' requires both `posterior_estimator` and `parameter_grid`."
+                )
+            from lf2i.utils.other_methods import monte_carlo_coverage_posterior
+            return monte_carlo_coverage_posterior(
+                posterior_estimator=posterior_estimator,
+                simulator=simulator,
+                evaluation_grid=evaluation_grid,
+                credible_level=confidence_level,
+                parameter_grid=parameter_grid,
+                monte_carlo_size=monte_carlo_size,
+                num_level_sets=num_level_sets,
+                n_jobs=n_jobs,
+                **posterior_kwargs
+            )
+        if calibration_method is None:
+            raise ValueError("`calibration_method` is required when region_type='lf2i'.")
         from lf2i.utils.other_methods import monte_carlo_coverage
         return monte_carlo_coverage(
             test_statistic=self.test_statistic,

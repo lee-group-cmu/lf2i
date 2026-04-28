@@ -267,6 +267,87 @@ def monte_carlo_coverage(
     return evaluation_grid, results
 
 
+def monte_carlo_coverage_posterior(
+    posterior_estimator,
+    simulator: Simulator,
+    evaluation_grid: np.ndarray,
+    credible_level: Union[float, Sequence[float]],
+    parameter_grid: torch.Tensor,
+    monte_carlo_size: int = 500,
+    num_level_sets: int = 10_000,
+    n_jobs: int = -2,
+    **posterior_kwargs
+) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, Dict[float, np.ndarray]]]:
+    """MC-exact coverage of HPD credible regions at each point of ``evaluation_grid``.
+
+    For each parameter value in ``evaluation_grid``, draws ``monte_carlo_size`` samples
+    from the simulator, computes the HPD credible region of the posterior at the given
+    level, and checks whether the true parameter is included.
+
+    Parameters
+    ----------
+    posterior_estimator :
+        Trained posterior estimator with a ``log_prob`` method (e.g. from ``sbi``).
+    simulator : Simulator
+        lf2i Simulator used to draw samples.
+    evaluation_grid : np.ndarray, shape (n_grid, param_dim)
+        Parameter values at which to evaluate coverage.
+    credible_level : Union[float, Sequence[float]]
+        Nominal credible level(s), each in (0, 1).
+    parameter_grid : torch.Tensor, shape (n_param_grid, param_dim)
+        Dense grid over the parameter space used to approximate the HPD region.
+    monte_carlo_size : int, optional
+        MC draws per grid point. Default 500.
+    num_level_sets : int, optional
+        Number of level sets for the HPD binary search. Default 10_000.
+    n_jobs : int, optional
+        Joblib parallelism for HPD computation. Default -2.
+    **posterior_kwargs
+        Extra keyword arguments forwarded to the posterior's ``log_prob`` method.
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        ``(evaluation_grid, coverage_per_grid_point)`` when ``credible_level`` is a scalar.
+    Tuple[np.ndarray, Dict[float, np.ndarray]]
+        ``(evaluation_grid, {cl: coverage_per_grid_point, ...})`` when a sequence.
+    """
+    from lf2i.diagnostics.coverage_probability import compute_indicators_posterior
+
+    evaluation_grid = np.asarray(evaluation_grid)
+    n_grid = evaluation_grid.shape[0]
+    param_dim = evaluation_grid.shape[1] if evaluation_grid.ndim > 1 else 1
+
+    scalar_input = isinstance(credible_level, float)
+    cls: list = [credible_level] if scalar_input else list(credible_level)
+
+    # Simulate once — shared across all credible levels.
+    parameters_mc = np.repeat(evaluation_grid.reshape(n_grid, param_dim), monte_carlo_size, axis=0)
+    parameters_mc_torch = to_torch_if_np(parameters_mc)
+    samples_mc = simulator(parameters_mc_torch)
+
+    results: Dict[float, np.ndarray] = {}
+    for cl in cls:
+        indicators = compute_indicators_posterior(
+            posterior=posterior_estimator,
+            parameters=parameters_mc_torch,
+            samples=samples_mc,
+            parameter_grid=parameter_grid,
+            credible_level=cl,
+            param_dim=param_dim,
+            batch_size=1,
+            num_level_sets=num_level_sets,
+            return_size=False,
+            n_jobs=n_jobs,
+            **posterior_kwargs
+        )
+        results[cl] = np.asarray(indicators).reshape(n_grid, monte_carlo_size).mean(axis=1)
+
+    if scalar_input:
+        return evaluation_grid, results[cls[0]]
+    return evaluation_grid, results
+
+
 def monte_carlo_pvalue_diagnostics(
     test_statistic: TestStatistic,
     calibration_model,

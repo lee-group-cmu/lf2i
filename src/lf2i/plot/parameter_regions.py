@@ -12,6 +12,7 @@ from scipy.stats import gaussian_kde
 import seaborn as sns
 import matplotlib.ticker as ticker
 import matplotlib.patches as  mpatches
+import matplotlib.lines as mlines
 from matplotlib.legend_handler import HandlerPatch
 
 from lf2i.plot.miscellanea import PolygonPatchFixed
@@ -515,7 +516,7 @@ def plot_parameter_intervals(
         Number of parameter dimensions.
     point_estimates : sequence of np.ndarray, optional
         One array of shape ``(param_dim,)`` per region giving the maximum-p-value
-        estimate θ^MPE for that region.  Used both to label the indicator and (when
+        estimate θ^Focal for that region.  Used both to label the indicator and (when
         ``interval_type='slice'``) to construct the slice intervals.
     true_parameters : sequence of np.ndarray, optional
         One array of shape ``(param_dim,)`` per region giving the true parameter
@@ -525,7 +526,7 @@ def plot_parameter_intervals(
 
         * ``'projection'`` (default) — take ``[min, max]`` of each column.
         * ``'slice'`` — fix all dimensions except *d* at the nearest grid value to
-          θ^MPE, then take ``[min, max]`` of column *d*.  Requires ``point_estimates``.
+          θ^Focal, then take ``[min, max]`` of column *d*.  Requires ``point_estimates``.
         * ``'oat'`` — use pre-computed OAT intervals passed via ``oat_intervals``.
     oat_intervals : sequence of np.ndarray, optional
         Pre-computed one-at-a-time intervals from ``LF2I.oat_intervals``.  Each element
@@ -675,7 +676,7 @@ def plot_parameter_intervals(
                 pe_val = float(pe[d]) if param_dim > 1 else float(pe)
                 ax.plot(pe_val, y, marker='*', color=color,
                         markersize=10, zorder=4, linestyle='none',
-                        label='MPE')
+                        label='Focal point')
 
             # true parameter: red star
             if true_parameters is not None:
@@ -688,12 +689,22 @@ def plot_parameter_intervals(
         ax.set_xlabel(param_names[d], fontsize=12, labelpad=4)
         ax.tick_params(axis='x', labelsize=10)
 
+    star_patch = mlines.Line2D([], [], color=color, marker='*', linestyle='None',
+                               markersize=10, label='Focal point')
+    if star_patch not in legend_handles:
+        legend_handles.append(star_patch)
+
+    red_star_patch = mlines.Line2D([], [], color='red', marker='*', linestyle='None',
+                                   markersize=10, label='Truth')
+    if red_star_patch not in legend_handles:
+        legend_handles.append(red_star_patch)
+
     if title is not None:
         fig.suptitle(title, fontsize=13, y=1.01)
 
     if n_regions > 0:
-        fig.legend(handles=legend_handles, loc='upper right', fontsize=10,
-                   bbox_to_anchor=(1.0, 1.0))
+        fig.legend(handles=legend_handles, loc='lower center', fontsize=10,
+                   ncol=len(legend_handles), frameon=False, bbox_to_anchor=(0.5, 1.0))
 
     plt.tight_layout()
 
