@@ -74,6 +74,7 @@ class LF2I:
         num_augment: int = 5,
         retrain_calibration: bool = False,
         recalibrate_p_values: bool = False,  # only used if calibration_method == 'p-values'
+        return_point_estimate: bool = False,
         verbose: bool = True
     ) -> Union[List[np.ndarray], Dict[str, List[np.ndarray]]]:
         """Estimate test statistic and critical values, and construct a confidence region for all observations in `x`.
@@ -83,7 +84,7 @@ class LF2I:
         x : Union[np.ndarray, torch.Tensor]
             Observed sample(s).
         evaluation_grid: Union[np.ndarray, torch.Tensor]
-            Grid of points over the parameter space over which to invert hypothesis tests and construct the confidence regions. 
+            Grid of points over the parameter space over which to invert hypothesis tests and construct the confidence regions.
             Each confidence set will be a subset of this grid.
         confidence_level : Union[float, Sequence[float]]
             Desired confidence level(s), must be in :math:`(0, 1)`.
@@ -111,10 +112,13 @@ class LF2I:
         b_prime : int, optional
             Number of simulations used to estimate the critical values. Used only if `simulator` is provided.
         num_augment : int
-            If `calibration_method = p-values', indicates the number of cutoffs to resample for each value in `test_statistics`. 
+            If `calibration_method = p-values', indicates the number of cutoffs to resample for each value in `test_statistics`.
             The augmented calibration set will be of size `num_augment` :math:`\times B^\prime`, where :math:`B^\prime` is the size of the original calibration set.
         retrain_calibration: bool, optional
-            Whether to retrain the calibration model or not, even at a previously done confidence level. 
+            Whether to retrain the calibration model or not, even at a previously done confidence level.
+        return_point_estimate: bool, optional
+            If True, also return the maximum p-value estimate (MPE) θ^MPE = argmax_θ p̂(θ | x) for each observation.
+            Only supported when ``calibration_method='p-values'``. Default False.
         verbose: bool, optional
             Whether to print checkpoints and progress bars or not, by default True.
 
@@ -123,8 +127,12 @@ class LF2I:
         Union[List[np.ndarray], List[List[np.ndarray]]]
             If `confidence_level` is a single value, the `i`-th element is a confidence region for the `i`-th sample in `x`.
             If `confidence_level` is a sequence of values, the `j`-th element is a list containing the confidence regions (indexed as above) at the `j`-th confidence level.
+            If ``return_point_estimate=True``, returns a tuple ``(confidence_regions, point_estimates)`` where
+            ``point_estimates`` has shape ``(n_obs, param_dim)``.
         """
         assert calibration_method in ['critical-values', 'p-values']
+        if return_point_estimate and calibration_method != 'p-values':
+            raise ValueError("return_point_estimate=True is only supported with calibration_method='p-values'")
         self.test_statistic.verbose = verbose  # lf2i verbosity takes precedence
         self.recalibrate_p_values = recalibrate_p_values or False
         
@@ -249,6 +257,15 @@ class LF2I:
                 X=preprocess_predict_p_values('confidence_sets', test_statistics_x, evaluation_grid, self.calibration_model[calib_dict_key])
             )[:, 1]
 
+        # Compute point estimates (MPE): argmax_θ p̂(θ | x) for each observation
+        if return_point_estimate:
+            evaluation_grid_np = to_np_if_torch(evaluation_grid)
+            n_obs = len(x) if hasattr(x, '__len__') else 1
+            grid_size = len(evaluation_grid_np)
+            p_values_matrix = p_values.reshape(n_obs, grid_size)
+            pe_idx = np.argmax(p_values_matrix, axis=1)
+            point_estimates = evaluation_grid_np[pe_idx]
+
         # Compute alpha
         alpha = [1-confidence_level] if isinstance(confidence_level, float) else [1-cl for cl in confidence_level]
         if self.holdout_parameters_calib is not None and self.holdout_test_statistics_calib is not None and self.holdout_samples_calib is not None:
@@ -277,7 +294,10 @@ class LF2I:
                 acceptance_region=self.test_statistic.acceptance_region,
                 poi_dim=self.test_statistic.param_dim
             ))
-        return confidence_regions if len(alpha) > 1 else confidence_regions[0]
+        result = confidence_regions if len(alpha) > 1 else confidence_regions[0]
+        if return_point_estimate:
+            return result, point_estimates
+        return result
 
     def diagnostics(
         self,
@@ -535,6 +555,93 @@ class LF2I:
         )
 
         return b_double_prime_sizes
+
+    def oat_intervals(
+        self,
+        x: Union[np.ndarray, torch.Tensor],
+        point_estimates: np.ndarray,
+        confidence_level: float,
+        calibration_method: str = 'p-values',
+        grid_size: int = 200,
+        grid_bounds: Optional[np.ndarray] = None,
+    ) -> np.ndarray:
+        """Compute exact one-at-a-time (OAT) 1D intervals for each parameter dimension.
+
+        For each observation and each dimension d, constructs a 1D evaluation grid that
+        varies θ_d while holding all other dimensions fixed at θ^MPE, then finds the
+        interval where the p-value exceeds alpha.  This avoids the resolution artifacts of
+        slicing an existing ND evaluation grid.
+
+        Parameters
+        ----------
+        x : Union[np.ndarray, torch.Tensor]
+            Observed sample(s), same as passed to ``inference``.
+        point_estimates : np.ndarray, shape (n_obs, param_dim)
+            Maximum-p-value estimates θ^MPE, as returned by ``inference(..., return_point_estimate=True)``.
+        confidence_level : float
+            Nominal confidence level, must be in (0, 1).
+        calibration_method : str, optional
+            Must be ``'p-values'``. Default ``'p-values'``.
+        grid_size : int, optional
+            Number of points in each 1D grid. Default 200.
+        grid_bounds : np.ndarray, shape (param_dim, 2), optional
+            Per-dimension ``[lo, hi]`` bounds for the 1D grid.  If None, derived from
+            the min/max of ``self.parameters_calib``.
+
+        Returns
+        -------
+        np.ndarray, shape (n_obs, param_dim, 2)
+            ``result[i, d, 0]`` and ``result[i, d, 1]`` are the lower and upper endpoints
+            of the OAT interval for observation ``i`` and dimension ``d``.  NaN when the
+            interval is empty (no grid point accepted).
+        """
+        if calibration_method != 'p-values':
+            raise ValueError("oat_intervals only supports calibration_method='p-values'")
+        if not self.calibration_model:
+            raise RuntimeError("Calibration model not found. Call inference() before oat_intervals().")
+
+        calib_dict_key = f'{confidence_level:.2f}'
+        if calib_dict_key not in self.calibration_model:
+            calib_dict_key = 'multiple_levels'
+
+        alpha = 1.0 - confidence_level
+        if self.recalibrate_p_values and hasattr(self, 'holdout_p_values') and self.holdout_p_values is not None:
+            alpha = float(np.quantile(self.holdout_p_values, alpha))
+
+        point_estimates = to_np_if_torch(point_estimates)
+        if point_estimates.ndim == 1:
+            point_estimates = point_estimates.reshape(1, -1)
+        n_obs, param_dim = point_estimates.shape
+
+        if grid_bounds is None:
+            params_np = to_np_if_torch(self.parameters_calib)
+            if params_np.ndim == 1:
+                params_np = params_np.reshape(-1, 1)
+            grid_bounds = np.stack([params_np.min(axis=0), params_np.max(axis=0)], axis=1)
+
+        x_np = to_np_if_torch(x)
+        if x_np.ndim == 1:
+            x_np = x_np.reshape(1, -1)
+
+        result = np.full((n_obs, param_dim, 2), np.nan)
+        for i in range(n_obs):
+            pe = point_estimates[i]
+            xi = x_np[i:i+1]
+            for d in range(param_dim):
+                lo, hi = grid_bounds[d]
+                grid_1d = np.tile(pe, (grid_size, 1)).astype(np.float32)
+                grid_1d[:, d] = np.linspace(lo, hi, grid_size)
+
+                ts = self.test_statistic.evaluate(grid_1d, xi.astype(np.float32), mode='confidence_sets')
+                p_vals = self.calibration_model[calib_dict_key].predict_proba(
+                    X=preprocess_predict_p_values('confidence_sets', ts, grid_1d, self.calibration_model[calib_dict_key])
+                )[:, 1]
+
+                accepted = grid_1d[p_vals >= alpha, d]
+                if len(accepted) > 0:
+                    result[i, d, 0] = accepted.min()
+                    result[i, d, 1] = accepted.max()
+        return result
 
     def mc_diagnostics(
         self,
