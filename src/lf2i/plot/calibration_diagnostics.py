@@ -13,7 +13,7 @@ from matplotlib.lines import Line2D
 
 _DEFAULT_SCORE_LABELS: Dict[str, str] = {
     'mse': 'MSE',
-    'crps': 'CRPS (T-scale)',
+    'crps': 'CRPS',
 }
 
 
@@ -48,6 +48,7 @@ def calibration_score_plot(
     ylims: Optional[Tuple[float, float]] = None,
     params_labels: Optional[Union[Tuple[str], List[str]]] = None,
     vmax: Optional[float] = None,
+    n_bins: Optional[int] = None,
     custom_ax: Optional[Axes] = None,
     title: Optional[str] = None,
 ) -> Optional[Any]:
@@ -86,10 +87,14 @@ def calibration_score_plot(
             ax = custom_ax
             fig = ax.get_figure()
 
-        x_unique = np.unique(parameters[:, 0])
-        y_unique = np.unique(parameters[:, 1])
-        x_edges = _bin_edges_from_unique(x_unique)
-        y_edges = _bin_edges_from_unique(y_unique)
+        if n_bins is not None:
+            x_edges = np.linspace(parameters[:, 0].min(), parameters[:, 0].max(), n_bins + 1)
+            y_edges = np.linspace(parameters[:, 1].min(), parameters[:, 1].max(), n_bins + 1)
+        else:
+            x_unique = np.unique(parameters[:, 0])
+            y_unique = np.unique(parameters[:, 1])
+            x_edges = _bin_edges_from_unique(x_unique)
+            y_edges = _bin_edges_from_unique(y_unique)
 
         binned_sum, _, _ = np.histogram2d(
             parameters[:, 0], parameters[:, 1],
@@ -101,7 +106,9 @@ def calibration_score_plot(
         with np.errstate(invalid='ignore'):
             Z = binned_sum / bin_counts  # NaN only if a grid point has no samples
 
-        X, Y = np.meshgrid(x_unique, y_unique)
+        x_centers = (x_edges[:-1] + x_edges[1:]) / 2
+        y_centers = (y_edges[:-1] + y_edges[1:]) / 2
+        X, Y = np.meshgrid(x_centers, y_centers)
 
         _vmax = vmax if vmax is not None else float(np.nanmax(Z))
         mesh = ax.pcolormesh(X, Y, Z.T, cmap='RdYlGn_r', vmin=0, vmax=_vmax, shading='auto')
@@ -280,10 +287,10 @@ def plot_cdf_comparison(
     else:
         ax = custom_ax
 
-    ax.step(ts_sorted, ecdf, label='MC empirical CDF', color='steelblue', lw=2, where='post')
-    ax.plot(lambda_grid, cdf_hat, label='Parametric (NN)', color='tomato', lw=2, ls='--')
-    ax.set_xlabel(r'Test statistic $\lambda$')
-    ax.set_ylabel(r'$F(\lambda \mid \theta)$')
+    ax.step(ts_sorted, ecdf, label='Truth', color='steelblue', lw=2, where='post')
+    ax.plot(lambda_grid, cdf_hat, label='Estimate', color='tomato', lw=2, ls='--')
+    ax.set_xlabel(r'Test statistic ($\lambda$)')
+    ax.set_ylabel(r'CDF ($F(\lambda \mid \theta)$)')
     ax.legend(fontsize=9)
 
     if title is not None:
@@ -309,6 +316,7 @@ def calibration_cdf_panel(
     n_grid: int = 500,
     xlims: Optional[Tuple[float, float]] = None,
     ylims: Optional[Tuple[float, float]] = None,
+    n_bins: Optional[int] = None,
     params_labels: Optional[Union[Tuple[str], List[str]]] = None,
     title: Optional[str] = None,
     figsize: Optional[Tuple] = None,
@@ -387,6 +395,7 @@ def calibration_cdf_panel(
         ylims=ylims,
         params_labels=params_labels,
         custom_ax=axes[0],
+        n_bins=n_bins
     )
     if mesh is not None:
         cbar = fig.colorbar(mesh, ax=axes[0])
@@ -397,24 +406,25 @@ def calibration_cdf_panel(
     if param_dim == 2:
         axes[0].scatter(
             worst_theta[0, 0], worst_theta[0, 1],
-            color='black', marker='v', s=80, zorder=5,
+            color='black', marker='v', s=120, zorder=5,
         )
         axes[0].scatter(
             best_theta[0, 0], best_theta[0, 1],
-            color='white', marker='^', s=80, zorder=5,
+            color='white', marker='^', s=120, zorder=5,
             edgecolors='black', linewidths=1,
         )
         legend_elements = [
-            Line2D([0], [0], marker='v', color='w', markerfacecolor='black', markersize=8, label='Worst'),
+            Line2D([0], [0], marker='v', color='w', markerfacecolor='black', markersize=14, label='Worst'),
             Line2D([0], [0], marker='^', color='w', markerfacecolor='white',
-                   markeredgecolor='black', markersize=8, label='Best'),
+                   markeredgecolor='black', markersize=14, label='Best'),
         ]
-        axes[0].legend(handles=legend_elements, fontsize=8)
+        axes[0].legend(handles=legend_elements, fontsize=14, loc='upper center', ncol=2, bbox_to_anchor=(0.5, -0.25))
+        axes[0].set_title('Local calibration risk', fontsize=14, pad=10)
 
     # Middle/right: CDF comparisons
     for ax, theta, label in [
-        (axes[1], worst_theta, 'Worst match'),
-        (axes[2], best_theta, 'Best match'),
+        (axes[1], worst_theta, '▼ Worst'),
+        (axes[2], best_theta, '△ Best'),
     ]:
         theta_str = ', '.join(f'{v:.2f}' for v in theta[0])
         plot_cdf_comparison(
@@ -425,12 +435,17 @@ def calibration_cdf_panel(
             simulator=simulator,
             monte_carlo_size=monte_carlo_size,
             n_grid=n_grid,
-            title=rf'{label}  ($\theta = ({theta_str})$)',
+            title=label,
             custom_ax=ax,
+        )
+        ax.annotate(
+            rf'$\theta = ({theta_str})$',
+            xy=(0.5, -0.25), xycoords='axes fraction',
+            ha='center', va='top', fontsize=14,
         )
 
     if title is not None:
-        fig.suptitle(title, fontsize=14, y=1.02)
+        fig.suptitle(title, fontsize=16, y=1.02)
 
     simplefilter(action='ignore', category=UserWarning)
     fig.tight_layout()

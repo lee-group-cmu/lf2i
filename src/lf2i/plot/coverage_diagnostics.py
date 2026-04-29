@@ -466,11 +466,11 @@ def coverage_nominal_actual_band(
 
     ax.plot(cls, min_coverage, color=color, linewidth=1.5, solid_capstyle='round')
     ax.plot(cls, max_coverage, color=color, linewidth=1.5, solid_capstyle='round',
-            label='Min / Max coverage')
+            label='Coverage range over $\\theta$')
     ax.fill_between(cls, min_coverage, max_coverage, color=color, alpha=fill_alpha)
     ax.plot([0, 1], [0, 1], linestyle='--', linewidth=1, color='red', label='Nominal = Actual')
 
-    ax.set_xlim(0., 1.)
+    ax.set_xlim(0, 1)
     ax.set_xticks(cls)
     ax.set_xticklabels(
         [f'{round(cl * 100, 1):.0f}%' for cl in cls],
@@ -491,7 +491,7 @@ def coverage_nominal_actual_band(
     ax.set_yticklabels([f'{round(v * 100, 0):.0f}%' for v in yticks], fontsize=11)
 
     ax.tick_params(axis='both', labelsize=11)
-    ax.legend(loc='lower right', fontsize=9)
+    ax.legend(loc='lower right', fontsize=12)
 
     if own_fig:
         plt.tight_layout()
