@@ -563,7 +563,8 @@ class LF2I:
         calibration_method: str = 'p-values',
         grid_size: int = 200,
         grid_bounds: Optional[np.ndarray] = None,
-    ) -> np.ndarray:
+        return_confidence_curve: bool = False,
+    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray, np.ndarray]]:
         """Compute exact one-at-a-time (OAT) 1D intervals for each parameter dimension.
 
         For each observation and each dimension d, constructs a 1D evaluation grid that
@@ -586,6 +587,9 @@ class LF2I:
         grid_bounds : np.ndarray, shape (param_dim, 2), optional
             Per-dimension ``[lo, hi]`` bounds for the 1D grid.  If None, derived from
             the min/max of ``self.parameters_calib``.
+        return_confidence_curve : bool, optional
+            If True, also return the full p-value curves and the corresponding 1D grid
+            values.  Default False.
 
         Returns
         -------
@@ -593,6 +597,14 @@ class LF2I:
             ``result[i, d, 0]`` and ``result[i, d, 1]`` are the lower and upper endpoints
             of the OAT interval for observation ``i`` and dimension ``d``.  NaN when the
             interval is empty (no grid point accepted).
+            If ``return_confidence_curve=True``, returns a tuple
+            ``(intervals, pvalues, grid)`` where
+
+            * ``intervals`` has shape ``(n_obs, param_dim, 2)`` as above,
+            * ``pvalues`` has shape ``(n_obs, param_dim, grid_size)`` — the p-value at
+              each grid point for each observation and dimension,
+            * ``grid`` has shape ``(param_dim, grid_size)`` — the θ_d values evaluated
+              (shared across observations).
         """
         if calibration_method != 'p-values':
             raise ValueError("oat_intervals only supports calibration_method='p-values'")
@@ -623,6 +635,10 @@ class LF2I:
             x_np = x_np.reshape(1, -1)
 
         result = np.full((n_obs, param_dim, 2), np.nan)
+        if return_confidence_curve:
+            all_pvalues = np.full((n_obs, param_dim, grid_size), np.nan)
+            grid_values = np.empty((param_dim, grid_size), dtype=np.float32)
+
         for i in range(n_obs):
             pe = point_estimates[i]
             xi = x_np[i:i+1]
@@ -640,6 +656,14 @@ class LF2I:
                 if len(accepted) > 0:
                     result[i, d, 0] = accepted.min()
                     result[i, d, 1] = accepted.max()
+
+                if return_confidence_curve:
+                    all_pvalues[i, d] = p_vals
+                    if i == 0:
+                        grid_values[d] = grid_1d[:, d]
+
+        if return_confidence_curve:
+            return result, all_pvalues, grid_values
         return result
 
     def mc_diagnostics(
