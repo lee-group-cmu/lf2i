@@ -715,6 +715,134 @@ def plot_parameter_intervals(
         plt.show()
 
 
+def plot_confidence_distributions_1D(
+    all_pvalues: np.ndarray,
+    grid_values: np.ndarray,
+    confidence_levels: Sequence[float],
+    point_estimates: Optional[Sequence[np.ndarray]] = None,
+    true_theta: Optional[np.ndarray] = None,
+    param_names: Optional[Sequence[str]] = None,
+    colors: Optional[Sequence] = None,
+    title: Optional[str] = None,
+    figsize: Optional[Tuple[int, int]] = None,
+    xlim: Optional[Tuple[float, float]] = None,
+    save_fig_path: Optional[str] = None,
+) -> None:
+    """Plot the confidence distribution (p-value curve) for 1D parameter sweeps.
+
+    Creates one figure per observation showing the normalised p-value curve,
+    interval bars for each confidence level, and optional point-estimate /
+    true-parameter markers.
+
+    Parameters
+    ----------
+    all_pvalues : np.ndarray
+        Raw p-values with shape ``(n_obs, 1, n_grid)``.
+    grid_values : np.ndarray
+        Grid of parameter values with shape ``(1, n_grid)`` or ``(n_grid,)``.
+    confidence_levels : sequence of float
+        Confidence levels (e.g. ``[0.9, 0.95]``).  Each produces one
+        horizontal threshold line and one row of interval bars.
+    point_estimates : sequence of np.ndarray, optional
+        One array of shape ``(1,)`` per observation for the point estimate.
+    true_theta : np.ndarray, optional
+        True parameters with shape ``(n_obs, 1)`` or ``(n_obs,)``.
+    param_names : sequence of str, optional
+        Axis label for the parameter; defaults to ``['$\\theta_1$']``.
+    colors : sequence, optional
+        Colors for each confidence level; defaults to a rainbow palette.
+    title : str, optional
+        Suptitle applied to every figure.
+    figsize : tuple of int, optional
+        ``(width, height)`` in inches.  Defaults to ``(7, 5)``.
+    xlim : tuple of float, optional
+        ``(low, high)`` x-axis limits.  Inferred from ``grid_values`` if omitted.
+    save_fig_path : str, optional
+        If given, figures are saved as ``<save_fig_path>_<obs_idx>.png`` and
+        not displayed interactively.
+    """
+    all_pvalues = to_np_if_torch(all_pvalues)
+    grid = to_np_if_torch(grid_values).reshape(-1)
+
+    n_obs = all_pvalues.shape[0]
+    n_levels = len(confidence_levels)
+
+    param_names = list(param_names) if param_names is not None else [r'$\theta_1$']
+    colors = list(colors) if colors is not None else list(cm.rainbow(np.linspace(0, 1, n_levels)))
+    figsize = figsize if figsize is not None else (7, 5)
+    x_low, x_high = xlim if xlim is not None else (float(grid.min()), float(grid.max()))
+
+    for xdx in range(n_obs):
+        raw_pv = all_pvalues[xdx, 0, :]
+        pv_max = raw_pv.max()
+        pvalues = raw_pv / pv_max if pv_max > 0 else raw_pv
+
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.plot(grid, pvalues, color='blue', label='p-value curve', clip_on=False)
+
+        for tdx, cl in enumerate(confidence_levels):
+            threshold = 1.0 - cl
+            color = colors[tdx % len(colors)]
+
+            in_interval = pvalues >= threshold
+            crossings = np.where(np.diff(in_interval.astype(int)))[0]
+            interval_endpoints = []
+            for idx in crossings:
+                x0, x1 = grid[idx], grid[idx + 1]
+                p0, p1 = pvalues[idx], pvalues[idx + 1]
+                if p1 != p0:
+                    x_cross = x0 + (threshold - p0) / (p1 - p0) * (x1 - x0)
+                else:
+                    x_cross = (x0 + x1) / 2.0
+                interval_endpoints.append(x_cross)
+            if in_interval[0]:
+                interval_endpoints.insert(0, grid[0])
+            if in_interval[-1]:
+                interval_endpoints.append(grid[-1])
+
+            bar_y = -0.1 - 0.08 * (n_levels - tdx)
+            for i in range(0, len(interval_endpoints) - 1, 2):
+                lo, hi = interval_endpoints[i], interval_endpoints[i + 1]
+                ax.fill_between([lo, hi], bar_y - 0.02, bar_y + 0.02,
+                                color=color, alpha=0.3, clip_on=False, zorder=4)
+                ax.fill_between([lo + 0.01, hi - 0.01], bar_y - 0.01, bar_y + 0.01,
+                                color=color, alpha=0.7, clip_on=False, zorder=5)
+                for x_end in (lo, hi):
+                    ax.plot([x_end, x_end], [bar_y, threshold], color=color,
+                            linestyle='--', alpha=0.6, clip_on=False)
+
+            ax.axhline(y=threshold, color='grey', linestyle='--',
+                       label=f'{int(cl * 100):.0f}% Confidence Level')
+
+        if point_estimates is not None:
+            pe = to_np_if_torch(point_estimates[xdx]).reshape(-1)
+            ax.scatter(pe[0], 0, edgecolor='blue', facecolor='white', marker='*',
+                       label='Point Estimate', clip_on=False, zorder=5)
+            ax.axvline(x=pe[0], color='blue', alpha=0.5, linestyle='--',
+                       label='_nolegend_', clip_on=False)
+
+        if true_theta is not None:
+            tt = to_np_if_torch(true_theta).reshape(n_obs, -1)
+            ax.scatter(tt[xdx, 0], 0, edgecolor='red', facecolor='white', marker='*',
+                       label='True Parameter', clip_on=False, zorder=5)
+            ax.axvline(x=tt[xdx, 0], color='red', alpha=0.5, linestyle='--',
+                       label='_nolegend_', clip_on=False)
+
+        ax.set_xlabel(param_names[0], fontsize=12)
+        ax.set_xlim(x_low, x_high)
+        ax.set_ylabel('Confidence distribution', fontsize=12)
+        ax.set_ylim(0, 1)
+        ax.legend(fontsize=10)
+        if title is not None:
+            ax.set_title(title, fontsize=13)
+
+        if save_fig_path is not None:
+            fig.savefig(f'{save_fig_path}_{xdx}.png', bbox_inches='tight')
+            plt.close(fig)
+        else:
+            plt.show()
+
+
 class MergedPatchHandler(HandlerPatch):
     def __init__(self, num_patches, gap_ratio=0.05, **kwargs):
         self.num_patches = num_patches
