@@ -3,11 +3,27 @@ from typing import Dict, Optional, Sequence
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
-from matplotlib.animation import FuncAnimation
 from matplotlib.colors import to_rgba
+from matplotlib.animation import FuncAnimation
+from matplotlib.patches import PathPatch
+import alphashape
 from scipy.stats import gaussian_kde
 
+from lf2i.plot.miscellanea import PolygonPatchFixed
 from lf2i.utils.miscellanea import to_np_if_torch
+
+
+def _alpha_patch(pts: np.ndarray, color, alpha_param: Optional[float]) -> Optional[PathPatch]:
+    """Return a PolygonPatchFixed for pts, or None if the shape is degenerate."""
+    if len(pts) < 3:
+        return None
+    try:
+        shape = alphashape.alphashape(pts, alpha=alpha_param if alpha_param is not None else 0)
+        if shape is None or shape.is_empty or shape.geom_type not in ("Polygon", "MultiPolygon"):
+            return None
+        return PolygonPatchFixed(shape, fc=to_rgba(color, 0.2), ec=to_rgba(color, 1.0), lw=2)
+    except Exception:
+        return None
 
 
 def parameter_regions_pairplot_animation(
@@ -15,6 +31,7 @@ def parameter_regions_pairplot_animation(
     posterior_regions: Sequence[np.ndarray],
     true_parameter: np.ndarray,
     n_frames: int = 60,
+    alpha: Optional[float] = None,
     diagonal_pvalues: Optional[np.ndarray] = None,
     diagonal_grid: Optional[np.ndarray] = None,
     diagonal_levels: Optional[Sequence[float]] = None,
@@ -35,7 +52,10 @@ def parameter_regions_pairplot_animation(
 
     Diagonal panels interpolate between a normalized posterior KDE curve (frame 0)
     and a normalized confidence p-value curve (last frame).  Off-diagonal panels
-    alpha-crossfade from posterior sample clouds to confidence region point clouds.
+    morph between point clouds via alpha shapes: points are added and removed in
+    order of proximity to the combined centroid of both clouds (posterior outer
+    points disappear first; confidence inner points appear first), and an alpha
+    shape contour is redrawn each frame over the current visible point set.
 
     Parameters
     ----------
@@ -48,14 +68,16 @@ def parameter_regions_pairplot_animation(
         1-D array of shape ``(n_dims,)``.
     n_frames :
         Total number of animation frames.
+    alpha :
+        Alpha parameter passed to ``alphashape.alphashape`` controlling contour
+        tightness.  ``None`` or ``0`` produces the convex hull.
     diagonal_pvalues :
         Shape ``(1, n_dims, grid_size)`` — normalized p-values for the confidence
         diagonal curves.
     diagonal_grid :
         Shape ``(n_dims, grid_size)`` — x-axis grid coordinates per dimension.
     diagonal_levels :
-        Unused in the animation (kept for API parity); confidence/credibility level
-        threshold lines are omitted to keep frames clean.
+        Unused in the animation (kept for API parity).
     posterior_estimator :
         Object with a ``.sample((n,), x=obs)`` method used to draw posterior samples
         for the diagonal KDE curves.
@@ -65,7 +87,7 @@ def parameter_regions_pairplot_animation(
         Number of posterior samples to draw for each diagonal KDE.
     parameter_space_bounds :
         Dict mapping each param name to ``{'low': float, 'high': float}``.
-        When provided, sets axis limits on all panels.
+        When provided, sets axis limits on diagonal panels.
     param_names :
         Dimension labels; defaults to ``θ_0, θ_1, ...``.
     labels :
@@ -122,12 +144,10 @@ def parameter_regions_pairplot_animation(
         for d in range(n_dims):
             grid_d = diagonal_grid[d].reshape(-1)
 
-            # Confidence curve
             raw_pv = diagonal_pvalues[0, d, :]
             pv_max = raw_pv.max()
             conf_y[d] = raw_pv / pv_max if pv_max > 0 else raw_pv.copy()
 
-            # Posterior KDE on same grid
             try:
                 marginal = raw_samples[:, d]
             except (IndexError, TypeError):
@@ -137,14 +157,36 @@ def parameter_regions_pairplot_animation(
             d_max = density.max()
             post_y[d] = density / d_max if d_max > 0 else density.copy()
 
+    # --- Pre-sort off-diagonal point clouds by proximity to combined centroid ---
+    # Points nearest the combined centroid persist longest (posterior) or appear
+    # first (confidence), so the shape morphs from the inside out.
+    post_sorted: dict[tuple, list] = {}
+    conf_sorted: dict[tuple, list] = {}
+
+    for row in range(n_dims):
+        for col in range(n_dims):
+            if col <= row:
+                continue
+            cell_post, cell_conf = [], []
+            for i in range(n_regions):
+                post_2d = np.asarray(posterior_regions[i])[:, [col, row]]
+                conf_2d = np.asarray(parameter_regions[i])[:, [col, row]]
+                center = np.mean(np.vstack([post_2d, conf_2d]), axis=0)
+                post_idx = np.argsort(np.linalg.norm(post_2d - center, axis=1))
+                conf_idx = np.argsort(np.linalg.norm(conf_2d - center, axis=1))
+                cell_post.append(post_2d[post_idx])
+                cell_conf.append(conf_2d[conf_idx])
+            post_sorted[(row, col)] = cell_post
+            conf_sorted[(row, col)] = cell_conf
+
     # --- Build figure ---
     fig, ax = plt.subplots(n_dims, n_dims, figsize=figsize)
     if n_dims == 1:
         ax = np.array([[ax]])
 
     diag_lines: dict[int, plt.Line2D] = {}
-    conf_scats: dict[tuple, list] = {}
-    post_scats: dict[tuple, list] = {}
+    # patches[(row, col)] = list of current PathPatch (one per region), may be None
+    patches: dict[tuple, list] = {}
 
     leg_handles, leg_labels_list = [], []
 
@@ -170,86 +212,81 @@ def parameter_regions_pairplot_animation(
                 ax[row, col].axis("off")
 
             else:
-                # Upper triangle: col > row
-                cell_conf_scats = []
-                cell_post_scats = []
+                # Upper triangle: col > row — draw initial alpha shapes (full posterior, t=0)
+                cell_patches = []
                 for i in range(n_regions):
-                    conf_pts = np.asarray(parameter_regions[i])
-                    post_pts = np.asarray(posterior_regions[i])
-
-                    start_rgba = np.append(to_rgba(colors[0])[:3], 1.0)
-                    ps = ax[row, col].scatter(
-                        post_pts[:, col], post_pts[:, row],
-                        s=4, marker=".", label=None,
-                    )
-                    ps.set_facecolor(start_rgba)
-
-                    cs = ax[row, col].scatter(
-                        conf_pts[:, col], conf_pts[:, row],
-                        s=4, marker=".", label=region_names[i],
-                    )
-                    cs.set_facecolor(np.append(to_rgba(colors[0])[:3], 0.0))
-                    cell_conf_scats.append(cs)
-                    cell_post_scats.append(ps)
+                    pts = post_sorted[(row, col)][i]
+                    patch = _alpha_patch(pts, colors[i], alpha)
+                    if patch is not None:
+                        ax[row, col].add_patch(patch)
+                    cell_patches.append(patch)
 
                     if row == 0 and col == 1:
-                        import matplotlib.lines as mlines
-                        handle = mlines.Line2D(
-                            [], [], color=colors[i], marker="o", linestyle="None",
-                            markersize=6, label=region_names[i],
+                        import matplotlib.patches as mpatches
+                        handle = mpatches.Patch(
+                            facecolor=to_rgba(colors[i], 0.2),
+                            edgecolor=to_rgba(colors[i], 1.0),
+                            label=region_names[i],
                         )
                         leg_handles.append(handle)
                         leg_labels_list.append(region_names[i])
+
+                patches[(row, col)] = cell_patches
 
                 ax[row, col].scatter(
                     true_parameter[col], true_parameter[row],
                     marker="*", s=80, color="white", edgecolors="red", linewidths=0.8, zorder=5,
                 )
 
+                # Fix axis limits from the full union of both clouds.
+                all_x = np.concatenate(
+                    [post_sorted[(row, col)][i][:, 0] for i in range(n_regions)]
+                    + [conf_sorted[(row, col)][i][:, 0] for i in range(n_regions)]
+                )
+                all_y = np.concatenate(
+                    [post_sorted[(row, col)][i][:, 1] for i in range(n_regions)]
+                    + [conf_sorted[(row, col)][i][:, 1] for i in range(n_regions)]
+                )
+                margin_x = (all_x.max() - all_x.min()) * 0.05 or 0.5
+                margin_y = (all_y.max() - all_y.min()) * 0.05 or 0.5
+                ax[row, col].set_xlim(all_x.min() - margin_x, all_x.max() + margin_x)
+                ax[row, col].set_ylim(all_y.min() - margin_y, all_y.max() + margin_y)
+
                 x_label = param_names[col] if labels is None else labels[col]
                 y_label = param_names[row] if labels is None else labels[row]
                 ax[row, col].set_xlabel(x_label)
                 ax[row, col].set_ylabel(y_label)
-                if parameter_space_bounds is not None:
-                    if param_names[col] in parameter_space_bounds:
-                        b = parameter_space_bounds[param_names[col]]
-                        ax[row, col].set_xlim(b['low'], b['high'])
-                    if param_names[row] in parameter_space_bounds:
-                        b = parameter_space_bounds[param_names[row]]
-                        ax[row, col].set_ylim(b['low'], b['high'])
-
-                conf_scats[(row, col)] = cell_conf_scats
-                post_scats[(row, col)] = cell_post_scats
 
     if show_legend and leg_handles:
         fig.legend(leg_handles, leg_labels_list, bbox_to_anchor=(0.5, 0.5))
 
     plt.tight_layout()
 
-    diag_color_start = np.array(to_rgba(colors[0]))
-    diag_color_end = np.array(to_rgba(colors[-1]))
-
     # --- Animation update ---
     def _update(frame: int):
         t = frame / max(n_frames - 1, 1)
 
         for d, line in diag_lines.items():
-            y = (1.0 - t) * post_y[d] + t * conf_y[d]
-            line.set_ydata(y)
-            line.set_color((1.0 - t) * diag_color_start + t * diag_color_end)
+            line.set_ydata((1.0 - t) * post_y[d] + t * conf_y[d])
 
-        blended_rgb = (1.0 - t) * diag_color_start[:3] + t * diag_color_end[:3]
+        for (row, col), cell_patches in patches.items():
+            for i, old_patch in enumerate(cell_patches):
+                if old_patch is not None:
+                    old_patch.remove()
 
-        for key, scats in conf_scats.items():
-            for sc in scats:
-                sc.set_facecolor(np.append(blended_rgb, t))
-        for key, scats in post_scats.items():
-            for sc in scats:
-                sc.set_facecolor(np.append(blended_rgb, 1.0 - t))
+                n_post = round((1.0 - t) * len(post_sorted[(row, col)][i]))
+                n_conf = round(t * len(conf_sorted[(row, col)][i]))
+                visible = np.vstack([
+                    post_sorted[(row, col)][i][:n_post],
+                    conf_sorted[(row, col)][i][:n_conf],
+                ]) if n_post + n_conf > 0 else np.empty((0, 2))
+
+                new_patch = _alpha_patch(visible, colors[i], alpha)
+                if new_patch is not None:
+                    ax[row, col].add_patch(new_patch)
+                patches[(row, col)][i] = new_patch
 
         return []
-
-    _update(0)
 
     anim = FuncAnimation(
         fig,
