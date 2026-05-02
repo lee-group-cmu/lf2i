@@ -1,9 +1,10 @@
-from typing import Optional, Sequence
+from typing import Dict, Optional, Sequence
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 from matplotlib.animation import FuncAnimation
+from matplotlib.colors import to_rgba
 from scipy.stats import gaussian_kde
 
 from lf2i.utils.miscellanea import to_np_if_torch
@@ -20,6 +21,7 @@ def parameter_regions_pairplot_animation(
     posterior_estimator=None,
     posterior_observations: Optional[Sequence] = None,
     n_posterior_samples: int = 10_000,
+    parameter_space_bounds: Optional[Dict[str, Dict[str, float]]] = None,
     param_names: Optional[np.ndarray] = None,
     labels: Optional[np.ndarray] = None,
     colors: Optional[Sequence[str]] = None,
@@ -61,6 +63,9 @@ def parameter_regions_pairplot_animation(
         Observations passed to ``posterior_estimator``; the first element is used.
     n_posterior_samples :
         Number of posterior samples to draw for each diagonal KDE.
+    parameter_space_bounds :
+        Dict mapping each param name to ``{'low': float, 'high': float}``.
+        When provided, sets axis limits on all panels.
     param_names :
         Dimension labels; defaults to ``θ_0, θ_1, ...``.
     labels :
@@ -155,6 +160,9 @@ def parameter_regions_pairplot_animation(
                     ax[row, col].set_ylabel("Normalized density")
                     x_label = param_names[col] if labels is None else labels[col]
                     ax[row, col].set_xlabel(x_label)
+                    if parameter_space_bounds is not None and param_names[col] in parameter_space_bounds:
+                        b = parameter_space_bounds[param_names[col]]
+                        ax[row, col].set_xlim(b['low'], b['high'])
                 else:
                     ax[row, col].axis("off")
 
@@ -169,14 +177,18 @@ def parameter_regions_pairplot_animation(
                     conf_pts = np.asarray(parameter_regions[i])
                     post_pts = np.asarray(posterior_regions[i])
 
+                    start_rgba = np.append(to_rgba(colors[0])[:3], 1.0)
                     ps = ax[row, col].scatter(
                         post_pts[:, col], post_pts[:, row],
-                        s=4, alpha=1.0, color=colors[i], marker=".", label=None,
+                        s=4, marker=".", label=None,
                     )
+                    ps.set_facecolor(start_rgba)
+
                     cs = ax[row, col].scatter(
                         conf_pts[:, col], conf_pts[:, row],
-                        s=4, alpha=0.0, color=colors[i], marker=".", label=region_names[i],
+                        s=4, marker=".", label=region_names[i],
                     )
+                    cs.set_facecolor(np.append(to_rgba(colors[0])[:3], 0.0))
                     cell_conf_scats.append(cs)
                     cell_post_scats.append(ps)
 
@@ -198,6 +210,13 @@ def parameter_regions_pairplot_animation(
                 y_label = param_names[row] if labels is None else labels[row]
                 ax[row, col].set_xlabel(x_label)
                 ax[row, col].set_ylabel(y_label)
+                if parameter_space_bounds is not None:
+                    if param_names[col] in parameter_space_bounds:
+                        b = parameter_space_bounds[param_names[col]]
+                        ax[row, col].set_xlim(b['low'], b['high'])
+                    if param_names[row] in parameter_space_bounds:
+                        b = parameter_space_bounds[param_names[row]]
+                        ax[row, col].set_ylim(b['low'], b['high'])
 
                 conf_scats[(row, col)] = cell_conf_scats
                 post_scats[(row, col)] = cell_post_scats
@@ -207,6 +226,9 @@ def parameter_regions_pairplot_animation(
 
     plt.tight_layout()
 
+    diag_color_start = np.array(to_rgba(colors[0]))
+    diag_color_end = np.array(to_rgba(colors[-1]))
+
     # --- Animation update ---
     def _update(frame: int):
         t = frame / max(n_frames - 1, 1)
@@ -214,13 +236,16 @@ def parameter_regions_pairplot_animation(
         for d, line in diag_lines.items():
             y = (1.0 - t) * post_y[d] + t * conf_y[d]
             line.set_ydata(y)
+            line.set_color((1.0 - t) * diag_color_start + t * diag_color_end)
+
+        blended_rgb = (1.0 - t) * diag_color_start[:3] + t * diag_color_end[:3]
 
         for key, scats in conf_scats.items():
             for sc in scats:
-                sc.set_alpha(t)
+                sc.set_facecolor(np.append(blended_rgb, t))
         for key, scats in post_scats.items():
             for sc in scats:
-                sc.set_alpha(1.0 - t)
+                sc.set_facecolor(np.append(blended_rgb, 1.0 - t))
 
         return []
 
