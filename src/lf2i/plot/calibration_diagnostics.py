@@ -1,6 +1,8 @@
 from typing import Optional, Tuple, Union, Dict, List, Sequence, Any
 from warnings import simplefilter
 
+import math
+
 import numpy as np
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -387,12 +389,35 @@ def calibration_cdf_panel(
     if query_points is not None:
         qp = np.atleast_2d(np.asarray(query_points, dtype=np.float32))
         n_query = len(qp)
-        n_panels = 1 + n_query
+
+        ncols_right = math.ceil(math.sqrt(n_query))
+        nrows_right = math.ceil(n_query / ncols_right)
 
         if figsize is None:
-            figsize = (6 * n_panels, 5)
+            cell_w, cell_h = 5, 4
+            fig_h = max(nrows_right * cell_h, 6)
+            figsize = (fig_h + ncols_right * cell_w, fig_h)
 
-        fig, axes = plt.subplots(1, n_panels, figsize=figsize)
+        fig = plt.figure(figsize=figsize)
+        fig_w, fig_h = figsize
+        right_col_w = (fig_w - fig_h) / ncols_right
+        gs = fig.add_gridspec(
+            nrows_right, 1 + ncols_right,
+            width_ratios=[fig_h] + [right_col_w] * ncols_right,
+            hspace=0.45, wspace=0.4,
+        )
+
+        ax_score = fig.add_subplot(gs[:, 0])
+
+        ax_cdfs = []
+        for r in range(nrows_right):
+            for c in range(ncols_right):
+                idx = r * ncols_right + c
+                ax = fig.add_subplot(gs[r, 1 + c])
+                if idx < n_query:
+                    ax_cdfs.append(ax)
+                else:
+                    ax.set_visible(False)
 
         # Left: calibration score heatmap
         mesh = calibration_score_plot(
@@ -403,35 +428,35 @@ def calibration_cdf_panel(
             xlims=xlims,
             ylims=ylims,
             params_labels=params_labels,
-            custom_ax=axes[0],
+            custom_ax=ax_score,
             n_bins=n_bins,
         )
         if mesh is not None:
-            cbar = fig.colorbar(mesh, ax=axes[0])
+            cbar = fig.colorbar(mesh, ax=ax_score)
             cbar.set_label(score_label, fontsize=12, labelpad=6)
             cbar.ax.tick_params(labelsize=10)
 
         # Index query points on the score panel
         if param_dim == 2:
             for i, pt in enumerate(qp):
-                axes[0].scatter(pt[0], pt[1], color='black', s=120, zorder=5)
-                axes[0].annotate(
+                ax_score.scatter(pt[0], pt[1], color='black', s=120, zorder=5)
+                ax_score.annotate(
                     str(i + 1), (pt[0], pt[1]),
                     ha='center', va='center', fontsize=9,
                     color='white', fontweight='bold', zorder=6,
                 )
-            axes[0].set_title('Local calibration risk', fontsize=14, pad=10)
+            ax_score.set_title('Local calibration risk', fontsize=14, pad=10)
         else:
-            ymax = axes[0].get_ylim()[1]
+            ymax = ax_score.get_ylim()[1]
             for i, pt in enumerate(qp):
-                axes[0].axvline(pt[0], color='black', linestyle='--', linewidth=1, zorder=5)
-                axes[0].text(
+                ax_score.axvline(pt[0], color='black', linestyle='--', linewidth=1, zorder=5)
+                ax_score.text(
                     pt[0], ymax, str(i + 1),
                     ha='center', va='bottom', fontsize=9, fontweight='bold',
                 )
 
-        # CDF comparison panels — one per query point
-        for i, (ax, pt) in enumerate(zip(axes[1:], qp)):
+        # Right grid: one CDF comparison panel per query point
+        for i, (ax, pt) in enumerate(zip(ax_cdfs, qp)):
             theta = pt.reshape(1, -1)
             theta_str = ', '.join(f'{v:.2f}' for v in pt)
             plot_cdf_comparison(
@@ -442,13 +467,8 @@ def calibration_cdf_panel(
                 simulator=simulator,
                 monte_carlo_size=monte_carlo_size,
                 n_grid=n_grid,
-                title=f'Query point {i + 1}',
+                title=rf'$\theta_{{{i + 1}}} = ({theta_str})$',
                 custom_ax=ax,
-            )
-            ax.annotate(
-                rf'$\theta_{{{i + 1}}} = ({theta_str})$',
-                xy=(0.5, -0.25), xycoords='axes fraction',
-                ha='center', va='top', fontsize=14,
             )
 
     else:

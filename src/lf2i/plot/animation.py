@@ -109,12 +109,30 @@ def parameter_regions_pairplot_animation(
     -------
     FuncAnimation
     """
-    n_regions = len(parameter_regions)
-    n_dims = parameter_regions[0].shape[1]
+    def _to_region_list(r):
+        """Wrap a bare array in a list; leave a sequence of arrays as-is."""
+        if isinstance(r, np.ndarray):
+            return [r]
+        return [np.asarray(x) for x in r]
 
+    parameter_regions_norm = [_to_region_list(r) for r in parameter_regions]
+    n_regions = len(parameter_regions_norm)
+
+    # When there is a single outer region group (one positional arg that is a
+    # list), treat posterior_regions as a flat list of sub-regions for that
+    # group rather than as separate groups.
+    if n_regions == 1:
+        posterior_regions_norm = [[np.asarray(r) for r in posterior_regions]]
+    else:
+        posterior_regions_norm = [_to_region_list(r) for r in posterior_regions]
+
+    n_dims = parameter_regions_norm[0][0].shape[1]
+
+    # Colors and names are indexed per leaf (sub-region), not per group.
+    n_leaves = sum(len(parameter_regions_norm[i]) for i in range(n_regions))
     true_parameter = np.asarray(true_parameter).reshape(-1)
-    colors = list(colors) if colors is not None else list(cm.rainbow(np.linspace(0, 1, n_regions)))
-    region_names = list(region_names) if region_names is not None else [f"Region {i}" for i in range(n_regions)]
+    colors = list(colors) if colors is not None else list(cm.rainbow(np.linspace(0, 1, n_leaves)))
+    region_names = list(region_names) if region_names is not None else [f"Region {k}" for k in range(n_leaves)]
     param_names = (
         np.asarray(param_names)
         if param_names is not None
@@ -169,13 +187,17 @@ def parameter_regions_pairplot_animation(
                 continue
             cell_post, cell_conf = [], []
             for i in range(n_regions):
-                post_2d = np.asarray(posterior_regions[i])[:, [col, row]]
-                conf_2d = np.asarray(parameter_regions[i])[:, [col, row]]
-                center = np.mean(np.vstack([post_2d, conf_2d]), axis=0)
-                post_idx = np.argsort(np.linalg.norm(post_2d - center, axis=1))
-                conf_idx = np.argsort(np.linalg.norm(conf_2d - center, axis=1))
-                cell_post.append(post_2d[post_idx])
-                cell_conf.append(conf_2d[conf_idx])
+                sub_post, sub_conf = [], []
+                for post_arr, conf_arr in zip(posterior_regions_norm[i], parameter_regions_norm[i]):
+                    post_2d = post_arr[:, [col, row]]
+                    conf_2d = conf_arr[:, [col, row]]
+                    center = np.mean(np.vstack([post_2d, conf_2d]), axis=0)
+                    post_idx = np.argsort(np.linalg.norm(post_2d - center, axis=1))
+                    conf_idx = np.argsort(np.linalg.norm(conf_2d - center, axis=1))
+                    sub_post.append(post_2d[post_idx])
+                    sub_conf.append(conf_2d[conf_idx])
+                cell_post.append(sub_post)
+                cell_conf.append(sub_conf)
             post_sorted[(row, col)] = cell_post
             conf_sorted[(row, col)] = cell_conf
 
@@ -214,22 +236,29 @@ def parameter_regions_pairplot_animation(
             else:
                 # Upper triangle: col > row — draw initial alpha shapes (full posterior, t=0)
                 cell_patches = []
+                leaf_idx = 0
                 for i in range(n_regions):
-                    pts = post_sorted[(row, col)][i]
-                    patch = _alpha_patch(pts, colors[i], alpha)
-                    if patch is not None:
-                        ax[row, col].add_patch(patch)
-                    cell_patches.append(patch)
+                    sub_patches = []
+                    for j, pts in enumerate(post_sorted[(row, col)][i]):
+                        leaf_color = colors[leaf_idx] if leaf_idx < len(colors) else colors[-1]
+                        patch = _alpha_patch(pts, leaf_color, alpha)
+                        if patch is not None:
+                            ax[row, col].add_patch(patch)
+                        sub_patches.append(patch)
 
-                    if row == 0 and col == 1:
-                        import matplotlib.patches as mpatches
-                        handle = mpatches.Patch(
-                            facecolor=to_rgba(colors[i], 0.2),
-                            edgecolor=to_rgba(colors[i], 1.0),
-                            label=region_names[i],
-                        )
-                        leg_handles.append(handle)
-                        leg_labels_list.append(region_names[i])
+                        if row == 0 and col == 1:
+                            import matplotlib.patches as mpatches
+                            leaf_name = region_names[leaf_idx] if leaf_idx < len(region_names) else ""
+                            handle = mpatches.Patch(
+                                facecolor=to_rgba(leaf_color, 0.2),
+                                edgecolor=to_rgba(leaf_color, 1.0),
+                                label=leaf_name,
+                            )
+                            leg_handles.append(handle)
+                            leg_labels_list.append(leaf_name)
+
+                        leaf_idx += 1
+                    cell_patches.append(sub_patches)
 
                 patches[(row, col)] = cell_patches
 
@@ -238,19 +267,28 @@ def parameter_regions_pairplot_animation(
                     marker="*", s=80, color="white", edgecolors="red", linewidths=0.8, zorder=5,
                 )
 
-                # Fix axis limits from the full union of both clouds.
-                all_x = np.concatenate(
-                    [post_sorted[(row, col)][i][:, 0] for i in range(n_regions)]
-                    + [conf_sorted[(row, col)][i][:, 0] for i in range(n_regions)]
-                )
-                all_y = np.concatenate(
-                    [post_sorted[(row, col)][i][:, 1] for i in range(n_regions)]
-                    + [conf_sorted[(row, col)][i][:, 1] for i in range(n_regions)]
-                )
-                margin_x = (all_x.max() - all_x.min()) * 0.05 or 0.5
-                margin_y = (all_y.max() - all_y.min()) * 0.05 or 0.5
-                ax[row, col].set_xlim(all_x.min() - margin_x, all_x.max() + margin_x)
-                ax[row, col].set_ylim(all_y.min() - margin_y, all_y.max() + margin_y)
+                # Fix axis limits: prefer parameter_space_bounds, else derive from data.
+                if parameter_space_bounds is not None and param_names[col] in parameter_space_bounds:
+                    bx = parameter_space_bounds[param_names[col]]
+                    ax[row, col].set_xlim(bx['low'], bx['high'])
+                else:
+                    all_x = np.concatenate(
+                        [sub[:, 0] for i in range(n_regions) for sub in post_sorted[(row, col)][i]]
+                        + [sub[:, 0] for i in range(n_regions) for sub in conf_sorted[(row, col)][i]]
+                    )
+                    margin_x = (all_x.max() - all_x.min()) * 0.05 or 0.5
+                    ax[row, col].set_xlim(all_x.min() - margin_x, all_x.max() + margin_x)
+
+                if parameter_space_bounds is not None and param_names[row] in parameter_space_bounds:
+                    by = parameter_space_bounds[param_names[row]]
+                    ax[row, col].set_ylim(by['low'], by['high'])
+                else:
+                    all_y = np.concatenate(
+                        [sub[:, 1] for i in range(n_regions) for sub in post_sorted[(row, col)][i]]
+                        + [sub[:, 1] for i in range(n_regions) for sub in conf_sorted[(row, col)][i]]
+                    )
+                    margin_y = (all_y.max() - all_y.min()) * 0.05 or 0.5
+                    ax[row, col].set_ylim(all_y.min() - margin_y, all_y.max() + margin_y)
 
                 x_label = param_names[col] if labels is None else labels[col]
                 y_label = param_names[row] if labels is None else labels[row]
@@ -262,29 +300,42 @@ def parameter_regions_pairplot_animation(
 
     plt.tight_layout()
 
+    color_start = np.array(to_rgba(colors[0]))
+    color_end = np.array(to_rgba(colors[-1]))
+
     # --- Animation update ---
     def _update(frame: int):
         t = frame / max(n_frames - 1, 1)
+        blended = (1.0 - t) * color_start + t * color_end
 
         for d, line in diag_lines.items():
             line.set_ydata((1.0 - t) * post_y[d] + t * conf_y[d])
+            line.set_color(blended)
 
         for (row, col), cell_patches in patches.items():
-            for i, old_patch in enumerate(cell_patches):
-                if old_patch is not None:
-                    old_patch.remove()
+            for i, sub_patches in enumerate(cell_patches):
+                for j, old_patch in enumerate(sub_patches):
+                    if old_patch is not None:
+                        old_patch.remove()
 
-                n_post = round((1.0 - t) * len(post_sorted[(row, col)][i]))
-                n_conf = round(t * len(conf_sorted[(row, col)][i]))
-                visible = np.vstack([
-                    post_sorted[(row, col)][i][:n_post],
-                    conf_sorted[(row, col)][i][:n_conf],
-                ]) if n_post + n_conf > 0 else np.empty((0, 2))
+                    # Include interpolated points from all higher-indexed
+                    # sub-regions so each outer region always contains the inner ones.
+                    n_subs = len(post_sorted[(row, col)][i])
+                    parts = []
+                    for jj in range(j, n_subs):
+                        n_post = round((1.0 - t) * len(post_sorted[(row, col)][i][jj]))
+                        n_conf = round(t * len(conf_sorted[(row, col)][i][jj]))
+                        if n_post + n_conf > 0:
+                            parts.append(np.vstack([
+                                post_sorted[(row, col)][i][jj][:n_post],
+                                conf_sorted[(row, col)][i][jj][:n_conf],
+                            ]))
+                    visible = np.vstack(parts) if parts else np.empty((0, 2))
 
-                new_patch = _alpha_patch(visible, colors[i], alpha)
-                if new_patch is not None:
-                    ax[row, col].add_patch(new_patch)
-                patches[(row, col)][i] = new_patch
+                    new_patch = _alpha_patch(visible, blended, alpha)
+                    if new_patch is not None:
+                        ax[row, col].add_patch(new_patch)
+                    patches[(row, col)][i][j] = new_patch
 
         return []
 

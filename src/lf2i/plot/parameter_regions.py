@@ -902,7 +902,7 @@ def plot_confidence_distributions_1D(
                         ax.plot([x_end, x_end], [bar_y, threshold], color=color,
                                 linestyle='--', alpha=0.6, clip_on=False)
 
-                ax.axhline(y=threshold, color='grey', linestyle='--',
+                ax.axhline(y=threshold, color='grey', linestyle='--', alpha=0.3, zorder=-1,
                         label=f'{int(cl * 100):.0f}% Confidence Level')
 
         if point_estimates is not None:
@@ -1058,7 +1058,7 @@ def plot_posterior_distributions_1D(
                 ax.plot([x_end, x_end], [bar_y, boundary_density],
                         color=color, linestyle='--', alpha=0.6, clip_on=False)
 
-            ax.axhline(y=boundary_density, color=color, linestyle='--', alpha=0.5,
+            ax.axhline(y=boundary_density, color='grey', linestyle='--', alpha=0.3, zorder=-1,
                        label=f'{int(cl * 100):.0f}% HPD')
 
         if true_theta is not None:
