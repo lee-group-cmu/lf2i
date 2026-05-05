@@ -1,4 +1,5 @@
 from typing import Optional, Tuple, Union
+import warnings
 
 import numpy as np
 
@@ -442,6 +443,13 @@ class ParametricCDFEstimator:
         if cdf_model not in ('sigmoid', 'ispline'):
             raise ValueError(
                 f"cdf_model must be 'sigmoid' or 'ispline', got '{cdf_model}'."
+            )
+        if cdf_model == 'ispline':
+            warnings.warn(
+                "cdf_model='ispline' is deprecated and will be removed in a future version. "
+                "Use cdf_model='sigmoid' instead.",
+                DeprecationWarning,
+                stacklevel=2,
             )
         if cdf_model == 'ispline' and loss == 'pinball':
             raise ValueError(
