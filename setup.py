@@ -27,7 +27,10 @@ REQUIRED = [
 ]
 
 EXTRAS = {
-    "examples": ["sbi==0.25.0"],
+    "examples": [
+        "sbi==0.25.0",
+        "dill"
+    ],
     "dev": [
         "aquirdturtle-collapsible-headings",
         "ipykernel",
