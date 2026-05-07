@@ -55,7 +55,7 @@ def plot_parameter_relevance(
                 f'{param_names[j]}={other_draws[k, j]:.2g}'
                 for j in range(n_params) if j != i
             )
-            axs[i].plot(grid_1d, mc_cvs, label=label if n_params > 1 else None)
+            axs[i].plot(grid_1d, mc_cvs, label=label if n_params > 1 else None, c='grey', alpha=0.7)
 
         axs[i].set_xlabel(name)
         axs[i].set_ylabel('Critical Value')
