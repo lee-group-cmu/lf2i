@@ -1,4 +1,5 @@
 from typing import Optional, Tuple, Union
+import warnings
 
 import numpy as np
 
@@ -14,18 +15,54 @@ except ImportError:
     _ISPLINES_AVAILABLE = False
 
 
-#TODO: Implement with custom grid for evaluation of the integral
 class BrierScoreLoss(nn.Module):
-    """Brier Score Loss Function.
-    """
+    """Cross-product Brier score, diagonal excluded to remove systematic CDF-high bias."""
     def forward(
             self,
             cdf_vals: torch.Tensor,
             lambda_obs: torch.Tensor
     ) -> torch.Tensor:
+        n = lambda_obs.shape[0]
         indicators = (lambda_obs.unsqueeze(1) <= lambda_obs.unsqueeze(0)).float()
-        return ((cdf_vals - indicators)**2).mean()
+        mask = ~torch.eye(n, dtype=torch.bool, device=lambda_obs.device)
+        return ((cdf_vals - indicators)**2)[mask].mean()
     
+class WeightedBrierScoreLoss(nn.Module):
+    """
+    Brier score with per-column Gaussian weights that emphasise a target CDF level.
+
+    Up-weights λ_j values whose empirical rank in the mini-batch is near `center`,
+    focusing CDF accuracy where p-values are computed (near the critical α level).
+
+    Parameters
+    ----------
+    center : float
+        Target CDF level to emphasise (e.g. 0.9 for a 90% confidence set).
+    bandwidth : float
+        Width of the Gaussian emphasis window. Default 0.1.
+    """
+    def __init__(self, center: float = 0.9, bandwidth: float = 0.1):
+        super().__init__()
+        self.center    = center
+        self.bandwidth = bandwidth
+
+    def forward(
+            self,
+            cdf_vals:   torch.Tensor,   # (n, n)
+            lambda_obs: torch.Tensor,   # (n,)
+    ) -> torch.Tensor:
+        n = lambda_obs.shape[0]
+        indicators = (lambda_obs.unsqueeze(1) <= lambda_obs.unsqueeze(0)).float()
+        mask = ~torch.eye(n, dtype=torch.bool, device=lambda_obs.device)
+        # empirical rank of each λ_j as a proxy for its CDF level
+        ranks = torch.argsort(torch.argsort(lambda_obs)).float() / max(n - 1, 1)  # (n,) in [0,1]
+        col_weights = torch.exp(-0.5 * ((ranks - self.center) / self.bandwidth) ** 2)
+        col_weights = col_weights / col_weights.sum()
+        sq_err = (cdf_vals - indicators) ** 2    # (n, n)
+        # weight along column axis (j = λ level), exclude diagonal
+        return (sq_err * col_weights.unsqueeze(0))[mask].sum()
+
+
 # TODO: Check the weighting function
 class WeightedPinballLoss(nn.Module):
     """
@@ -209,11 +246,13 @@ class BetaNetwork(nn.Module):
     
 class ISplineWeightNetwork(nn.Module):
     """
-    Feed-forward network mapping θ → (weights, w_lower) for an I-spline CDF.
+    Feed-forward network mapping θ → softmax weights for an I-spline CDF.
 
-    Outputs:
-      - weights  : (n, n_basis) non-negative via softplus
-      - w_lower  : (n, 1)       CDF value at left boundary, in (0,1) via sigmoid
+    Output:
+      - weights : (n, n_basis) via softmax — non-negative, sum to 1 per row.
+
+    This guarantees F̃(0; θ) = 0 and F̃(1; θ) = 1 by construction (I-spline
+    boundary conditions), with no clamping needed and gradients always flowing.
     """
     _ACTIVATIONS = {'tanh': nn.Tanh, 'elu': nn.ELU, 'silu': nn.SiLU, 'relu': nn.ReLU}
 
@@ -232,25 +271,26 @@ class ISplineWeightNetwork(nn.Module):
         layers  = [nn.Linear(theta_dim, hidden_dim), act_cls()]
         for _ in range(n_hidden - 1):
             layers += [nn.Linear(hidden_dim, hidden_dim), act_cls()]
-        layers += [nn.Linear(hidden_dim, n_basis + 1)]   # n_basis weights + w_lower
+        layers += [nn.Linear(hidden_dim, n_basis)]
         self.net     = nn.Sequential(*layers)
         self.n_basis = n_basis
 
-    def forward(self, theta: torch.Tensor):
-        out      = self.net(theta)                                       # (n, n_basis+1)
-        weights  = nn.functional.softplus(out[:, :self.n_basis])        # (n, n_basis) ≥ 0
-        w_lower  = torch.sigmoid(out[:, self.n_basis:])                 # (n, 1) ∈ (0,1)
-        return weights, w_lower
+    def forward(self, theta: torch.Tensor) -> torch.Tensor:
+        out = self.net(theta)                    # (n, n_basis)
+        return torch.softmax(out, dim=1)         # (n, n_basis), sums to 1 per row
 
 
 class ISplineCDFModel(nn.Module):
     """
-    Evaluates a weighted I-spline sum as a CDF.
+    Evaluates a softmax-weighted I-spline sum as a CDF.
 
     Basis functions are fixed (computed via numpy Isplines — no grad needed).
-    Gradients flow only through `weights` and `w_lower` from ISplineWeightNetwork.
+    Gradients flow only through `weights` from ISplineWeightNetwork.
 
-    The domain is normalized to [0,1] using the empirical min/max of the
+    Because softmax weights sum to 1 and each I-spline basis I_k satisfies
+    I_k(0)=0 and I_k(1)=1, the output is always in [0,1] without any clamping.
+
+    The domain is normalised to [0,1] using the empirical min/max of the
     training test statistics, stored on ParametricCDFEstimator after fit().
 
     Parameters
@@ -279,10 +319,10 @@ class ISplineCDFModel(nn.Module):
     def _eval_basis(self, lambda_norm: np.ndarray) -> np.ndarray:
         """
         Evaluate all n_basis I-spline basis functions at normalised λ values.
-        lambda_norm : (n,) float in [0, 1]
+        lambda_norm : (n,) float — values outside [0,1] extrapolate naturally.
         returns     : (n, n_basis)
         """
-        lam = np.clip(lambda_norm, 1e-6, 1.0 - 1e-6)
+        lam = np.clip(lambda_norm, 0.0, 1.0)   # I-spline domain is [0,1]; clamp to boundary values
         isp = Isplines(self.order, self.mesh, lam)
         return np.stack([isp.I(i + 1) for i in range(self.n_basis)], axis=1)
 
@@ -291,24 +331,20 @@ class ISplineCDFModel(nn.Module):
     def forward(
         self,
         lambda_norm: np.ndarray,    # (n,) numpy — no grad needed
-        weights:     torch.Tensor,  # (n, n_basis)
-        w_lower:     torch.Tensor,  # (n, 1)
+        weights:     torch.Tensor,  # (n, n_basis) softmax weights
     ) -> torch.Tensor:              # (n,) CDF values in [0, 1]
-        B   = torch.FloatTensor(self._eval_basis(lambda_norm)).to(weights.device)
-        cdf = w_lower.squeeze(1) + (B * weights).sum(dim=1)
-        return torch.clamp(cdf, 0.0, 1.0)
+        B = torch.FloatTensor(self._eval_basis(lambda_norm)).to(weights.device)
+        return (B * weights).sum(dim=1)          # always in [0,1], no clamp needed
 
     # ── forward_brier: full (n×n) cross-CDF matrix (used in Brier loss) ───────
 
     def forward_brier(
         self,
         lambda_norm: np.ndarray,    # (n,) numpy
-        weights:     torch.Tensor,  # (n, n_basis)
-        w_lower:     torch.Tensor,  # (n, 1)
+        weights:     torch.Tensor,  # (n, n_basis) softmax weights
     ) -> torch.Tensor:              # (n, n)  out[i,j] = F̃(λ_j; β(θ_i))
-        B   = torch.FloatTensor(self._eval_basis(lambda_norm)).to(weights.device)
-        cdf = w_lower + weights @ B.T      # (n,1) + (n,n_basis)@(n_basis,n) = (n,n)
-        return torch.clamp(cdf, 0.0, 1.0)
+        B = torch.FloatTensor(self._eval_basis(lambda_norm)).to(weights.device)
+        return weights @ B.T                     # (n, n_basis) @ (n_basis, n) = (n, n)
 
 class ParametricCDFEstimator:
     """
@@ -399,19 +435,26 @@ class ParametricCDFEstimator:
             raise ValueError(
                 f"acceptance_region must be 'left' or 'right', got '{acceptance_region}'."
             )
-        if loss not in ('brier', 'pinball'):
+        if loss not in ('brier', 'weighted_brier', 'pinball'):
             raise ValueError(
-                f"loss must be 'brier' or 'pinball', got '{loss}'."
+                f"loss must be 'brier', 'weighted_brier', or 'pinball', got '{loss}'."
             )
 
         if cdf_model not in ('sigmoid', 'ispline'):
             raise ValueError(
                 f"cdf_model must be 'sigmoid' or 'ispline', got '{cdf_model}'."
             )
+        if cdf_model == 'ispline':
+            warnings.warn(
+                "cdf_model='ispline' is deprecated and will be removed in a future version. "
+                "Use cdf_model='sigmoid' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         if cdf_model == 'ispline' and loss == 'pinball':
             raise ValueError(
                 "I-spline CDF has no closed-form quantile function. "
-                "Use loss='brier' with cdf_model='ispline'."
+                "Use loss='brier' or 'weighted_brier' with cdf_model='ispline'."
             )
         self.cdf_model    = cdf_model
         self.n_knots      = n_knots
@@ -505,6 +548,11 @@ class ParametricCDFEstimator:
         # ── criterion ─────────────────────────────────────────────────────────
         if self.loss == 'brier':
             criterion = BrierScoreLoss()
+        elif self.loss == 'weighted_brier':
+            criterion = WeightedBrierScoreLoss(
+                center    = self.center,
+                bandwidth = self.bandwidth,
+            )
         else:
             criterion = WeightedPinballLoss(
                 n_alpha   = self.n_alpha,
@@ -551,18 +599,14 @@ class ParametricCDFEstimator:
                         batch_loss = criterion(cdf_vals, lam_b)
 
                 else:
-                    # ── ispline path (Brier only) ─────────────────────────────
-                    weights, w_lower = self.weight_net_(theta_b)
+                    # ── ispline path ──────────────────────────────────────────
+                    weights  = self.weight_net_(theta_b)
                     lam_norm = (
                         (lam_b.detach().cpu().numpy() - self.lambda_min_)
                         / (self.lambda_max_ - self.lambda_min_ + 1e-8)
                     )
-                    cdf_vals   = self.ispline_model_.forward_brier(lam_norm, weights, w_lower)
+                    cdf_vals   = self.ispline_model_.forward_brier(lam_norm, weights)
                     batch_loss = criterion(cdf_vals, lam_b)
-                    if self.smooth_reg > 0.0:
-                        batch_loss = batch_loss + self.smooth_reg * (
-                            (weights[:, 1:] - weights[:, :-1]) ** 2
-                        ).sum(dim=1).mean()
 
                 batch_loss.backward()
                 optimizer.step()
@@ -626,12 +670,12 @@ class ParametricCDFEstimator:
                 ).squeeze(1)
 
             else:   # ispline
-                weights, w_lower = self.weight_net_(theta_t)
+                weights  = self.weight_net_(theta_t)
                 lam_norm = (
                     (X[:, 0] - self.lambda_min_)
                     / (self.lambda_max_ - self.lambda_min_ + 1e-8)
                 )
-                cdf_vals = self.ispline_model_.forward(lam_norm, weights, w_lower)
+                cdf_vals = self.ispline_model_.forward(lam_norm, weights)
 
         if self.acceptance_region == 'left':
             pvalues = 1.0 - cdf_vals.cpu().numpy()

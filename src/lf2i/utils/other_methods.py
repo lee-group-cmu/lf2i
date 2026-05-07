@@ -406,7 +406,22 @@ def monte_carlo_pvalue_diagnostics(
     p_hat_grid = p_hat_all.reshape(n_grid, M)
 
     crps = np.zeros(n_grid)
+    crps_ref = np.zeros(n_grid)
     pinball_per_alpha = {alpha: np.zeros(n_grid) for alpha in pinball_levels}
+    pinball_ref_per_alpha = {alpha: np.zeros(n_grid) for alpha in pinball_levels}
+
+    # Marginal empirical CDF from all MC samples pooled across grid points
+    T_all = ts_grid.flatten()  # (n_grid*M,)
+    T_all_sorted = np.sort(T_all)
+    n_total = len(T_all_sorted)
+
+    def marginal_cdf(t_vals):
+        """Fraction of pooled MC samples <= t for each t in t_vals."""
+        ranks = np.searchsorted(T_all_sorted, t_vals, side='right')
+        return ranks / n_total
+
+    def marginal_quantile(alpha):
+        return np.quantile(T_all_sorted, alpha)
 
     for j in range(n_grid):
         sort_idx = np.argsort(ts_grid[j])
@@ -415,7 +430,6 @@ def monte_carlo_pvalue_diagnostics(
 
         # Empirical CDF: midpoint estimate (i - 0.5) / M for i = 1, ..., M
         u = (np.arange(1, M + 1) - 0.5) / M
-        residuals = p_hat_sorted - u  # predicted minus empirical
         # p-value = 1-F for 'left', F for 'right'; match target to direction
         u_target = 1.0 - u if test_statistic.acceptance_region == 'left' else u
         residuals = p_hat_sorted - u_target
@@ -425,16 +439,39 @@ def monte_carlo_pvalue_diagnostics(
         seg_err_sq = 0.5 * (residuals[:-1] ** 2 + residuals[1:] ** 2)
         crps[j] = np.sum(seg_err_sq * dT)
 
-        # Pinball loss per alpha: L_alpha(u_i, p_hat_i) = (1-alpha)*residual if residual>=0
-        #                                                = -alpha*residual     if residual<0
+        # Reference CRPS: marginal CDF predictor vs local empirical CDF
+        F_marginal = marginal_cdf(T_sorted)
+        if test_statistic.acceptance_region == 'left':
+            F_marginal = 1.0 - F_marginal
+        ref_residuals = F_marginal - u_target
+        ref_seg_err_sq = 0.5 * (ref_residuals[:-1] ** 2 + ref_residuals[1:] ** 2)
+        crps_ref[j] = np.sum(ref_seg_err_sq * dT)
+
+        # Pinball loss per alpha: L_alpha(Q_hat(alpha|x), Y_i) averaged over local samples
         for alpha in pinball_levels:
+            # Model's predicted quantile at alpha: interpolate p_hat_sorted -> T_sorted
+            q_hat = np.interp(alpha, p_hat_sorted, T_sorted)
+            pb_residuals = T_sorted - q_hat  # Y_i - q_hat
             pinball_per_alpha[alpha][j] = np.mean(
-                np.where(residuals >= 0, (1 - alpha) * residuals, -alpha * residuals)
+                np.where(pb_residuals >= 0, alpha * pb_residuals, (alpha - 1) * pb_residuals)
             )
 
-    estimation_errors = {'crps': crps}
-    for alpha, pb in pinball_per_alpha.items():
+            # Reference pinball: marginal quantile as predictor
+            q_ref = marginal_quantile(alpha)
+            ref_pb_residuals = T_sorted - q_ref
+            pinball_ref_per_alpha[alpha][j] = np.mean(
+                np.where(ref_pb_residuals >= 0, alpha * ref_pb_residuals, (alpha - 1) * ref_pb_residuals)
+            )
+
+    # Normalized CRPS: local / reference (0 = perfect, 1 = no better than ignoring X)
+    crps_normalized = np.where(crps_ref > 0, crps / crps_ref, np.nan)
+
+    estimation_errors = {'crps': crps, 'crps_normalized': crps_normalized}
+    for alpha in pinball_levels:
+        pb = pinball_per_alpha[alpha]
+        pb_ref = pinball_ref_per_alpha[alpha]
         estimation_errors[f'pinball_{alpha:.2f}'] = pb
+        estimation_errors[f'pinball_{alpha:.2f}_normalized'] = np.where(pb_ref > 0, pb / pb_ref, np.nan)
     return evaluation_grid, estimation_errors
 
 

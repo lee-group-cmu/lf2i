@@ -15,12 +15,24 @@ import matplotlib.patches as  mpatches
 import matplotlib.lines as mlines
 from matplotlib.legend_handler import HandlerPatch
 
+
+def _hpd_1d(samples: np.ndarray, credibility: float) -> Tuple[float, float]:
+    """Shortest interval containing `credibility` fraction of samples."""
+    s = np.sort(samples)
+    n = len(s)
+    window = max(1, int(np.ceil(credibility * n)))
+    if window >= n:
+        return float(s[0]), float(s[-1])
+    widths = s[window - 1 : n] - s[: n - window + 1]
+    idx = int(np.argmin(widths))
+    return float(s[idx]), float(s[idx + window - 1])
+
 from lf2i.plot.miscellanea import PolygonPatchFixed
 from lf2i.utils.miscellanea import to_np_if_torch
 
 
 def plot_parameter_regions(
-    *parameter_regions: np.ndarray, 
+    *parameter_regions: np.ndarray,
     param_dim: int,
     true_parameter: Optional[np.ndarray] = None,
     prior_samples: Optional[np.ndarray] = None,
@@ -40,7 +52,12 @@ def plot_parameter_regions(
     remove_legend: bool = False,
     custom_ax: Optional[Axes] = None,
     show_diagonal: Optional[bool] = False,
-    diagonal_type: Optional[str] = 'hist',  # 'hist', 'kde', or 'none'
+    diagonal_type: Optional[str] = 'hist',  # 'hist', 'kde', 'confidence', or 'posterior'
+    diagonal_pvalues: Optional[np.ndarray] = None,
+    diagonal_grid: Optional[np.ndarray] = None,
+    diagonal_levels: Optional[Sequence[float]] = None,
+    posterior_estimator=None,
+    posterior_observations: Optional[Sequence] = None,
     filter_subset: Optional[bool] = False,
     subset_threshold: Optional[float] = 1.0
 ) -> None:
@@ -214,32 +231,48 @@ def plot_parameter_regions(
                 ax = axes[i, j] if param_dim > 1 else axes
                 try:
                     if i == j and show_diagonal:
-                        # Diagonal: show 1D distribution
-                        if diagonal_type == 'hist':
+                        if diagonal_type == 'confidence' and diagonal_pvalues is not None and diagonal_grid is not None:
+                            plot_confidence_distributions_1D(
+                                all_pvalues=diagonal_pvalues[:, i:i+1, :],
+                                grid_values=diagonal_grid[i],
+                                confidence_levels=diagonal_levels or [],
+                                true_theta=true_parameter[i:i+1].reshape(1, 1) if true_parameter is not None else None,
+                                custom_ax=ax,
+                            )
+                        elif diagonal_type == 'posterior' and posterior_estimator is not None and posterior_observations is not None:
+                            plot_posterior_distributions_1D(
+                                posterior_estimator=posterior_estimator,
+                                observations=posterior_observations,
+                                credibility_levels=diagonal_levels or [],
+                                param_dim=i,
+                                true_theta=np.asarray(true_parameter).reshape(1, -1) if true_parameter is not None else None,
+                                custom_ax=ax,
+                            )
+                        elif diagonal_type == 'hist':
                             for k, param_reg in enumerate(parameter_regions):
-                                # Filter to subset if enabled
                                 filtered_reg = filter_by_proximity(param_reg, [i])
                                 if len(filtered_reg) > 0:
                                     ax.hist(filtered_reg[:, i], bins=30, alpha=0.5, color=colors[k],
-                                           label=region_names[k] if i == 0 else None, density=True)
+                                            label=region_names[k] if i == 0 else None, density=True)
                             if true_parameter is not None:
                                 ax.axvline(true_parameter[i], color='red', linestyle='--', linewidth=2, label='True' if i == 0 else None)
+                            ax.set_ylabel('Density', fontsize=12)
+                            if i == 0:
+                                ax.legend(prop={'size': 10}, loc='upper right')
                         elif diagonal_type == 'kde':
                             for k, param_reg in enumerate(parameter_regions):
-                                # Filter to subset if enabled
                                 filtered_reg = filter_by_proximity(param_reg, [i])
                                 if len(filtered_reg) > 0:
                                     kde = gaussian_kde(filtered_reg[:, i])
                                     x_range = np.linspace(filtered_reg[:, i].min(), filtered_reg[:, i].max(), 100)
                                     ax.plot(x_range, kde(x_range), color=colors[k],
-                                           linestyle=linestyles_list[k % len(linestyles_list)],
-                                           label=region_names[k] if i == 0 else None)
+                                            linestyle=linestyles_list[k % len(linestyles_list)],
+                                            label=region_names[k] if i == 0 else None)
                             if true_parameter is not None:
                                 ax.axvline(true_parameter[i], color='red', linestyle='--', linewidth=2, label='True' if i == 0 else None)
-
-                        ax.set_ylabel('Density', fontsize=12)
-                        if i == 0 and diagonal_type != 'none':
-                            ax.legend(prop={'size': 10}, loc='upper right')
+                            ax.set_ylabel('Density', fontsize=12)
+                            if i == 0:
+                                ax.legend(prop={'size': 10}, loc='upper right')
 
                     elif i > j:
                         # Lower triangle: scatter plots with 2D regions
@@ -426,7 +459,7 @@ def plot_parameter_region_2D(
 
 def parameter_regions_pairplot(
     *parameter_regions: np.ndarray,
-    true_parameter: np.ndarray,  # can plot multiple regions for the same true parameter, not different
+    true_parameter: np.ndarray,
     parameter_space_bounds: Optional[Dict[str, Tuple[float]]] = None,
     labels: Optional[np.ndarray] = None,
     param_names: Optional[np.ndarray] = None,
@@ -435,53 +468,101 @@ def parameter_regions_pairplot(
     alpha_shape: bool = False,
     alpha: Optional[float] = None,
     scatter: bool = True,
+    show_diagonal: bool = False,
+    diagonal_type: str = 'confidence',
+    diagonal_pvalues: Optional[np.ndarray] = None,
+    diagonal_grid: Optional[np.ndarray] = None,
+    diagonal_levels: Optional[Sequence[float]] = None,
+    posterior_estimator=None,
+    posterior_observations: Optional[Sequence] = None,
     figsize: Optional[Sequence[int]] = (15, 15),
+    show_legend: bool = True,
     save_fig_path: Optional[str] = None
 ) -> None:
+    """Plot a pairplot of 2D parameter region projections.
 
-    rows = cols = parameter_regions[0].shape[1]  # param dim
-    fig, ax = plt.subplots(rows, cols, figsize=figsize)
+    Each upper-triangle cell (row, col) shows the 2D projection onto
+    dimensions [row, col].  The diagonal shows either a confidence curve or
+    posterior density.  Lower triangle is hidden.
+
+    Parameters
+    ----------
+    *parameter_regions :
+        One or more confidence/credible sets, each of shape ``(n_pts, param_dim)``.
+    true_parameter :
+        1-D array of shape ``(param_dim,)`` for the single observation being plotted.
+    diagonal_pvalues :
+        Shape ``(1, param_dim, grid_size)`` — p-values for one observation.
+    diagonal_grid :
+        Shape ``(param_dim, grid_size)`` — grid coordinates per dimension.
+    diagonal_levels :
+        Confidence or credibility levels for the diagonal curves.
+    """
+    rows = cols = parameter_regions[0].shape[1]
     colors = colors or cm.rainbow(np.linspace(0, 1, len(region_names)))
     assert len(region_names) == len(colors) == len(parameter_regions)
-    
+
+    param_names = np.asarray(param_names) if param_names is not None else np.array([rf'$\theta_{{{i}}}$' for i in range(rows)])
+    true_parameter = np.asarray(true_parameter).reshape(-1)
+
+    fig, ax = plt.subplots(rows, cols, figsize=figsize)
+    leg_handles, leg_labels = [], []
     for row in range(rows):
         for col in range(cols):
-            # plots
-            if col <= row:
+            if row == col:
+                if show_diagonal:
+                    if diagonal_type == 'confidence' and diagonal_pvalues is not None and diagonal_grid is not None:
+                        plot_confidence_distributions_1D(
+                            all_pvalues=diagonal_pvalues[0:1, row:row+1, :],
+                            grid_values=diagonal_grid[row],
+                            confidence_levels=diagonal_levels or [],
+                            true_theta=true_parameter[row:row+1].reshape(1, 1),
+                            colors=colors,
+                            # xlim=parameter_space_bounds[param_names[row]] if parameter_space_bounds is not None and param_names is not None else None,
+                            custom_ax=ax[row, col],
+                        )
+                    elif diagonal_type == 'posterior' and posterior_estimator is not None and posterior_observations is not None:
+                        plot_posterior_distributions_1D(
+                            posterior_estimator=posterior_estimator,
+                            observations=posterior_observations,
+                            credibility_levels=diagonal_levels or [],
+                            param_dim=row,
+                            true_theta=true_parameter.reshape(1, -1),
+                            colors=colors,
+                            # xlim=parameter_space_bounds[param_names[row]] if parameter_space_bounds is not None and param_names is not None else None,
+                            custom_ax=ax[row, col],
+                        )
+                    ax[row, col].legend().set_visible(False)  # Hide legend for diagonal plots
+                else:
+                    ax[row, col].axis('off')
+            elif col < row:
                 ax[row, col].axis('off')
+                ax[row, col].legend().set_visible(False)
             else:
                 for i, parameter_region in enumerate(parameter_regions):
                     leg_handles, leg_labels = plot_parameter_region_2D(
-                        parameter_region=parameter_region[:, [col, row]],  # swap order to have 'row' parameter on y axis
-                        true_parameter=true_parameter[[col, row]],
-                        parameter_space_bounds={
-                            param: dict(zip(['low', 'high'], parameter_space_bounds[param])) 
-                            for param in param_names[[col, row]]
-                        },
-                        labels=None,
-                        param_names=param_names[[col, row]],
+                        parameter_region=parameter_region[:, [row, col]],
+                        true_parameter=true_parameter[[row, col]],
+                        parameter_space_bounds=parameter_space_bounds,
+                        param_names=param_names[[row, col]],
                         color=colors[i],
                         region_name=region_names[i],
                         alpha_shape=alpha_shape,
                         alpha=alpha,
                         scatter=scatter,
-                        custom_ax=ax[row, col]
+                        custom_ax=ax[row, col],
                     )
-                # labels
-                if col == row+1:
-                    ax[row, col].set_xlabel(r'$\theta_{}$'.format(col) if labels is None else labels[col], fontsize=20)
-                    ax[row, col].tick_params(axis='x', labelsize=12)
-                    ax[row, col].set_ylabel(r'$\theta_{}$'.format(row) if labels is None else labels[row], fontsize=20, labelpad=3)
-                    ax[row, col].tick_params(axis='y', labelsize=12)
-                else:
-                    ax[row, col].tick_params(labelleft=False, labelbottom=False)
-    
-    legend = fig.legend(leg_handles, leg_labels, bbox_to_anchor=(0.5, 0.5))
-    if alpha_shape:
-        legend.legend_handles[0]._sizes = [40]
-    
+                ax[row, col].set_xlabel(param_names[row] if labels is None else labels[row])
+                ax[row, col].set_ylabel(param_names[col] if labels is None else labels[col])
+
+    if leg_handles and show_legend:
+        legend = fig.legend(leg_handles, leg_labels, bbox_to_anchor=(0.5, 0.5))
+        if alpha_shape:
+            legend.legend_handles[0]._sizes = [40]
+
     if save_fig_path is not None:
         plt.savefig(save_fig_path, bbox_inches='tight')
+    plt.tight_layout()
     plt.show()
 
 
@@ -713,6 +794,294 @@ def plot_parameter_intervals(
         plt.close()
     else:
         plt.show()
+
+
+def plot_confidence_distributions_1D(
+    all_pvalues: np.ndarray,
+    grid_values: np.ndarray,
+    confidence_levels: Optional[Sequence[float]] = None,
+    point_estimates: Optional[Sequence[np.ndarray]] = None,
+    true_theta: Optional[np.ndarray] = None,
+    param_names: Optional[Sequence[str]] = None,
+    colors: Optional[Sequence] = None,
+    title: Optional[str] = None,
+    figsize: Optional[Tuple[int, int]] = None,
+    xlim: Optional[Tuple[float, float]] = (-10, 10),
+    save_fig_path: Optional[str] = None,
+    custom_ax: Optional[Axes] = None,
+) -> None:
+    """Plot the confidence distribution (p-value curve) for 1D parameter sweeps.
+
+    Creates one figure per observation showing the normalised p-value curve,
+    interval bars for each confidence level, and optional point-estimate /
+    true-parameter markers.
+
+    Parameters
+    ----------
+    all_pvalues : np.ndarray
+        Raw p-values with shape ``(n_obs, 1, n_grid)``.
+    grid_values : np.ndarray
+        Grid of parameter values with shape ``(1, n_grid)`` or ``(n_grid,)``.
+    confidence_levels : sequence of float
+        Confidence levels (e.g. ``[0.9, 0.95]``).  Each produces one
+        horizontal threshold line and one row of interval bars.
+    point_estimates : sequence of np.ndarray, optional
+        One array of shape ``(1,)`` per observation for the point estimate.
+    true_theta : np.ndarray, optional
+        True parameters with shape ``(n_obs, 1)`` or ``(n_obs,)``.
+    param_names : sequence of str, optional
+        Axis label for the parameter; defaults to ``['$\\theta_1$']``.
+    colors : sequence, optional
+        Colors for each confidence level; defaults to a rainbow palette.
+    title : str, optional
+        Suptitle applied to every figure.
+    figsize : tuple of int, optional
+        ``(width, height)`` in inches.  Defaults to ``(7, 5)``.
+    xlim : tuple of float, optional
+        ``(low, high)`` x-axis limits.  Inferred from ``grid_values`` if omitted.
+    save_fig_path : str, optional
+        If given, figures are saved as ``<save_fig_path>_<obs_idx>.png`` and
+        not displayed interactively.
+    custom_ax : Axes, optional
+        If provided, draw into this existing axes instead of creating a new
+        figure.  Figure creation, ``plt.show()``, and ``save_fig_path`` are
+        all skipped; the caller is responsible for display/saving.  Intended
+        for embedding into a larger layout (e.g. a pairplot diagonal).
+    """
+    all_pvalues = to_np_if_torch(all_pvalues)
+    grid = to_np_if_torch(grid_values).reshape(-1)
+
+    n_obs = all_pvalues.shape[0]
+    n_levels = len(confidence_levels) if confidence_levels is not None else 0
+
+    param_names = list(param_names) if param_names is not None else [r'$\theta_1$']
+    colors = list(colors) if colors is not None else list(cm.rainbow(np.linspace(0, 1, max(1, n_levels))))
+    figsize = figsize if figsize is not None else (7, 5)
+    x_low, x_high = xlim if xlim is not None else (float(grid.min()), float(grid.max()))
+
+    for xdx in range(n_obs):
+        raw_pv = all_pvalues[xdx, 0, :]
+        pv_max = raw_pv.max()
+        pvalues = raw_pv / pv_max if pv_max > 0 else raw_pv
+
+        if custom_ax is not None:
+            ax = custom_ax
+        else:
+            fig, ax = plt.subplots(figsize=figsize)
+        ax.plot(grid, pvalues, color=colors[0], label='p-value curve', lw=5, clip_on=False)
+
+        if confidence_levels is not None:
+            for tdx, cl in enumerate(confidence_levels):
+                threshold = 1.0 - cl
+                color = colors[tdx % len(colors)]
+
+                in_interval = pvalues >= threshold
+                crossings = np.where(np.diff(in_interval.astype(int)))[0]
+                interval_endpoints = []
+                for idx in crossings:
+                    x0, x1 = grid[idx], grid[idx + 1]
+                    p0, p1 = pvalues[idx], pvalues[idx + 1]
+                    if p1 != p0:
+                        x_cross = x0 + (threshold - p0) / (p1 - p0) * (x1 - x0)
+                    else:
+                        x_cross = (x0 + x1) / 2.0
+                    interval_endpoints.append(x_cross)
+                if in_interval[0]:
+                    interval_endpoints.insert(0, grid[0])
+                if in_interval[-1]:
+                    interval_endpoints.append(grid[-1])
+
+                bar_y = -0.1 - 0.08 * (n_levels - tdx)
+                for i in range(0, len(interval_endpoints) - 1, 2):
+                    lo, hi = interval_endpoints[i], interval_endpoints[i + 1]
+                    ax.fill_between([lo, hi], bar_y - 0.02, bar_y + 0.02,
+                                    color=color, alpha=0.3, clip_on=False, zorder=4)
+                    ax.fill_between([lo + 0.01, hi - 0.01], bar_y - 0.01, bar_y + 0.01,
+                                    color=color, alpha=0.7, clip_on=False, zorder=5)
+                    for x_end in (lo, hi):
+                        ax.plot([x_end, x_end], [bar_y, threshold], color=color,
+                                linestyle='--', alpha=0.6, clip_on=False)
+
+                ax.axhline(y=threshold, color='grey', linestyle='--', alpha=0.3, zorder=-1,
+                        label=f'{int(cl * 100):.0f}% Confidence Level')
+
+        if point_estimates is not None:
+            pe = to_np_if_torch(point_estimates[xdx]).reshape(-1)
+            ax.scatter(pe[0], 0, edgecolor='blue', facecolor='white', marker='*',
+                       label='Point Estimate', clip_on=False, zorder=5)
+            ax.axvline(x=pe[0], color='blue', alpha=0.5, linestyle='--',
+                       label='_nolegend_', clip_on=False)
+
+        if true_theta is not None:
+            tt = to_np_if_torch(true_theta).reshape(n_obs, -1)
+            ax.scatter(tt[xdx, 0], 0, edgecolor='red', facecolor='white', marker='*',
+                       label='True Parameter', clip_on=False, s=300, linewidth=2, zorder=5)
+            ax.axvline(x=tt[xdx, 0], color='red', alpha=0.5, linestyle='--',
+                       label='_nolegend_', clip_on=False, lw=5)
+
+        ax.set_xlabel(param_names[0], fontsize=12)
+        ax.set_xlim(x_low, x_high)
+        ax.set_ylabel('Confidence distribution', fontsize=12)
+        ax.set_ylim(0, 1)
+        ax.legend(fontsize=10)
+        if title is not None:
+            ax.set_title(title, fontsize=13)
+
+        if custom_ax is None:
+            if save_fig_path is not None:
+                fig.savefig(f'{save_fig_path}_{xdx}.png', bbox_inches='tight')
+                plt.close(fig)
+            else:
+                plt.show()
+
+
+def plot_posterior_distributions_1D(
+    posterior_estimator,
+    observations: Sequence,
+    credibility_levels: Sequence[float],
+    n_samples: int = 10_000,
+    param_dim: int = 0,
+    point_estimates: Optional[Sequence[np.ndarray]] = None,
+    true_theta: Optional[np.ndarray] = None,
+    param_names: Optional[Sequence[str]] = None,
+    colors: Optional[Sequence] = None,
+    title: Optional[str] = None,
+    figsize: Optional[Tuple[int, int]] = None,
+    xlim: Optional[Tuple[float, float]] = (-10, 10),
+    n_grid: int = 500,
+    save_fig_path: Optional[str] = None,
+    custom_ax: Optional[Axes] = None,
+) -> None:
+    """Plot the marginal posterior KDE with HPD intervals for 1D sweeps.
+
+    Mirrors the layout of ``plot_confidence_distributions_1D``: a normalized
+    density curve, one horizontal threshold line per credibility level (at the
+    normalized density of the HPD boundary), and interval bars below the axis.
+
+    Parameters
+    ----------
+    posterior_estimator :
+        Object with a ``.sample((n_samples,), x=obs)`` method returning an
+        array of shape ``(n_samples, d_theta)``.
+    observations :
+        Sequence of individual observations, one per figure.
+    credibility_levels :
+        Credibility levels, e.g. ``[0.9, 0.95]``.
+    n_samples :
+        Number of posterior samples to draw per observation.
+    param_dim :
+        Which parameter dimension to marginalize to for plotting.
+    point_estimates :
+        Optional sequence of arrays of shape ``(d_theta,)`` or ``(1,)``, one
+        per observation.
+    true_theta :
+        Optional array of shape ``(n_obs, d_theta)`` or ``(n_obs,)``.
+    param_names :
+        x-axis label; defaults to ``['$\\theta_1$']``.
+    colors :
+        Colors for each credibility level; defaults to a rainbow palette.
+    title :
+        Suptitle applied to every figure.
+    figsize :
+        ``(width, height)`` in inches.  Defaults to ``(7, 5)``.
+    xlim :
+        ``(low, high)`` x-axis limits.  Inferred from samples if omitted.
+    n_grid :
+        Number of points used to evaluate the KDE curve.
+    save_fig_path :
+        If given, figures are saved as ``<save_fig_path>_<obs_idx>.png``.
+    custom_ax : Axes, optional
+        If provided, draw into this existing axes instead of creating a new
+        figure.  Figure creation, ``plt.show()``, and ``save_fig_path`` are
+        all skipped; the caller is responsible for display/saving.  Intended
+        for embedding into a larger layout (e.g. a pairplot diagonal).
+    """
+    n_obs = len(observations)
+    n_levels = len(credibility_levels)
+
+    param_names = list(param_names) if param_names is not None else [r'$\theta_1$']
+    colors = list(colors) if colors is not None else list(cm.rainbow(np.linspace(0, 1, n_levels)))
+    figsize = figsize if figsize is not None else (7, 5)
+
+    if true_theta is not None:
+        true_theta = np.asarray(true_theta).reshape(n_obs, -1)
+
+    for xdx, obs in enumerate(observations):
+        raw_samples = posterior_estimator.sample((n_samples,), x=obs)
+        try:
+            marginal = np.asarray(raw_samples)[:, param_dim]
+        except (IndexError, TypeError):
+            marginal = np.asarray(raw_samples).reshape(-1)
+
+        kde = gaussian_kde(marginal)
+
+        x_low = xlim[0] if xlim is not None else float(marginal.min())
+        x_high = xlim[1] if xlim is not None else float(marginal.max())
+        grid = np.linspace(x_low, x_high, n_grid)
+
+        density = kde(grid)
+        density_max = density.max()
+        norm_density = density / density_max if density_max > 0 else density
+
+        map_x = float(grid[np.argmax(density)])
+
+        if custom_ax is not None:
+            ax = custom_ax
+        else:
+            fig, ax = plt.subplots(figsize=figsize)
+        ax.plot(grid, norm_density, color=colors[0], label='Posterior density', lw=5, clip_on=False)
+
+        if point_estimates:
+            ax.scatter(map_x, 0.0, marker='*', edgecolor=colors[0], facecolor='white', zorder=5,
+                    label='MAP', clip_on=False)
+            ax.axvline(x=map_x, color='grey', alpha=0.4, linestyle='--', clip_on=False,
+                    label='_nolegend_')
+
+        for tdx, cl in enumerate(credibility_levels):
+            color = colors[tdx % len(colors)]
+
+            lo, hi = _hpd_1d(marginal, cl)
+
+            boundary_density = float(np.mean([kde(lo), kde(hi)])) / density_max
+            boundary_density = float(np.clip(boundary_density, 0.0, 1.0))
+
+            in_hpd = (grid >= lo) & (grid <= hi)
+            bar_y = -0.1 - 0.08 * (n_levels - tdx)
+
+            ax.fill_between(grid, bar_y - 0.02, bar_y + 0.02,
+                            where=in_hpd, color=color, alpha=0.3,
+                            clip_on=False, zorder=4)
+            ax.fill_between(grid, bar_y - 0.01, bar_y + 0.01,
+                            where=in_hpd, color=color, alpha=0.7,
+                            clip_on=False, zorder=5)
+            for x_end in (lo, hi):
+                ax.plot([x_end, x_end], [bar_y, boundary_density],
+                        color=color, linestyle='--', alpha=0.6, clip_on=False)
+
+            ax.axhline(y=boundary_density, color='grey', linestyle='--', alpha=0.3, zorder=-1,
+                       label=f'{int(cl * 100):.0f}% HPD')
+
+        if true_theta is not None:
+            tt_val = float(true_theta[xdx, param_dim])
+            ax.scatter(tt_val, 0, edgecolor='red', facecolor='white', marker='*',
+                       label='True parameter', clip_on=False, s=300, linewidth=2, zorder=5)
+            ax.axvline(x=tt_val, color='red', alpha=0.5, linestyle='--',
+                       clip_on=False, label='_nolegend_', lw=5)
+
+        ax.set_xlabel(param_names[0], fontsize=12)
+        ax.set_xlim(x_low, x_high)
+        ax.set_ylabel('Normalized posterior density', fontsize=12)
+        ax.set_ylim(0, 1)
+        ax.legend(fontsize=10)
+        if title is not None:
+            ax.set_title(title, fontsize=13)
+
+        if custom_ax is None:
+            if save_fig_path is not None:
+                fig.savefig(f'{save_fig_path}_{xdx}.png', bbox_inches='tight')
+                plt.close(fig)
+            else:
+                plt.show()
 
 
 class MergedPatchHandler(HandlerPatch):

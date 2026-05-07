@@ -563,13 +563,18 @@ class LF2I:
         calibration_method: str = 'p-values',
         grid_size: int = 200,
         grid_bounds: Optional[np.ndarray] = None,
-    ) -> np.ndarray:
-        """Compute exact one-at-a-time (OAT) 1D intervals for each parameter dimension.
+        return_confidence_curve: bool = False,
+        slice_dims: Optional[Sequence[int]] = None,
+    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray, np.ndarray], List[np.ndarray], Tuple[List[np.ndarray], np.ndarray, np.ndarray]]:
+        """Compute OAT 1D intervals or multi-dimensional slices of the p-value function.
 
-        For each observation and each dimension d, constructs a 1D evaluation grid that
-        varies θ_d while holding all other dimensions fixed at θ^Focal, then finds the
-        interval where the p-value exceeds alpha.  This avoids the resolution artifacts of
-        slicing an existing ND evaluation grid.
+        When ``slice_dims`` is ``None`` (default), behaves as before: for each dimension
+        ``d``, varies θ_d on a 1D grid while fixing all other dimensions at θ^Focal, and
+        returns the ``[min, max]`` of accepted points per observation and dimension.
+
+        When ``slice_dims`` is a sequence of dimension indices, constructs a product grid
+        over exactly those dimensions (all others fixed at θ^Focal) and returns the full
+        set of accepted parameter vectors for each observation.
 
         Parameters
         ----------
@@ -582,17 +587,37 @@ class LF2I:
         calibration_method : str, optional
             Must be ``'p-values'``. Default ``'p-values'``.
         grid_size : int, optional
-            Number of points in each 1D grid. Default 200.
+            Number of points along each dimension of the grid. Default 200.
+            For ``slice_dims`` of length k, the total grid size is ``grid_size ** k``.
         grid_bounds : np.ndarray, shape (param_dim, 2), optional
-            Per-dimension ``[lo, hi]`` bounds for the 1D grid.  If None, derived from
+            Per-dimension ``[lo, hi]`` bounds for the grid.  If None, derived from
             the min/max of ``self.parameters_calib``.
+        return_confidence_curve : bool, optional
+            If True, also return p-values and the slice grid coordinates.  Default False.
+        slice_dims : sequence of int, optional
+            Dimensions to vary simultaneously.  If None (default), the classic OAT
+            behaviour is used (each dimension varied independently).  When provided,
+            a single product grid over the selected dimensions is evaluated and the
+            accepted points (in all ``param_dim`` coordinates) are returned for each
+            observation.
 
         Returns
         -------
-        np.ndarray, shape (n_obs, param_dim, 2)
-            ``result[i, d, 0]`` and ``result[i, d, 1]`` are the lower and upper endpoints
-            of the OAT interval for observation ``i`` and dimension ``d``.  NaN when the
-            interval is empty (no grid point accepted).
+        When ``slice_dims`` is None:
+            np.ndarray, shape (n_obs, param_dim, 2)
+                Lower/upper endpoints of the 1D interval per observation and dimension.
+                NaN when no grid point was accepted.
+            If ``return_confidence_curve=True``: tuple ``(intervals, pvalues, grid)``
+                * ``pvalues`` shape ``(n_obs, param_dim, grid_size)``
+                * ``grid`` shape ``(param_dim, grid_size)``
+        When ``slice_dims`` is provided:
+            List[np.ndarray] of length n_obs
+                Each element has shape ``(n_accepted_i, param_dim)`` — the accepted
+                parameter vectors for that observation.
+            If ``return_confidence_curve=True``: tuple ``(accepted_list, pvalues, grid)``
+                * ``pvalues`` shape ``(n_obs, n_grid_points)``
+                * ``grid`` shape ``(n_grid_points, len(slice_dims))`` — the slice-dim
+                  coordinates of each evaluated grid point.
         """
         if calibration_method != 'p-values':
             raise ValueError("oat_intervals only supports calibration_method='p-values'")
@@ -622,7 +647,49 @@ class LF2I:
         if x_np.ndim == 1:
             x_np = x_np.reshape(1, -1)
 
+        # --- slice_dims path: evaluate a product grid over selected dimensions ---
+        if slice_dims is not None:
+            slice_dims = list(slice_dims)
+            axes_1d = [np.linspace(grid_bounds[d, 0], grid_bounds[d, 1], grid_size) for d in slice_dims]
+            if len(slice_dims) == 1:
+                coords = axes_1d[0].reshape(-1, 1)
+            else:
+                mesh = np.meshgrid(*axes_1d, indexing='ij')
+                coords = np.stack([m.ravel() for m in mesh], axis=1)
+            n_grid_points = len(coords)
+
+            slice_grid = coords.astype(np.float32)  # (n_grid_points, len(slice_dims))
+
+            accepted_list: List[np.ndarray] = []
+            if return_confidence_curve:
+                all_pvalues = np.full((n_obs, n_grid_points), np.nan)
+
+            for i in range(n_obs):
+                pe = point_estimates[i]
+                xi = x_np[i:i+1]
+                grid_nd = np.tile(pe, (n_grid_points, 1)).astype(np.float32)
+                for idx, d in enumerate(slice_dims):
+                    grid_nd[:, d] = slice_grid[:, idx]
+
+                ts = self.test_statistic.evaluate(grid_nd, xi.astype(np.float32), mode='confidence_sets')
+                p_vals = self.calibration_model[calib_dict_key].predict_proba(
+                    X=preprocess_predict_p_values('confidence_sets', ts, grid_nd, self.calibration_model[calib_dict_key])
+                )[:, 1]
+
+                accepted_list.append(grid_nd[p_vals >= alpha])
+                if return_confidence_curve:
+                    all_pvalues[i] = p_vals
+
+            if return_confidence_curve:
+                return accepted_list, all_pvalues, slice_grid
+            return accepted_list
+
+        # --- default OAT path: one dimension at a time ---
         result = np.full((n_obs, param_dim, 2), np.nan)
+        if return_confidence_curve:
+            all_pvalues = np.full((n_obs, param_dim, grid_size), np.nan)
+            grid_values = np.empty((param_dim, grid_size), dtype=np.float32)
+
         for i in range(n_obs):
             pe = point_estimates[i]
             xi = x_np[i:i+1]
@@ -640,6 +707,14 @@ class LF2I:
                 if len(accepted) > 0:
                     result[i, d, 0] = accepted.min()
                     result[i, d, 1] = accepted.max()
+
+                if return_confidence_curve:
+                    all_pvalues[i, d] = p_vals
+                    if i == 0:
+                        grid_values[d] = grid_1d[:, d]
+
+        if return_confidence_curve:
+            return result, all_pvalues, grid_values
         return result
 
     def mc_diagnostics(

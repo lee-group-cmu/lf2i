@@ -1,6 +1,8 @@
 from typing import Optional, Tuple, Union, Dict, List, Sequence, Any
 from warnings import simplefilter
 
+import math
+
 import numpy as np
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -321,14 +323,18 @@ def calibration_cdf_panel(
     title: Optional[str] = None,
     figsize: Optional[Tuple] = None,
     save_fig_path: Optional[str] = None,
+    query_points: Optional[np.ndarray] = None,
 ) -> None:
     """Three-panel diagnostic figure combining a calibration score heatmap with CDF comparisons.
 
     Panels
     ------
-    Left   : calibration score heatmap (from :func:`calibration_score_plot`).
-    Middle : CDF comparison at the worst-match theta (highest ``score_key`` value).
-    Right  : CDF comparison at the best-match theta (lowest ``score_key`` value).
+    Left          : calibration score heatmap (from :func:`calibration_score_plot`).
+    Middle/Right  : CDF comparisons. When ``query_points`` is None (default), these
+                    show the worst-match theta (highest ``score_key``) and best-match
+                    theta (lowest ``score_key``). When ``query_points`` is provided,
+                    one panel is produced per query point and the points are indexed
+                    on the score heatmap.
 
     Parameters
     ----------
@@ -357,12 +363,15 @@ def calibration_cdf_panel(
         Overall figure suptitle.
     figsize : Tuple, optional
     save_fig_path : str, optional
+    query_points : np.ndarray, optional
+        Array of shape ``(n_query, param_dim)`` (or ``(param_dim,)`` for a single
+        point). When provided, CDF comparisons are shown for each of these points
+        instead of the automatic worst/best selection, and the points are marked
+        with index labels on the score heatmap.
     """
     from lf2i.utils.miscellanea import to_np_if_torch
 
     scores = estimation_errors[score_key]
-    worst_idx = int(np.argmax(scores))
-    best_idx = int(np.argmin(scores))
 
     calib_key = (
         'multiple_levels' if 'multiple_levels' in calibration_model
@@ -375,74 +384,163 @@ def calibration_cdf_panel(
     if grid_np.ndim == 1:
         grid_np = grid_np.reshape(-1, 1)
 
-    worst_theta = grid_np[worst_idx:worst_idx + 1]
-    best_theta = grid_np[best_idx:best_idx + 1]
-
     score_label = _score_label(score_key)
 
-    if figsize is None:
-        figsize = (18, 5)
+    if query_points is not None:
+        qp = np.atleast_2d(np.asarray(query_points, dtype=np.float32))
+        n_query = len(qp)
 
-    fig, axes = plt.subplots(1, 3, figsize=figsize)
+        ncols_right = math.ceil(math.sqrt(n_query))
+        nrows_right = math.ceil(n_query / ncols_right)
 
-    # Left: calibration score heatmap
-    mesh = calibration_score_plot(
-        parameters=grid_np,
-        scores=scores,
-        score_label=score_label,
-        param_dim=param_dim,
-        xlims=xlims,
-        ylims=ylims,
-        params_labels=params_labels,
-        custom_ax=axes[0],
-        n_bins=n_bins
-    )
-    if mesh is not None:
-        cbar = fig.colorbar(mesh, ax=axes[0])
-        cbar.set_label(score_label, fontsize=12, labelpad=6)
-        cbar.ax.tick_params(labelsize=10)
+        if figsize is None:
+            cell_w, cell_h = 5, 4
+            fig_h = max(nrows_right * cell_h, 6)
+            figsize = (fig_h + ncols_right * cell_w, fig_h)
 
-    # Annotate worst/best on the heatmap for 2-D parameter spaces
-    if param_dim == 2:
-        axes[0].scatter(
-            worst_theta[0, 0], worst_theta[0, 1],
-            color='black', marker='v', s=120, zorder=5,
+        fig = plt.figure(figsize=figsize)
+        fig_w, fig_h = figsize
+        right_col_w = (fig_w - fig_h) / ncols_right
+        gs = fig.add_gridspec(
+            nrows_right, 1 + ncols_right,
+            width_ratios=[fig_h] + [right_col_w] * ncols_right,
+            hspace=0.45, wspace=0.4,
         )
-        axes[0].scatter(
-            best_theta[0, 0], best_theta[0, 1],
-            color='white', marker='^', s=120, zorder=5,
-            edgecolors='black', linewidths=1,
-        )
-        legend_elements = [
-            Line2D([0], [0], marker='v', color='w', markerfacecolor='black', markersize=14, label='Worst'),
-            Line2D([0], [0], marker='^', color='w', markerfacecolor='white',
-                   markeredgecolor='black', markersize=14, label='Best'),
-        ]
-        axes[0].legend(handles=legend_elements, fontsize=14, loc='upper center', ncol=2, bbox_to_anchor=(0.5, -0.25))
-        axes[0].set_title('Local calibration risk', fontsize=14, pad=10)
 
-    # Middle/right: CDF comparisons
-    for ax, theta, label in [
-        (axes[1], worst_theta, '▼ Worst'),
-        (axes[2], best_theta, '△ Best'),
-    ]:
-        theta_str = ', '.join(f'{v:.2f}' for v in theta[0])
-        plot_cdf_comparison(
-            test_statistic=test_statistic,
-            calib_model=calib_model_single,
-            acceptance_region=acceptance_region,
-            theta_eval=theta,
-            simulator=simulator,
-            monte_carlo_size=monte_carlo_size,
-            n_grid=n_grid,
-            title=label,
-            custom_ax=ax,
+        ax_score = fig.add_subplot(gs[:, 0])
+
+        ax_cdfs = []
+        for r in range(nrows_right):
+            for c in range(ncols_right):
+                idx = r * ncols_right + c
+                ax = fig.add_subplot(gs[r, 1 + c])
+                if idx < n_query:
+                    ax_cdfs.append(ax)
+                else:
+                    ax.set_visible(False)
+
+        # Left: calibration score heatmap
+        mesh = calibration_score_plot(
+            parameters=grid_np,
+            scores=scores,
+            score_label=score_label,
+            param_dim=param_dim,
+            xlims=xlims,
+            ylims=ylims,
+            params_labels=params_labels,
+            custom_ax=ax_score,
+            n_bins=n_bins,
         )
-        ax.annotate(
-            rf'$\theta = ({theta_str})$',
-            xy=(0.5, -0.25), xycoords='axes fraction',
-            ha='center', va='top', fontsize=14,
+        if mesh is not None:
+            cbar = fig.colorbar(mesh, ax=ax_score)
+            cbar.set_label(score_label, fontsize=12, labelpad=6)
+            cbar.ax.tick_params(labelsize=10)
+
+        # Index query points on the score panel
+        if param_dim == 2:
+            for i, pt in enumerate(qp):
+                ax_score.scatter(pt[0], pt[1], color='black', s=120, zorder=5)
+                ax_score.annotate(
+                    str(i + 1), (pt[0], pt[1]),
+                    ha='center', va='center', fontsize=9,
+                    color='white', fontweight='bold', zorder=6,
+                )
+            ax_score.set_title('Local calibration risk', fontsize=14, pad=10)
+        else:
+            ymax = ax_score.get_ylim()[1]
+            for i, pt in enumerate(qp):
+                ax_score.axvline(pt[0], color='black', linestyle='--', linewidth=1, zorder=5)
+                ax_score.text(
+                    pt[0], ymax, str(i + 1),
+                    ha='center', va='bottom', fontsize=9, fontweight='bold',
+                )
+
+        # Right grid: one CDF comparison panel per query point
+        for i, (ax, pt) in enumerate(zip(ax_cdfs, qp)):
+            theta = pt.reshape(1, -1)
+            theta_str = ', '.join(f'{v:.2f}' for v in pt)
+            plot_cdf_comparison(
+                test_statistic=test_statistic,
+                calib_model=calib_model_single,
+                acceptance_region=acceptance_region,
+                theta_eval=theta,
+                simulator=simulator,
+                monte_carlo_size=monte_carlo_size,
+                n_grid=n_grid,
+                title=rf'$\theta_{{{i + 1}}} = ({theta_str})$',
+                custom_ax=ax,
+            )
+
+    else:
+        worst_idx = int(np.argmax(scores))
+        best_idx = int(np.argmin(scores))
+
+        worst_theta = grid_np[worst_idx:worst_idx + 1]
+        best_theta = grid_np[best_idx:best_idx + 1]
+
+        if figsize is None:
+            figsize = (18, 5)
+
+        fig, axes = plt.subplots(1, 3, figsize=figsize)
+
+        # Left: calibration score heatmap
+        mesh = calibration_score_plot(
+            parameters=grid_np,
+            scores=scores,
+            score_label=score_label,
+            param_dim=param_dim,
+            xlims=xlims,
+            ylims=ylims,
+            params_labels=params_labels,
+            custom_ax=axes[0],
+            n_bins=n_bins
         )
+        if mesh is not None:
+            cbar = fig.colorbar(mesh, ax=axes[0])
+            cbar.set_label(score_label, fontsize=12, labelpad=6)
+            cbar.ax.tick_params(labelsize=10)
+
+        # Annotate worst/best on the heatmap for 2-D parameter spaces
+        if param_dim == 2:
+            axes[0].scatter(
+                worst_theta[0, 0], worst_theta[0, 1],
+                color='black', marker='v', s=120, zorder=5,
+            )
+            axes[0].scatter(
+                best_theta[0, 0], best_theta[0, 1],
+                color='white', marker='^', s=120, zorder=5,
+                edgecolors='black', linewidths=1,
+            )
+            legend_elements = [
+                Line2D([0], [0], marker='v', color='w', markerfacecolor='black', markersize=14, label='Worst'),
+                Line2D([0], [0], marker='^', color='w', markerfacecolor='white',
+                       markeredgecolor='black', markersize=14, label='Best'),
+            ]
+            axes[0].legend(handles=legend_elements, fontsize=14, loc='upper center', ncol=2, bbox_to_anchor=(0.5, -0.25))
+            axes[0].set_title('Local calibration risk', fontsize=14, pad=10)
+
+        # Middle/right: CDF comparisons
+        for ax, theta, label in [
+            (axes[1], worst_theta, '▼ Worst'),
+            (axes[2], best_theta, '△ Best'),
+        ]:
+            theta_str = ', '.join(f'{v:.2f}' for v in theta[0])
+            plot_cdf_comparison(
+                test_statistic=test_statistic,
+                calib_model=calib_model_single,
+                acceptance_region=acceptance_region,
+                theta_eval=theta,
+                simulator=simulator,
+                monte_carlo_size=monte_carlo_size,
+                n_grid=n_grid,
+                title=label,
+                custom_ax=ax,
+            )
+            ax.annotate(
+                rf'$\theta = ({theta_str})$',
+                xy=(0.5, -0.25), xycoords='axes fraction',
+                ha='center', va='top', fontsize=14,
+            )
 
     if title is not None:
         fig.suptitle(title, fontsize=16, y=1.02)

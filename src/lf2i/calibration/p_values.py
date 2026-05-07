@@ -19,6 +19,7 @@ from lf2i.calibration.torch_utils import FeedForwardNN, LearnerClassification
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_fit_p_values
 from lf2i.utils.miscellanea import select_n_jobs, to_np_if_torch
 from lf2i.calibration.parametric_cd import ParametricCDFEstimator
+from lf2i.calibration.isplines import ISplineClassifier
 
 
 def conditional_sampling(
@@ -268,8 +269,14 @@ def estimate_rejection_proba(
             )
             algorithm.fit(test_statistics = inputs[:, 0],
                           poi = inputs[:, 1:])
+        elif algorithm == 'spline':
+            algorithm = ISplineClassifier(
+                monotone_constraints=1 if acceptance_region == 'right' else -1,
+                **algorithm_kwargs,
+            )
+            algorithm.fit(X=inputs, y=rejection_indicators)
         else:
-            raise ValueError(f"Only 'cat-gb', 'logistic', or custom algorithm (Any) are currently supported, got {algorithm}")
+            raise ValueError(f"Only 'cat-gb', 'logistic', 'tfm', 'parametric-nn', 'spline', or a custom algorithm (Any) are supported, got {algorithm}")
     else:
         inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm)
         algorithm.fit(X=inputs, y=rejection_indicators)
