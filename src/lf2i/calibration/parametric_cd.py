@@ -458,6 +458,12 @@ class ParametricCDFEstimator:
                 "I-spline CDF has no closed-form quantile function. "
                 "Use loss='brier' or 'weighted_brier' with cdf_model='ispline'."
             )
+        if normalize not in ('none', 'mean-std', 'min-max', 'percentiles'):
+            raise ValueError(
+                f"normalize must be one of 'none', 'mean-std', 'min-max', 'percentiles'. "
+                f"Got '{normalize}'."
+            )
+        self.normalize    = normalize
         self.cdf_model    = cdf_model
         self.n_knots      = n_knots
         self.spline_order = spline_order
@@ -491,11 +497,21 @@ class ParametricCDFEstimator:
         self.ispline_model_: Optional[ISplineCDFModel]     = None
         self.lambda_min_:   Optional[float]                = None
         self.lambda_max_:   Optional[float]                = None
-        self.labmda_lo_:    Optional[float]                = None
+        self.lambda_lo_:    Optional[float]                = None
         self.lambda_hi_:    Optional[float]                = None
         self.lambda_mean_:  Optional[float]                = None
         self.lambda_std_:   Optional[float]                = None
         self.history_:      Optional[list]                 = None
+
+    # ── helpers ───────────────────────────────────────────────────────────────
+
+    def _normalize_ts(self, ts: np.ndarray) -> np.ndarray:
+        if self.normalize == 'none':
+            return ts
+        elif self.normalize == 'mean-std':
+            return (ts - self.lambda_mean_) / self.lambda_std_
+        else:  # 'min-max' or 'percentiles'
+            return (ts - self.lambda_lo_) / (self.lambda_hi_ - self.lambda_lo_ + 1e-8)
 
     # ── fit ───────────────────────────────────────────────────────────────────
 
@@ -524,9 +540,16 @@ class ParametricCDFEstimator:
 
         # ── initialise model ──────────────────────────────────────────────────
         if self.cdf_model == 'sigmoid':
-            if normalize == 'mean-std':
-                
 
+            if self.normalize == 'mean-std':
+                self.lambda_mean_ = float(test_statistics.mean())
+                self.lambda_std_  = float(test_statistics.std()) + 1e-8
+            elif self.normalize == 'min-max':
+                self.lambda_lo_ = float(test_statistics.min())
+                self.lambda_hi_ = float(test_statistics.max())
+            elif self.normalize == 'percentiles':
+                self.lambda_lo_ = float(np.percentile(test_statistics, 0.1))
+                self.lambda_hi_ = float(np.percentile(test_statistics, 99.9))
 
             self.beta_net_  = BetaNetwork(
                 theta_dim, self.hidden_dim, self.n_hidden, self.activation
@@ -574,7 +597,9 @@ class ParametricCDFEstimator:
             ).to(self.device)
 
         # ── data ──────────────────────────────────────────────────────────────
-        lambda_t = torch.FloatTensor(test_statistics).to(self.device)
+        # lambda_t = torch.FloatTensor(test_statistics).to(self.device)
+        ts_input = self._normalize_ts(test_statistics) if self.cdf_model == 'sigmoid' else test_statistics
+        lambda_t = torch.FloatTensor(ts_input).to(self.device)
         theta_t  = torch.FloatTensor(poi).to(self.device)
         loader   = DataLoader(
             TensorDataset(lambda_t, theta_t),
@@ -668,7 +693,9 @@ class ParametricCDFEstimator:
             poi = poi.reshape(-1, 1)
 
         with torch.no_grad():
-            lambda_t = torch.FloatTensor(X[:, 0]).to(self.device)
+            # lambda_t = torch.FloatTensor(X[:, 0]).to(self.device)
+            ts_input = self._normalize_ts(X[:, 0]) if self.cdf_model == 'sigmoid' else X[:, 0]
+            lambda_t = torch.FloatTensor(ts_input).to(self.device)
             theta_t  = torch.FloatTensor(poi).to(self.device)
 
             if self.cdf_model == 'sigmoid':
