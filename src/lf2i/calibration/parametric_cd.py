@@ -429,7 +429,7 @@ class ParametricCDFEstimator:
         epochs:      int   = 500,
         lr:          float = 1e-3,
         batch_size:  int   = 512,
-        smooth_reg:  float = 0.0,    # ispline only: L2 penalty on consecutive weight differences
+        smooth_reg:  float = 0.0,    # sigmoid+pinball: weight on max-entropy reg (log κ); ispline: L2 penalty on consecutive weight diffs
         device:      Optional[str] = None,
         verbose:     bool  = True,
     ):
@@ -628,7 +628,7 @@ class ParametricCDFEstimator:
                     if isinstance(criterion, WeightedPinballLoss):
                         alpha_row           = criterion.alpha_grid.unsqueeze(0).to(lam_b.device) # (1, M)
                         predicted_quantiles = self.cdf_model_.quantile(alpha_row, mu, log_kappa)
-                        batch_loss          = criterion(predicted_quantiles, lam_b) + log_kappa.mean() # <- This amounts to maximum entropy regularization (entropy for logistic is \propto -log(\kappa), so maximize entropy by minimizing \kappa)
+                        batch_loss          = criterion(predicted_quantiles, lam_b) + self.smooth_reg * log_kappa.mean() # <- This amounts to maximum entropy regularization (entropy for logistic is \propto -log(\kappa), so maximize entropy by minimizing \kappa)
                     else:
                         cdf_vals   = self.cdf_model_(lam_b.unsqueeze(0), mu, log_kappa)
                         batch_loss = criterion(cdf_vals, lam_b)
