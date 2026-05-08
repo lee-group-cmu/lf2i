@@ -423,6 +423,8 @@ class ParametricCDFEstimator:
         bandwidth:   float = 0.1,
         beta_a:      float = 2.0,
         beta_b:      float = 5.0,
+        # Normalization
+        normalize:   str   = 'none',
         # optimisation
         epochs:      int   = 500,
         lr:          float = 1e-3,
@@ -489,6 +491,10 @@ class ParametricCDFEstimator:
         self.ispline_model_: Optional[ISplineCDFModel]     = None
         self.lambda_min_:   Optional[float]                = None
         self.lambda_max_:   Optional[float]                = None
+        self.labmda_lo_:    Optional[float]                = None
+        self.lambda_hi_:    Optional[float]                = None
+        self.lambda_mean_:  Optional[float]                = None
+        self.lambda_std_:   Optional[float]                = None
         self.history_:      Optional[list]                 = None
 
     # ── fit ───────────────────────────────────────────────────────────────────
@@ -518,6 +524,10 @@ class ParametricCDFEstimator:
 
         # ── initialise model ──────────────────────────────────────────────────
         if self.cdf_model == 'sigmoid':
+            if normalize == 'mean-std':
+                
+
+
             self.beta_net_  = BetaNetwork(
                 theta_dim, self.hidden_dim, self.n_hidden, self.activation
             ).to(self.device)
