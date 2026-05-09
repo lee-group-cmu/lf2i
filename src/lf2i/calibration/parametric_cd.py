@@ -424,7 +424,8 @@ class ParametricCDFEstimator:
         beta_a:      float = 2.0,
         beta_b:      float = 5.0,
         # Normalization
-        normalize:   str   = 'none',
+        normalize_ts:   str   = 'none',
+        normalize_theta: str = 'none',
         # optimisation
         epochs:      int   = 500,
         lr:          float = 1e-3,
@@ -458,12 +459,20 @@ class ParametricCDFEstimator:
                 "I-spline CDF has no closed-form quantile function. "
                 "Use loss='brier' or 'weighted_brier' with cdf_model='ispline'."
             )
-        if normalize not in ('none', 'mean-std', 'min-max', 'percentiles'):
+        if normalize_ts not in ('none', 'mean-std', 'min-max', 'percentiles'):
             raise ValueError(
-                f"normalize must be one of 'none', 'mean-std', 'min-max', 'percentiles'. "
-                f"Got '{normalize}'."
+                f"normalize_ts must be one of 'none', 'mean-std', 'min-max', 'percentiles'. "
+                f"Got '{normalize_ts}'."
             )
-        self.normalize    = normalize
+        
+        if normalize_theta not in ('none', 'mean-std', 'min-max'):
+            raise ValueError(
+                f"normalize_theta must be one of 'none', 'mean-std', 'min-max'. "
+                f"Got '{normalize_theta}'."
+            )
+
+        self.normalize_ts    = normalize_ts
+        self.normalize_theta = normalize_theta
         self.cdf_model    = cdf_model
         self.n_knots      = n_knots
         self.spline_order = spline_order
@@ -501,17 +510,29 @@ class ParametricCDFEstimator:
         self.lambda_hi_:    Optional[float]                = None
         self.lambda_mean_:  Optional[float]                = None
         self.lambda_std_:   Optional[float]                = None
+        self.theta_mean_:   Optional[np.ndarray]           = None
+        self.theta_std_:    Optional[np.ndarray]           = None
+        self.theta_lo_:     Optional[np.ndarray]           = None
+        self.theta_hi_:     Optional[np.ndarray]           = None
         self.history_:      Optional[list]                 = None
 
     # ── helpers ───────────────────────────────────────────────────────────────
 
     def _normalize_ts(self, ts: np.ndarray) -> np.ndarray:
-        if self.normalize == 'none':
+        if self.normalize_ts == 'none':
             return ts
-        elif self.normalize == 'mean-std':
+        elif self.normalize_ts == 'mean-std':
             return (ts - self.lambda_mean_) / self.lambda_std_
         else:  # 'min-max' or 'percentiles'
             return (ts - self.lambda_lo_) / (self.lambda_hi_ - self.lambda_lo_ + 1e-8)
+
+    def _normalize_theta(self, theta: np.ndarray) -> np.ndarray:
+        if self.normalize_theta == 'none':
+            return theta
+        elif self.normalize_theta == 'mean-std':
+            return (theta - self.theta_mean_) / self.theta_std_
+        else:  # 'min-max'
+            return (theta - self.theta_lo_) / (self.theta_hi_ - self.theta_lo_ + 1e-8)
 
     # ── fit ───────────────────────────────────────────────────────────────────
 
@@ -541,15 +562,23 @@ class ParametricCDFEstimator:
         # ── initialise model ──────────────────────────────────────────────────
         if self.cdf_model == 'sigmoid':
 
-            if self.normalize == 'mean-std':
+            if self.normalize_ts == 'mean-std':
                 self.lambda_mean_ = float(test_statistics.mean())
                 self.lambda_std_  = float(test_statistics.std()) + 1e-8
-            elif self.normalize == 'min-max':
+            elif self.normalize_ts == 'min-max':
                 self.lambda_lo_ = float(test_statistics.min())
                 self.lambda_hi_ = float(test_statistics.max())
-            elif self.normalize == 'percentiles':
+            elif self.normalize_ts == 'percentiles':
                 self.lambda_lo_ = float(np.percentile(test_statistics, 0.1))
                 self.lambda_hi_ = float(np.percentile(test_statistics, 99.9))
+
+            # parameter input normalisation for BetaNetwork
+            if self.normalize_theta == 'mean-std':
+                self.theta_mean_ = poi.mean(axis=0)
+                self.theta_std_  = poi.std(axis=0) + 1e-8
+            elif self.normalize_theta == 'min-max':
+                self.theta_lo_ = poi.min(axis=0)
+                self.theta_hi_ = poi.max(axis=0)
 
             self.beta_net_  = BetaNetwork(
                 theta_dim, self.hidden_dim, self.n_hidden, self.activation
@@ -598,9 +627,10 @@ class ParametricCDFEstimator:
 
         # ── data ──────────────────────────────────────────────────────────────
         # lambda_t = torch.FloatTensor(test_statistics).to(self.device)
-        ts_input = self._normalize_ts(test_statistics) if self.cdf_model == 'sigmoid' else test_statistics
-        lambda_t = torch.FloatTensor(ts_input).to(self.device)
-        theta_t  = torch.FloatTensor(poi).to(self.device)
+        ts_input  = self._normalize_ts(test_statistics) if self.cdf_model == 'sigmoid' else test_statistics
+        poi_input = self._normalize_theta(poi) if self.cdf_model == 'sigmoid' else poi
+        lambda_t  = torch.FloatTensor(ts_input).to(self.device)
+        theta_t   = torch.FloatTensor(poi_input).to(self.device)
         loader   = DataLoader(
             TensorDataset(lambda_t, theta_t),
             batch_size = self.batch_size,
@@ -694,9 +724,10 @@ class ParametricCDFEstimator:
 
         with torch.no_grad():
             # lambda_t = torch.FloatTensor(X[:, 0]).to(self.device)
-            ts_input = self._normalize_ts(X[:, 0]) if self.cdf_model == 'sigmoid' else X[:, 0]
-            lambda_t = torch.FloatTensor(ts_input).to(self.device)
-            theta_t  = torch.FloatTensor(poi).to(self.device)
+            ts_input  = self._normalize_ts(X[:, 0]) if self.cdf_model == 'sigmoid' else X[:, 0]
+            poi_input = self._normalize_theta(poi) if self.cdf_model == 'sigmoid' else poi
+            lambda_t  = torch.FloatTensor(ts_input).to(self.device)
+            theta_t   = torch.FloatTensor(poi_input).to(self.device)
 
             if self.cdf_model == 'sigmoid':
                 beta      = self.beta_net_(theta_t)
