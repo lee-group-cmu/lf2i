@@ -111,7 +111,7 @@ class WeightedPinballLoss(nn.Module):
         super().__init__()
         self.n_alpha = n_alpha
 
-        alpha_grid = (1-2e-4)*torch.rand(n_alpha) + 1e-4 # torch.linspace(1e-4, 1 - 1e-4, n_alpha)   # (M,)
+        alpha_grid = torch.linspace(1e-4, 1 - 1e-4, n_alpha) # (1-2e-4)*torch.rand(n_alpha) + 1e-4    # (M,)
         self.register_buffer('alpha_grid', alpha_grid)
 
         # ── build weight vector ───────────────────────────────────────────────
@@ -145,8 +145,8 @@ class WeightedPinballLoss(nn.Module):
         alpha_row = self.alpha_grid.unsqueeze(0)                    # (1, M)
         pinball   = torch.where(
             residuals >= 0,
-            (1 - alpha_row) * residuals,
-            -alpha_row * residuals,
+            alpha_row * residuals,
+            -(1 - alpha_row) * residuals,
         )
         # weight each α level, then average over samples
         return 2 * (pinball * self.weights.unsqueeze(0)).sum(dim=1).mean()
@@ -177,7 +177,7 @@ class SigmoidCDF(nn.Module):
                  ) -> torch.Tensor: # (n, M)
         """Inverse CDF of the sigmoid."""
         kappa = torch.exp(log_kappa)
-        return mu - (1/kappa) * torch.log(alpha / (1 - alpha))
+        return mu + (1/kappa) * torch.log(alpha / (1 - alpha))
     
 # class BetaNetwork(nn.Module):
 #     """
@@ -569,8 +569,8 @@ class ParametricCDFEstimator:
                 self.lambda_lo_ = float(test_statistics.min())
                 self.lambda_hi_ = float(test_statistics.max())
             elif self.normalize_ts == 'percentiles':
-                self.lambda_lo_ = float(np.percentile(test_statistics, 0.1))
-                self.lambda_hi_ = float(np.percentile(test_statistics, 99.9))
+                self.lambda_lo_ = float(np.percentile(test_statistics, 0.01))
+                self.lambda_hi_ = float(np.percentile(test_statistics, 99.99))
 
             # parameter input normalisation for BetaNetwork
             if self.normalize_theta == 'mean-std':
