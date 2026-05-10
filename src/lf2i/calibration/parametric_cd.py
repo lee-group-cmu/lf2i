@@ -681,7 +681,7 @@ class ParametricCDFEstimator:
             avg = epoch_loss / len(loader)
             self.history_.append(avg)
             if self.verbose and (epoch + 1) % 100 == 0:
-                print(f"Epoch {epoch+1:4d}/{self.epochs}  |  loss: {avg:.5f}")
+                print(f"Epoch {epoch+1:4d}/{self.epochs}  |  loss: {avg:.5f}", flush=True)
 
         if self.cdf_model == 'sigmoid':
             self.beta_net_.eval()
