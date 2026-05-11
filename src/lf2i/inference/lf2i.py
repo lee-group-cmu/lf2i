@@ -664,42 +664,57 @@ class LF2I:
         if x_np.ndim == 1:
             x_np = x_np.reshape(1, -1)
 
-        # --- slice_dims path: evaluate a product grid over selected dimensions ---
+        # Shared KDTree for conditional neighbourhood queries (both paths)
+        if eg_np is not None:
+            _eg_lo  = eg_np.min(axis=0)
+            _eg_rng = eg_np.max(axis=0) - _eg_lo
+            _eg_rng[_eg_rng == 0] = 1.0
+            _eg_scaled = (eg_np - _eg_lo) / _eg_rng
+            _knn_k = max(50, int(0.05 * len(eg_np)))
+            _tree = _cKDTree(_eg_scaled)
+
+        # --- slice_dims path: evaluate a grid over selected dimensions ---
         if slice_dims is not None:
             slice_dims = list(slice_dims)
+            non_slice_dims = [k for k in range(param_dim) if k not in slice_dims]
 
-            if eg_np is not None:
-                # Use the custom evaluation grid directly — already constrained to valid space.
-                # grid_nd uses all param_dim columns; slice_grid exposes only the slice dims.
-                grid_nd_base = eg_np.astype(np.float32)
-                slice_grid = grid_nd_base[:, slice_dims]  # (n_grid_points, len(slice_dims))
-            else:
+            if eg_np is None:
+                # Fallback: uniform product grid with non-slice dims fixed at focal point
                 axes_1d = [np.linspace(grid_bounds[d, 0], grid_bounds[d, 1], grid_size) for d in slice_dims]
                 if len(slice_dims) == 1:
                     coords = axes_1d[0].reshape(-1, 1)
                 else:
                     mesh = np.meshgrid(*axes_1d, indexing='ij')
                     coords = np.stack([m.ravel() for m in mesh], axis=1)
-                # Build full-dim grid with other dims fixed per-observation (done in loop below)
-                slice_grid = coords.astype(np.float32)
-                grid_nd_base = None  # constructed per-observation in loop
-
-            n_grid_points = len(slice_grid)
+                slice_grid_fallback = coords.astype(np.float32)
 
             accepted_list: List[np.ndarray] = []
-            if return_confidence_curve:
-                all_pvalues = np.full((n_obs, n_grid_points), np.nan)
+            all_pvalues_list: List[np.ndarray] = []
+            slice_grid_out: Optional[np.ndarray] = None
 
             for i in range(n_obs):
                 pe = point_estimates[i]
                 xi = x_np[i:i+1]
-                
-                if grid_nd_base is not None:
-                    grid_nd = grid_nd_base  # already full-dim, use as-is
+
+                if eg_np is not None:
+                    # Filter eval grid to rows where non-slice dims are near the focal point
+                    if non_slice_dims:
+                        pe_ns_scaled = ((pe - _eg_lo) / _eg_rng)[non_slice_dims]
+                        _tree_ns = _cKDTree(_eg_scaled[:, non_slice_dims])
+                        _, _nn_idx = _tree_ns.query(pe_ns_scaled, k=min(_knn_k, len(eg_np)))
+                        grid_nd = eg_np[_nn_idx].astype(np.float32)
+                    else:
+                        grid_nd = eg_np.astype(np.float32)
+                    slice_grid_i = grid_nd[:, slice_dims]
                 else:
+                    n_grid_points = len(slice_grid_fallback)
                     grid_nd = np.tile(pe, (n_grid_points, 1)).astype(np.float32)
                     for idx, d in enumerate(slice_dims):
-                        grid_nd[:, d] = slice_grid[:, idx]
+                        grid_nd[:, d] = slice_grid_fallback[:, idx]
+                    slice_grid_i = slice_grid_fallback
+
+                if i == 0:
+                    slice_grid_out = slice_grid_i
 
                 ts = self.test_statistic.evaluate(grid_nd, xi.astype(np.float32), mode='confidence_sets')
                 p_vals = self.calibration_model[calib_dict_key].predict_proba(
@@ -707,33 +722,38 @@ class LF2I:
                 )[:, 1]
 
                 accepted_list.append(grid_nd[p_vals >= alpha])
-                if return_confidence_curve:
-                    all_pvalues[i] = p_vals
+                all_pvalues_list.append(p_vals)
 
             if return_confidence_curve:
-                return accepted_list, all_pvalues, slice_grid
+                return accepted_list, all_pvalues_list, slice_grid_out
             return accepted_list
 
         # --- default OAT path: one dimension at a time ---
-        # Precompute per-dimension sweep values: use sorted eval-grid values when available,
-        # otherwise fall back to a uniform linspace within the derived bounds.
-        if eg_np is not None:
-            sweep_vals = [np.sort(eg_np[:, d]) for d in range(param_dim)]
-        else:
-            sweep_vals = [np.linspace(grid_bounds[d, 0], grid_bounds[d, 1], grid_size) for d in range(param_dim)]
-        n_sweep = len(sweep_vals[0])
 
         result = np.full((n_obs, param_dim, 2), np.nan)
         if return_confidence_curve:
-            all_pvalues = np.full((n_obs, param_dim, n_sweep), np.nan)
-            grid_values = np.stack(sweep_vals).astype(np.float32)  # (param_dim, n_sweep)
+            all_pvalues = np.full((n_obs, param_dim, grid_size), np.nan)
+            grid_values = np.empty((param_dim, grid_size), dtype=np.float32)  # from obs 0
 
         for i in range(n_obs):
             pe = point_estimates[i]
             xi = x_np[i:i+1]
+
+            if eg_np is not None:
+                pe_scaled = (pe - _eg_lo) / _eg_rng
+                _, _nn_idx = _tree.query(pe_scaled, k=min(_knn_k, len(eg_np)))
+                _neighbors = eg_np[_nn_idx]
+
             for d in range(param_dim):
-                grid_1d = np.tile(pe, (n_sweep, 1)).astype(np.float32)
-                grid_1d[:, d] = sweep_vals[d]
+                if eg_np is not None:
+                    lo_d = float(_neighbors[:, d].min())
+                    hi_d = float(_neighbors[:, d].max())
+                else:
+                    lo_d, hi_d = float(grid_bounds[d, 0]), float(grid_bounds[d, 1])
+
+                sweep_d = np.linspace(lo_d, hi_d, grid_size).astype(np.float32)
+                grid_1d = np.tile(pe, (grid_size, 1)).astype(np.float32)
+                grid_1d[:, d] = sweep_d
 
                 ts = self.test_statistic.evaluate(grid_1d, xi.astype(np.float32), mode='confidence_sets')
                 p_vals = self.calibration_model[calib_dict_key].predict_proba(
@@ -747,6 +767,8 @@ class LF2I:
 
                 if return_confidence_curve:
                     all_pvalues[i, d] = p_vals
+                    if i == 0:
+                        grid_values[d] = sweep_d
 
         if return_confidence_curve:
             return result, all_pvalues, grid_values
