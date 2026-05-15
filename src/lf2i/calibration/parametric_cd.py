@@ -111,7 +111,7 @@ class WeightedPinballLoss(nn.Module):
         super().__init__()
         self.n_alpha = n_alpha
 
-        alpha_grid = (1-2e-4)*torch.rand(n_alpha) + 1e-4 # torch.linspace(1e-4, 1 - 1e-4, n_alpha)   # (M,)
+        alpha_grid = torch.linspace(1e-4, 1 - 1e-4, n_alpha) # (1-2e-4)*torch.rand(n_alpha) + 1e-4    # (M,)
         self.register_buffer('alpha_grid', alpha_grid)
 
         # ── build weight vector ───────────────────────────────────────────────
@@ -145,8 +145,8 @@ class WeightedPinballLoss(nn.Module):
         alpha_row = self.alpha_grid.unsqueeze(0)                    # (1, M)
         pinball   = torch.where(
             residuals >= 0,
-            (1 - alpha_row) * residuals,
-            -alpha_row * residuals,
+            alpha_row * residuals,
+            -(1 - alpha_row) * residuals,
         )
         # weight each α level, then average over samples
         return 2 * (pinball * self.weights.unsqueeze(0)).sum(dim=1).mean()
@@ -177,7 +177,7 @@ class SigmoidCDF(nn.Module):
                  ) -> torch.Tensor: # (n, M)
         """Inverse CDF of the sigmoid."""
         kappa = torch.exp(log_kappa)
-        return mu - (1/kappa) * torch.log(alpha / (1 - alpha))
+        return mu + (1/kappa) * torch.log(alpha / (1 - alpha))
     
 # class BetaNetwork(nn.Module):
 #     """
@@ -423,11 +423,14 @@ class ParametricCDFEstimator:
         bandwidth:   float = 0.1,
         beta_a:      float = 2.0,
         beta_b:      float = 5.0,
+        # Normalization
+        normalize_ts:   str   = 'none',
+        normalize_theta: str = 'none',
         # optimisation
         epochs:      int   = 500,
         lr:          float = 1e-3,
         batch_size:  int   = 512,
-        smooth_reg:  float = 0.0,    # ispline only: L2 penalty on consecutive weight differences
+        smooth_reg:  float = 0.0,    # sigmoid+pinball: weight on max-entropy reg (log κ); ispline: L2 penalty on consecutive weight diffs
         device:      Optional[str] = None,
         verbose:     bool  = True,
     ):
@@ -456,6 +459,20 @@ class ParametricCDFEstimator:
                 "I-spline CDF has no closed-form quantile function. "
                 "Use loss='brier' or 'weighted_brier' with cdf_model='ispline'."
             )
+        if normalize_ts not in ('none', 'mean-std', 'min-max', 'percentiles'):
+            raise ValueError(
+                f"normalize_ts must be one of 'none', 'mean-std', 'min-max', 'percentiles'. "
+                f"Got '{normalize_ts}'."
+            )
+        
+        if normalize_theta not in ('none', 'mean-std', 'min-max'):
+            raise ValueError(
+                f"normalize_theta must be one of 'none', 'mean-std', 'min-max'. "
+                f"Got '{normalize_theta}'."
+            )
+
+        self.normalize_ts    = normalize_ts
+        self.normalize_theta = normalize_theta
         self.cdf_model    = cdf_model
         self.n_knots      = n_knots
         self.spline_order = spline_order
@@ -489,7 +506,33 @@ class ParametricCDFEstimator:
         self.ispline_model_: Optional[ISplineCDFModel]     = None
         self.lambda_min_:   Optional[float]                = None
         self.lambda_max_:   Optional[float]                = None
+        self.lambda_lo_:    Optional[float]                = None
+        self.lambda_hi_:    Optional[float]                = None
+        self.lambda_mean_:  Optional[float]                = None
+        self.lambda_std_:   Optional[float]                = None
+        self.theta_mean_:   Optional[np.ndarray]           = None
+        self.theta_std_:    Optional[np.ndarray]           = None
+        self.theta_lo_:     Optional[np.ndarray]           = None
+        self.theta_hi_:     Optional[np.ndarray]           = None
         self.history_:      Optional[list]                 = None
+
+    # ── helpers ───────────────────────────────────────────────────────────────
+
+    def _normalize_ts(self, ts: np.ndarray) -> np.ndarray:
+        if self.normalize_ts == 'none':
+            return ts
+        elif self.normalize_ts == 'mean-std':
+            return (ts - self.lambda_mean_) / self.lambda_std_
+        else:  # 'min-max' or 'percentiles'
+            return (ts - self.lambda_lo_) / (self.lambda_hi_ - self.lambda_lo_ + 1e-8)
+
+    def _normalize_theta(self, theta: np.ndarray) -> np.ndarray:
+        if self.normalize_theta == 'none':
+            return theta
+        elif self.normalize_theta == 'mean-std':
+            return (theta - self.theta_mean_) / self.theta_std_
+        else:  # 'min-max'
+            return (theta - self.theta_lo_) / (self.theta_hi_ - self.theta_lo_ + 1e-8)
 
     # ── fit ───────────────────────────────────────────────────────────────────
 
@@ -518,6 +561,25 @@ class ParametricCDFEstimator:
 
         # ── initialise model ──────────────────────────────────────────────────
         if self.cdf_model == 'sigmoid':
+
+            if self.normalize_ts == 'mean-std':
+                self.lambda_mean_ = float(test_statistics.mean())
+                self.lambda_std_  = float(test_statistics.std()) + 1e-8
+            elif self.normalize_ts == 'min-max':
+                self.lambda_lo_ = float(test_statistics.min())
+                self.lambda_hi_ = float(test_statistics.max())
+            elif self.normalize_ts == 'percentiles':
+                self.lambda_lo_ = float(np.percentile(test_statistics, 0.01))
+                self.lambda_hi_ = float(np.percentile(test_statistics, 99.99))
+
+            # parameter input normalisation for BetaNetwork
+            if self.normalize_theta == 'mean-std':
+                self.theta_mean_ = poi.mean(axis=0)
+                self.theta_std_  = poi.std(axis=0) + 1e-8
+            elif self.normalize_theta == 'min-max':
+                self.theta_lo_ = poi.min(axis=0)
+                self.theta_hi_ = poi.max(axis=0)
+
             self.beta_net_  = BetaNetwork(
                 theta_dim, self.hidden_dim, self.n_hidden, self.activation
             ).to(self.device)
@@ -564,8 +626,11 @@ class ParametricCDFEstimator:
             ).to(self.device)
 
         # ── data ──────────────────────────────────────────────────────────────
-        lambda_t = torch.FloatTensor(test_statistics).to(self.device)
-        theta_t  = torch.FloatTensor(poi).to(self.device)
+        # lambda_t = torch.FloatTensor(test_statistics).to(self.device)
+        ts_input  = self._normalize_ts(test_statistics) if self.cdf_model == 'sigmoid' else test_statistics
+        poi_input = self._normalize_theta(poi) if self.cdf_model == 'sigmoid' else poi
+        lambda_t  = torch.FloatTensor(ts_input).to(self.device)
+        theta_t   = torch.FloatTensor(poi_input).to(self.device)
         loader   = DataLoader(
             TensorDataset(lambda_t, theta_t),
             batch_size = self.batch_size,
@@ -593,7 +658,7 @@ class ParametricCDFEstimator:
                     if isinstance(criterion, WeightedPinballLoss):
                         alpha_row           = criterion.alpha_grid.unsqueeze(0).to(lam_b.device) # (1, M)
                         predicted_quantiles = self.cdf_model_.quantile(alpha_row, mu, log_kappa)
-                        batch_loss          = criterion(predicted_quantiles, lam_b) + log_kappa.mean() # <- This amounts to maximum entropy regularization (entropy for logistic is \propto -log(\kappa), so maximize entropy by minimizing \kappa)
+                        batch_loss          = criterion(predicted_quantiles, lam_b) + self.smooth_reg * log_kappa.mean() # <- This amounts to maximum entropy regularization (entropy for logistic is \propto -log(\kappa), so maximize entropy by minimizing \kappa)
                     else:
                         cdf_vals   = self.cdf_model_(lam_b.unsqueeze(0), mu, log_kappa)
                         batch_loss = criterion(cdf_vals, lam_b)
@@ -616,7 +681,7 @@ class ParametricCDFEstimator:
             avg = epoch_loss / len(loader)
             self.history_.append(avg)
             if self.verbose and (epoch + 1) % 100 == 0:
-                print(f"Epoch {epoch+1:4d}/{self.epochs}  |  loss: {avg:.5f}")
+                print(f"Epoch {epoch+1:4d}/{self.epochs}  |  loss: {avg:.5f}", flush=True)
 
         if self.cdf_model == 'sigmoid':
             self.beta_net_.eval()
@@ -658,8 +723,11 @@ class ParametricCDFEstimator:
             poi = poi.reshape(-1, 1)
 
         with torch.no_grad():
-            lambda_t = torch.FloatTensor(X[:, 0]).to(self.device)
-            theta_t  = torch.FloatTensor(poi).to(self.device)
+            # lambda_t = torch.FloatTensor(X[:, 0]).to(self.device)
+            ts_input  = self._normalize_ts(X[:, 0]) if self.cdf_model == 'sigmoid' else X[:, 0]
+            poi_input = self._normalize_theta(poi) if self.cdf_model == 'sigmoid' else poi
+            lambda_t  = torch.FloatTensor(ts_input).to(self.device)
+            theta_t   = torch.FloatTensor(poi_input).to(self.device)
 
             if self.cdf_model == 'sigmoid':
                 beta      = self.beta_net_(theta_t)
