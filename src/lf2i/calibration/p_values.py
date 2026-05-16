@@ -1,4 +1,5 @@
 from typing import Union, Tuple, Any, Optional, List, Dict
+import inspect
 
 import numpy as np
 import torch
@@ -278,6 +279,12 @@ def estimate_rejection_proba(
         else:
             raise ValueError(f"Only 'cat-gb', 'logistic', 'tfm', 'parametric-nn', 'spline', or a custom algorithm (Any) are supported, got {algorithm}")
     else:
-        inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm)
-        algorithm.fit(X=inputs, y=rejection_indicators)
+        inputs = preprocess_fit_p_values(inputs, algorithm)
+        if 'y' not in inspect.signature(algorithm.fit).parameters:
+            # AbstractCDFEstimator: fit takes X only, predict returns p-values
+            algorithm.fit(X=inputs)
+        else:
+            # AbstractProbabilisticClassifier: fit takes X and y
+            rejection_indicators = preprocess_fit_p_values(rejection_indicators, algorithm).reshape(-1,)
+            algorithm.fit(X=inputs, y=rejection_indicators)
     return algorithm
