@@ -243,7 +243,8 @@ def plot_cdf_comparison(
     calib_model : Any
         A single calibration model (a value from ``lf2i.calibration_model``), must have ``predict_proba``.
     acceptance_region : str
-        ``'left'`` or ``'right'``.
+        Deprecated. The calibration model is now assumed to always estimate the
+        CDF direction; this argument is ignored.
     theta_eval : np.ndarray, shape (param_dim,) or (1, param_dim)
         The parameter value at which to evaluate.
     simulator : Simulator
@@ -279,9 +280,8 @@ def plot_cdf_comparison(
     theta_rep = np.tile(theta_eval, (n_grid, 1))
     X_eval = preprocess_predict_p_values('diagnostics', lambda_grid, theta_rep, calib_model)
     proba = calib_model.predict_proba(X=X_eval)
-    # For acceptance_region='right': col 1 = P(T <= lambda | theta) = CDF
-    # For acceptance_region='left':  col 0 = 1 - P(T >= lambda | theta) = CDF
-    cdf_hat = proba[:, 1] if acceptance_region == 'right' else proba[:, 0]
+    # Calibration model always estimates the CDF; acceptance_region is deprecated.
+    cdf_hat = proba[:, 1]
 
     own_fig = custom_ax is None
     if own_fig:

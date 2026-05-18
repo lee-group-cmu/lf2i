@@ -41,7 +41,7 @@ class AbstractCDFEstimator(Protocol):
         """
         ...
 
-    def predict(
+    def predict_proba(
         self,
         X: Union[np.ndarray, torch.Tensor],
         **kwargs,
@@ -58,6 +58,9 @@ class AbstractCDFEstimator(Protocol):
         Returns
         -------
         np.ndarray
-            Shape (n,). P-value for each row of X.
+            Shape (n, 2).
+            - [:, 0] = P(reject=0 | cutoff, θ)
+            - [:, 1] = P(reject=1 | cutoff, θ)
+            Rows sum to 1.
         """
         ...

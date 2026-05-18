@@ -431,7 +431,7 @@ def monte_carlo_pvalue_diagnostics(
         # Empirical CDF: midpoint estimate (i - 0.5) / M for i = 1, ..., M
         u = (np.arange(1, M + 1) - 0.5) / M
         # p-value = 1-F for 'left', F for 'right'; match target to direction
-        u_target = 1.0 - u if test_statistic.acceptance_region == 'left' else u
+        u_target = u  # calib model always predicts CDF; acceptance_region handling is downstream
         residuals = p_hat_sorted - u_target
 
         # CRPS: trapezoid integral of (F_hat(t) - F_emp(t))^2 over the MC sample range
@@ -441,8 +441,6 @@ def monte_carlo_pvalue_diagnostics(
 
         # Reference CRPS: marginal CDF predictor vs local empirical CDF
         F_marginal = marginal_cdf(T_sorted)
-        if test_statistic.acceptance_region == 'left':
-            F_marginal = 1.0 - F_marginal
         ref_residuals = F_marginal - u_target
         ref_seg_err_sq = 0.5 * (ref_residuals[:-1] ** 2 + ref_residuals[1:] ** 2)
         crps_ref[j] = np.sum(ref_seg_err_sq * dT)
