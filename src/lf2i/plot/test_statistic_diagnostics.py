@@ -32,7 +32,7 @@ def plot_parameter_relevance(
     # Draw n_curves values for every parameter at once; we'll override the swept one below.
     other_draws = rng.uniform(bounds_arr[:, 0], bounds_arr[:, 1], size=(n_curves, n_params))
 
-    fig, axs = plt.subplots(1, n_params, figsize=(4 * n_params, 4))
+    fig, axs = plt.subplots(1, n_params, figsize=(4 * n_params, 4), sharey=True)
     if n_params == 1:
         axs = [axs]
 
@@ -55,13 +55,11 @@ def plot_parameter_relevance(
                 f'{param_names[j]}={other_draws[k, j]:.2g}'
                 for j in range(n_params) if j != i
             )
-            axs[i].plot(grid_1d, mc_cvs, label=label if n_params > 1 else None)
+            axs[i].plot(grid_1d, mc_cvs, label=label if n_params > 1 else None, c='grey', alpha=0.7)
 
         axs[i].set_xlabel(name)
         axs[i].set_ylabel('Critical Value')
-        if n_params > 1:
-            axs[i].legend(fontsize='x-small')
 
-    fig.suptitle(f'MC Critical Values  (α={1 - confidence_level:.3g})', y=1.02)
+    fig.suptitle(f'MC Critical Values  ({100*(1-confidence_level if test_statistic.acceptance_region == "right" else confidence_level):.3g}th percentile)', y=1.02)
     plt.tight_layout()
     return fig

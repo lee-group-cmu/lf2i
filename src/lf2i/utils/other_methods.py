@@ -466,12 +466,11 @@ def monte_carlo_pvalue_diagnostics(
     # Normalized CRPS: local / reference (0 = perfect, 1 = no better than ignoring X)
     crps_normalized = np.where(crps_ref > 0, crps / crps_ref, np.nan)
 
-    estimation_errors = {'crps': crps, 'crps_normalized': crps_normalized}
+    estimation_errors = {'crps': crps_normalized}
     for alpha in pinball_levels:
         pb = pinball_per_alpha[alpha]
         pb_ref = pinball_ref_per_alpha[alpha]
-        estimation_errors[f'pinball_{alpha:.2f}'] = pb
-        estimation_errors[f'pinball_{alpha:.2f}_normalized'] = np.where(pb_ref > 0, pb / pb_ref, np.nan)
+        estimation_errors[f'pinball_{alpha:.2f}'] = np.where(pb_ref > 0, pb / pb_ref, np.nan)
     return evaluation_grid, estimation_errors
 
 
