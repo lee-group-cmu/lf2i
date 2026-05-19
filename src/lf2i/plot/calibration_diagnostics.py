@@ -224,7 +224,6 @@ def calibration_score_panel(
 def plot_cdf_comparison(
     test_statistic: Any,
     calib_model: Any,
-    acceptance_region: str,
     theta_eval: np.ndarray,
     simulator: Any,
     monte_carlo_size: int = 2000,
@@ -242,9 +241,8 @@ def plot_cdf_comparison(
         Fitted test statistic with an ``evaluate`` method.
     calib_model : Any
         A single calibration model (a value from ``lf2i.calibration_model``), must have ``predict_proba``.
-    acceptance_region : str
-        Deprecated. The calibration model is now assumed to always estimate the
-        CDF direction; this argument is ignored.
+        Must be of type :class:`lf2i.estimators.AbstractCDFEstimator` or
+        :class:`lf2i.estimators.AbstractProbabilisticClassifier`.
     theta_eval : np.ndarray, shape (param_dim,) or (1, param_dim)
         The parameter value at which to evaluate.
     simulator : Simulator
@@ -280,8 +278,7 @@ def plot_cdf_comparison(
     theta_rep = np.tile(theta_eval, (n_grid, 1))
     X_eval = preprocess_predict_p_values('diagnostics', lambda_grid, theta_rep, calib_model)
     proba = calib_model.predict_proba(X=X_eval)
-    # Calibration model always estimates the CDF; acceptance_region is deprecated.
-    cdf_hat = proba[:, 1]
+    cdf_hat = proba[:, 1]  # column 1 = CDF under the [1-CDF, CDF] convention
 
     own_fig = custom_ax is None
     if own_fig:
@@ -378,7 +375,6 @@ def calibration_cdf_panel(
         else next(iter(calibration_model))
     )
     calib_model_single = calibration_model[calib_key]
-    acceptance_region = test_statistic.acceptance_region
 
     grid_np = to_np_if_torch(evaluation_grid)
     if grid_np.ndim == 1:
@@ -462,7 +458,6 @@ def calibration_cdf_panel(
             plot_cdf_comparison(
                 test_statistic=test_statistic,
                 calib_model=calib_model_single,
-                acceptance_region=acceptance_region,
                 theta_eval=theta,
                 simulator=simulator,
                 monte_carlo_size=monte_carlo_size,
@@ -528,7 +523,6 @@ def calibration_cdf_panel(
             plot_cdf_comparison(
                 test_statistic=test_statistic,
                 calib_model=calib_model_single,
-                acceptance_region=acceptance_region,
                 theta_eval=theta,
                 simulator=simulator,
                 monte_carlo_size=monte_carlo_size,

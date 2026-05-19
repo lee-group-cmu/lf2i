@@ -10,6 +10,7 @@ from catboost import CatBoostRegressor
 from lf2i.calibration.torch_utils import QuantileLoss, FeedForwardNN, LearnerRegression
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_train_quantile_regression
 from lf2i.utils.miscellanea import select_n_jobs
+from lf2i.estimators import AbstractQuantileRegressor
 
 
 def multi_quantile_mean_pinball_loss(
@@ -131,6 +132,11 @@ def train_qr_algorithm(
         else:
             raise ValueError(f"Only 'cat-gb', 'nn' or custom algorithm (Any) are currently supported, got {algorithm}")
     else:
+        if not isinstance(algorithm, AbstractQuantileRegressor):
+            raise ValueError(
+                f"Custom algorithm must implement AbstractQuantileRegressor "
+                f"(fit(X, y) and predict(X)), got {type(algorithm).__name__}."
+            )
         test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)
         algorithm.fit(X=parameters, y=test_statistics)
 

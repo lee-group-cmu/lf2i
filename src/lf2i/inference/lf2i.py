@@ -203,7 +203,7 @@ class LF2I:
                     alpha = confidence_level if self.test_statistic.acceptance_region == 'left' else 1-confidence_level
                 else:
                     alpha = [cl if self.test_statistic.acceptance_region == 'left' else 1-cl for cl in confidence_level]
-                
+
                 self.calibration_model[calib_dict_key] = train_qr_algorithm(
                     test_statistics=self.test_statistics_calib,
                     parameters=self.parameters_calib,
@@ -215,25 +215,15 @@ class LF2I:
                     n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2  # all cores minus 1
                 )
             else:
-                if calibration_model == 'parametric-nn':
-                    parameters_calib_np = to_np_if_torch(self.parameters_calib)
-                    if parameters_calib_np.ndim == 1:
-                        parameters_calib_np = parameters_calib_np.reshape(-1, 1)
-                    test_stats_np = to_np_if_torch(self.test_statistics_calib).reshape(-1, 1)
-                    inputs_for_calib             = np.hstack([test_stats_np, parameters_calib_np])
-                    rejection_indicators_for_calib = np.zeros(len(inputs_for_calib))  # unused by ParametricCDFEstimator
-                else:
-                    inputs_for_calib, rejection_indicators_for_calib = augment_calibration_set(
-                        test_statistics=self.test_statistics_calib,
-                        poi=self.parameters_calib,
-                        num_augment=num_augment,
-                        acceptance_region=self.test_statistic.acceptance_region
-                    )
+                inputs_for_calib, rejection_indicators_for_calib = augment_calibration_set(
+                    test_statistics=self.test_statistics_calib,
+                    poi=self.parameters_calib,
+                    num_augment=num_augment,
+                )
                 self.calibration_model[calib_dict_key] = estimate_rejection_proba(
                     inputs=inputs_for_calib,
                     rejection_indicators=rejection_indicators_for_calib,
                     algorithm=calibration_model,
-                    acceptance_region=self.test_statistic.acceptance_region,
                     algorithm_kwargs=self.calibration_model_kwargs,
                     verbose=verbose,
                     n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2
@@ -253,10 +243,13 @@ class LF2I:
             if verbose:
                 print('\nComputing p-values...')
             critical_values = None
-            # p-values are amortized with respect to levels. Output is always a matrix of dims (num_observations X eval_grid.shape[0], 1)
+            # Calibration model always returns [1-CDF, CDF].
+            # For acceptance_region='left' (large T → rejection): p-value = 1-CDF = column 0.
+            # For acceptance_region='right' (small T → rejection): p-value = CDF = column 1.
+            _pv_col = 0 if self.test_statistic.acceptance_region == 'left' else 1
             p_values = self.calibration_model[calib_dict_key].predict_proba(
                 X=preprocess_predict_p_values('confidence_sets', test_statistics_x, evaluation_grid, self.calibration_model[calib_dict_key])
-            )[:, 1]
+            )[:, _pv_col]
 
         # Compute point estimates (Focal): argmax_θ p̂(θ | x) for each observation
         if return_point_estimate:
@@ -274,7 +267,7 @@ class LF2I:
                 print('\nRe-calibrating p-values on holdout set ...', flush=True)
             self.holdout_p_values = self.calibration_model[calib_dict_key].predict_proba(
                 X=preprocess_predict_p_values('holdout_calibration', self.holdout_test_statistics_calib, self.holdout_parameters_calib, self.calibration_model[calib_dict_key])
-            )[:, 1]
+            )[:, _pv_col]
             alpha = [np.quantile(self.holdout_p_values, a) for a in alpha]
             if verbose:
                 for cl, a in zip(confidence_level, alpha):
@@ -411,9 +404,10 @@ class LF2I:
                         critical_values = critical_values[:, idx_cl]
                 else:
                     critical_values = None
+                    _pv_col = 0 if self.test_statistic.acceptance_region == 'left' else 1
                     p_values = to_np_if_torch(self.calibration_model[calib_dict_key].predict_proba(
                         X=preprocess_predict_p_values('diagnostics', test_statistics, parameters, self.calibration_model[calib_dict_key])
-                    )[:, 1])
+                    )[:, _pv_col])
 
                 # Recalibrate if necessary
                 if calibration_method == 'p-values' and self.recalibrate_p_values and self.holdout_parameters_calib is not None and self.holdout_test_statistics_calib is not None and self.holdout_samples_calib is not None:
@@ -717,9 +711,10 @@ class LF2I:
                     slice_grid_out = slice_grid_i
 
                 ts = self.test_statistic.evaluate(grid_nd, xi.astype(np.float32), mode='confidence_sets')
+                _pv_col = 0 if self.test_statistic.acceptance_region == 'left' else 1
                 p_vals = self.calibration_model[calib_dict_key].predict_proba(
                     X=preprocess_predict_p_values('confidence_sets', ts, grid_nd, self.calibration_model[calib_dict_key])
-                )[:, 1]
+                )[:, _pv_col]
 
                 accepted_list.append(grid_nd[p_vals >= alpha])
                 all_pvalues_list.append(p_vals)
@@ -756,9 +751,10 @@ class LF2I:
                 grid_1d[:, d] = sweep_d
 
                 ts = self.test_statistic.evaluate(grid_1d, xi.astype(np.float32), mode='confidence_sets')
+                _pv_col = 0 if self.test_statistic.acceptance_region == 'left' else 1
                 p_vals = self.calibration_model[calib_dict_key].predict_proba(
                     X=preprocess_predict_p_values('confidence_sets', ts, grid_1d, self.calibration_model[calib_dict_key])
-                )[:, 1]
+                )[:, _pv_col]
 
                 accepted = grid_1d[p_vals >= alpha, d]
                 if len(accepted) > 0:

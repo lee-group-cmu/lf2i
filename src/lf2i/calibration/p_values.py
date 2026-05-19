@@ -1,5 +1,6 @@
 from typing import Union, Tuple, Any, Optional, List, Dict
 import inspect
+import warnings
 
 import numpy as np
 import torch
@@ -20,7 +21,6 @@ from lf2i.calibration.torch_utils import FeedForwardNN, LearnerClassification
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_fit_p_values
 from lf2i.utils.miscellanea import select_n_jobs, to_np_if_torch
 from lf2i.calibration.parametric_cd import ParametricCDFEstimator
-from lf2i.calibration.isplines import ISplineClassifier
 
 
 def conditional_sampling(
@@ -86,12 +86,17 @@ def augment_calibration_set(
     test_statistics: Union[np.ndarray, torch.Tensor],
     poi: Union[np.ndarray, torch.Tensor],
     num_augment: int,
-    acceptance_region: str,
     conditional_resampling: bool = True,
     min_points_per_bin: int = 50
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Augment the calibration set by resampling cutoffs from the empirical distribution of the test statistics. 
+    """Augment the calibration set by resampling cutoffs from the empirical distribution of the test statistics.
     This allows to estimate p-values that are amortized with respect to all levels :math:`\alpha`.
+
+    The rejection indicator is always defined as :math:`\\mathbb{1}[T \\le \\tau]`, so the trained
+    classifier estimates the CDF :math:`F(\\tau \\mid \\theta) = P(T \\le \\tau \\mid \\theta)`.
+    This is monotone increasing and produces ``predict_proba`` output with columns ``[1-CDF, CDF]``.
+    Directional p-value selection (based on the test statistic's acceptance region) is the
+    responsibility of the caller (e.g. :class:`lf2i.inference.lf2i.LF2I`).
 
     Parameters
     ----------
@@ -100,28 +105,20 @@ def augment_calibration_set(
     poi : Union[np.ndarray, torch.Tensor]
         Parameters of interest in the calibration set.
     num_augment : int
-        Number of cutoffs to resample for each value in `test_statistics`. The augmented calibration set will be of size `num_augment` :math:`\times B^\prime`, 
+        Number of cutoffs to resample for each value in `test_statistics`. The augmented calibration set will be of size `num_augment` :math:`\times B^\prime`,
         where :math:`B^\prime` is the size of the original calibration set.
-    acceptance_region : str
-        Whether the acceptance region for the test statistic is defined to be on the right or on the left of the cutoff. 
-        Must be either `left` or `right`. 
     conditional_resampling: bool, optional
-        Whether to re-sample cutoffs for augmentation from :math:`p(\tau \mid \theta)` or from the marginal :math:`p(\tau)`. Default is True. 
+        Whether to re-sample cutoffs for augmentation from :math:`p(\tau \mid \theta)` or from the marginal :math:`p(\tau)`. Default is True.
         Conditional sampling should yield better estimates of p-values since it is designed to better represent the tails of each conditional distribution, but
         it could be impractical with a high-dimensional parameter.
     min_points_per_bin : int, optional
-        Minimum number of points required per bin for constructing the POI bins. The POI space will 
+        Minimum number of points required per bin for constructing the POI bins. The POI space will
         be divided into bins such that each bin contains at least this number of points. Default is 50.
 
     Returns
     -------
     Tuple[np.ndarray, np.ndarray]
-        Augmented inputs (cutoffs and POIs) and outputs (rejection indicators) to estimate amortized p-values.
-
-    Raises
-    ------
-    ValueError
-        If `acceptance_region` is not one of `left` or `right`. 
+        Augmented inputs (cutoffs and POIs) and outputs (CDF indicators) to estimate amortized p-values.
     """
     assert test_statistics.shape[0] == poi.shape[0], 'Shape mismatch between test statistics and POIs'
     if isinstance(test_statistics, torch.Tensor):
@@ -139,13 +136,8 @@ def augment_calibration_set(
         resampled_cutoffs = np.random.choice(a=test_statistics.reshape(-1, ), size=num_augment*poi.shape[0], replace=True).reshape(-1, 1)
     rep_test_statistics = np.repeat(test_statistics.reshape(-1, ), repeats=num_augment).reshape(-1, 1)
     
-    # compute rejection indicators
-    if acceptance_region == 'left':
-        rejection_indicators = (rep_test_statistics >= resampled_cutoffs).astype(int).reshape(-1, )  # output of probs classifier usually expected to be 1-dim
-    elif acceptance_region == 'right':
-        rejection_indicators = (rep_test_statistics <= resampled_cutoffs).astype(int).reshape(-1, )
-    else:
-        raise ValueError(f'Acceptance region must be either `left` or `right`, got {acceptance_region}.')
+    # CDF direction: class=1 means T <= cutoff, so P(class=1 | cutoff, θ) = F(cutoff | θ)
+    rejection_indicators = (rep_test_statistics <= resampled_cutoffs).astype(int).reshape(-1, )
     assert resampled_cutoffs.shape[0] == rep_test_statistics.shape[0] == rejection_indicators.shape[0] == rep_poi.shape[0] == num_augment*poi.shape[0]
     
     shuffle_idx = np.random.permutation(num_augment * poi.shape[0])
@@ -153,61 +145,83 @@ def augment_calibration_set(
 
 
 def estimate_rejection_proba(
-    inputs: np.ndarray, 
-    rejection_indicators: np.ndarray, 
+    inputs: np.ndarray,
+    rejection_indicators: np.ndarray,
     algorithm: Union[str, Any],
-    acceptance_region: str,
+    acceptance_region: Optional[str] = None,
     algorithm_kwargs: Union[Dict[str, Any], Dict[str, Dict[str, Any]]] = {},
     cat_poi_idxs: Optional[List[int]] = None,
     verbose: bool = True,
     n_jobs: int = -2
 ) -> Any:
-    """Dispatcher to train different probabilistic classifiers and estimate p-values.
+    """Dispatcher to train CDF or probabilistic classification models for p-value estimation.
+
+    The calibration model is always trained in the CDF direction: ``predict_proba`` returns
+    ``(N, 2)`` with columns ``[1-CDF, CDF]`` where column 1 is monotone non-decreasing.
+    Selecting the appropriate column for p-values based on the test statistic's acceptance
+    region is the responsibility of the caller.
 
     Parameters
     ----------
     inputs : np.ndarray
         Augmented calibration inputs as provided by `lf2i.calibration.p_values.augment_calibration_set`.
     rejection_indicators : np.ndarray
-        Rejection indicators as provided by `lf2i.calibration.p_values.augment_calibration_set`.
-    algorithm : str
-        Either 'cat-gb' for gradient boosted trees, 'nn' for a feed-forward neural network, 
-        'logistic' for logistic regression, 'gam' for a radially symmetric generalized additive model, 
-        or a custom algorithm (Any). The latter must implement the `fit(X=..., y=...)` method.
-    acceptance_region : str
-        Whether the acceptance region for the test statistic is defined to be on the right or on the left of the cutoff. 
-        Must be either `left` or `right`. 
+        CDF indicators as provided by `lf2i.calibration.p_values.augment_calibration_set`.
+    algorithm : Union[str, Any]
+        ``'parametric-nn'`` (default) for the parametric sigmoid CDF estimator, or a custom
+        object implementing :class:`lf2i.estimators.AbstractCDFEstimator` (``fit(X)``) or
+        :class:`lf2i.estimators.AbstractProbabilisticClassifier` (``fit(X, y)``).
+
+        The following string options are **deprecated** and will be removed in a future version:
+        ``'cat-gb'``, ``'logistic'``, ``'tfm'``, ``'spline'``.
+    acceptance_region : str, optional
+        Deprecated and ignored. Directionality is now handled by the caller. Passing a value
+        emits a :class:`DeprecationWarning`.
     algorithm_kwargs : Union[Dict[str, Any], Dict[str, Dict[str, Any]]], optional
         Keyword arguments for the desired algorithm, by default {}.
-        If algorithm == 'nn', then 'hidden_layer_shapes', 'epochs' and 'batch_size' must be present.
-        If algorithm == 'cat-gb', pass {'cv': hp_dist} to do a randomized search over the hyperparameters in hp_dist (a `Dict`) via 5-fold cross validation. 
-        Include 'n_iter' as a key to decide how many hyperparameter setting to sample for randomized search. Defaults to 10.
+        If algorithm == 'cat-gb', pass {'cv': hp_dist} to do a randomized search over the
+        hyperparameters in hp_dist via 5-fold cross validation.
         If algorithm == 'logistic', any valid LogisticRegression parameters can be passed.
     cat_poi_idxs : Optional[List[int]], optional
-        If `algorithm == 'cat-gb'`, sequence of indexes to indicate the columns of `inputs` containing categorical POIs, by default None.
-        Note that the first column of `inputs` is always the resampled cutoffs, hence this should be treated as a 1-indexed array (i.e. col 0 of POIs has index 1).
+        If `algorithm == 'cat-gb'`, sequence of indexes to indicate the columns of `inputs`
+        containing categorical POIs, by default None.
     verbose : bool, optional
-        Whether to print information on the hyper-parameter search for quantile regression, by default True.
+        Whether to print information on the hyper-parameter search, by default True.
     n_jobs : int, optional
-        Number of workers to use when doing random search with 5-fold CV. By default -2, which uses all cores minus one. If -1, use all cores.
-        `n_jobs == -1` uses all cores. If `n_jobs < -1`, then `n_jobs = os.cpu_count()+1+n_jobs`.
+        Number of workers for parallel operations. By default -2 (all cores minus one).
 
     Returns
     -------
     Any
-        Fitted probabilistic classifier.
+        Fitted calibration model.
     """
+    if acceptance_region is not None:
+        warnings.warn(
+            "The `acceptance_region` argument to `estimate_rejection_proba` is deprecated and "
+            "will be removed in a future version. Directionality is now handled by the caller "
+            "(e.g. LF2I.inference). The argument is ignored.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
     n_jobs = select_n_jobs(n_jobs)
     inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm).reshape(-1, )
 
     if isinstance(algorithm, str):
         if algorithm == 'cat-gb':
+            warnings.warn(
+                "'cat-gb' is deprecated and will be removed in a future version. "
+                "Pass an AbstractProbabilisticClassifier or use 'parametric-nn' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # CDF direction: monotone non-decreasing in cutoff dimension
             if 'cv' in algorithm_kwargs:
                 algorithm = RandomizedSearchCV(
                     estimator=CatBoostClassifier(
                         loss_function='CrossEntropy',
                         silent=True,
-                        monotone_constraints="0:1",  # 1 means non-decreasing function of cutoffs (always 0-th column of inputs),
+                        monotone_constraints="0:1",
                     ),
                     param_distributions=algorithm_kwargs['cv'],
                     n_iter=10 if 'n_iter' not in algorithm_kwargs else algorithm_kwargs['n_iter'],
@@ -218,13 +232,11 @@ def estimate_rejection_proba(
                 )
                 algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
 
-                # Retrain with CV-selected hyperparameters and isotonic calibration
                 algorithm = CalibratedClassifierCV(
                     estimator=CatBoostClassifier(
                         loss_function='CrossEntropy',
                         silent=True,
-                        # 1 (-1) means non-decreasing (non-increasing) function of cutoffs (always 0-th column of inputs)
-                        monotone_constraints="0:1" if acceptance_region == 'right' else "0:-1",
+                        monotone_constraints="0:1",
                         **(algorithm.best_params_ if 'cv' in algorithm_kwargs else algorithm_kwargs)
                     ),
                     method='isotonic',
@@ -235,10 +247,16 @@ def estimate_rejection_proba(
                 algorithm = CatBoostClassifier(
                     loss_function='CrossEntropy',
                     silent=True,
-                    monotone_constraints="0:1" if acceptance_region == 'right' else "0:-1",
+                    monotone_constraints="0:1",
                 )
             algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
         elif algorithm == 'logistic':
+            warnings.warn(
+                "'logistic' is deprecated and will be removed in a future version. "
+                "Pass an AbstractProbabilisticClassifier or use 'parametric-nn' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             algorithm = CalibratedClassifierCV(
                 estimator=LogisticRegression(
                     max_iter=1000,
@@ -251,6 +269,12 @@ def estimate_rejection_proba(
             )
             algorithm.fit(X=inputs, y=rejection_indicators)
         elif algorithm == 'tfm':
+            warnings.warn(
+                "'tfm' is deprecated and will be removed in a future version. "
+                "Pass an AbstractProbabilisticClassifier or use 'parametric-nn' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             assert HAVE_TABICL, "TabICL is not installed. Please install it to use the 'tfm' algorithm."
             tfm_kwargs = algorithm_kwargs if algorithm_kwargs else {
                 'n_estimators': 1,
@@ -263,25 +287,15 @@ def estimate_rejection_proba(
             algorithm = TabICLClassifier(**tfm_kwargs)
             algorithm.fit(X=inputs, y=rejection_indicators)
         elif algorithm == 'parametric-nn':
-            nn_kwargs  = algorithm_kwargs if algorithm_kwargs else {}
-            algorithm  = ParametricCDFEstimator(
-                acceptance_region = acceptance_region,
-                **nn_kwargs
-            )
-            algorithm.fit(test_statistics = inputs[:, 0],
-                          poi = inputs[:, 1:])
-        elif algorithm == 'spline':
-            algorithm = ISplineClassifier(
-                monotone_constraints=1 if acceptance_region == 'right' else -1,
-                **algorithm_kwargs,
-            )
-            algorithm.fit(X=inputs, y=rejection_indicators)
+            nn_kwargs = algorithm_kwargs if algorithm_kwargs else {}
+            algorithm = ParametricCDFEstimator(**nn_kwargs)
+            algorithm.fit(X=inputs)
         else:
-            raise ValueError(f"Only 'cat-gb', 'logistic', 'tfm', 'parametric-nn', 'spline', or a custom algorithm (Any) are supported, got {algorithm}")
+            raise ValueError(f"Only 'cat-gb', 'logistic', 'tfm', 'parametric-nn', or a custom algorithm (Any) are supported, got {algorithm}")
     else:
         inputs = preprocess_fit_p_values(inputs, algorithm)
         if 'y' not in inspect.signature(algorithm.fit).parameters:
-            # AbstractCDFEstimator: fit takes X only, predict returns p-values
+            # AbstractCDFEstimator: fit takes X only
             algorithm.fit(X=inputs)
         else:
             # AbstractProbabilisticClassifier: fit takes X and y
