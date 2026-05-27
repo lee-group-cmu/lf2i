@@ -7,6 +7,7 @@ import torch
 from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 
+
 class BrierScoreLoss(nn.Module):
     """Cross-product Brier score, diagonal excluded to remove systematic CDF-high bias."""
     def forward(

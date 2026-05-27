@@ -45,6 +45,7 @@ except ImportError:
     HAVE_NGBOOST = False
 
 from lf2i.estimators.base_cdf import AbstractCDFEstimator
+from sklearn.model_selection import train_test_split
 
 
 class NGBoostCDFEstimator(NGBRegressor, AbstractCDFEstimator):
@@ -164,10 +165,8 @@ class NGBoostCDFEstimator(NGBRegressor, AbstractCDFEstimator):
                 f"Received shape {X.shape}."
             )
 
-        Y = X[:, 0]          # test statistics  λ  → NGBRegressor response
-        features = X[:, 1:]  # parameters of interest θ  → NGBRegressor predictors
-
-        NGBRegressor.fit(self, features, Y, **kwargs)
+        X_train, X_val, Y_train, Y_val = train_test_split(X[:, 1:], X[:, 0], test_size=0.2, random_state=42)
+        NGBRegressor.fit(self, X_train, Y_train, X_val=X_val, Y_val=Y_val, **kwargs)
         return self
 
     def predict_proba(
