@@ -7,10 +7,10 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import make_scorer, mean_pinball_loss
 from catboost import CatBoostRegressor
 
-from lf2i.calibration.torch_utils import QuantileLoss, FeedForwardNN, LearnerRegression
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_train_quantile_regression
 from lf2i.utils.miscellanea import select_n_jobs
 from lf2i.estimators import AbstractQuantileRegressor
+from lf2i.estimators.torch_utils.quantile_regressor import QuantileLoss, FeedForwardNN, LearnerRegression
 
 
 def multi_quantile_mean_pinball_loss(
