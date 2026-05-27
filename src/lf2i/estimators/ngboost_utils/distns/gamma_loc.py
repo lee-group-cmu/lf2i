@@ -92,7 +92,6 @@ class GammaLoc(RegressionDistn):
     Only ``LogScore`` is implemented.  To use this distribution::
 
         from ngboost import NGBRegressor
-        from REFERENCE.gamma_loc import GammaLoc
 
         model = NGBRegressor(Dist=GammaLoc)
         model.fit(X_train, Y_train)
@@ -115,17 +114,45 @@ class GammaLoc(RegressionDistn):
 
     @staticmethod
     def fit(Y):
-        """Fit initial parameters to Y using unconstrained scipy MLE.
+        """Fit initial parameters to Y using a bias-corrected location estimate.
 
-        Unlike the base ``Gamma.fit``, the location is not fixed at 0.
+        The unconstrained MLE for ``loc`` places it at (or within ε of)
+        ``min(Y)``, making ``y_s = Y − loc`` vanishingly small and triggering
+        overflow in the score and gradient — especially when Y contains
+        negative values.
+
+        We apply a one-step MLE debiasing based on the dominant-term
+        approximation to the score equation for ``loc`` (Cheng & Iles, 1987):
+
+            ∂ log L / ∂ loc = (α−1) Σᵢ 1/(Yᵢ−loc) − n·β = 0
+            ≈  (α−1) / (Y_(1)−loc)  − n·β  (minimum observation dominates)
+            ⟹  loc* = Y_(1) − (α−1) / (n·β)
+
+        This margin is data-adaptive: it shrinks with sample size (so large
+        datasets get a tighter fit) and is far less conservative than a fixed
+        fraction of ``std(Y)``.  For α ≤ 1 the margin is floored at a small
+        constant to avoid a degenerate location.
 
         Returns
         -------
         np.ndarray of shape (3,)
             [loc, log(α), log(β)]
         """
-        a, loc, scale = gamma.fit(Y)
-        return np.array([loc, np.log(a), np.log(1.0 / scale)])
+        n = len(Y)
+        y_min = float(np.min(Y))
+
+        # Step 1: get initial α, β with loc pinned just below the minimum.
+        a_init, _, scale_init = gamma.fit(Y, floc=y_min - 1e-6)
+        beta_init = 1.0 / max(scale_init, 1e-10)
+
+        # Step 2: debias loc via the dominant-term score equation.
+        #   margin = (α−1)/(n·β)  [floor at 1e-6 for α ≤ 1]
+        margin = max((a_init - 1.0) / (n * beta_init), 1e-6)
+        loc0 = y_min - margin
+
+        # Step 3: refit α and scale with the corrected loc.
+        a, _, scale = gamma.fit(Y, floc=loc0)
+        return np.array([loc0, np.log(a), np.log(1.0 / scale)])
 
     def sample(self, m):
         return np.array([self.rvs() for _ in range(m)])
@@ -138,28 +165,3 @@ class GammaLoc(RegressionDistn):
     @property
     def params(self):
         return {"loc": self.loc, "alpha": self.alpha, "beta": self.beta}
-
-
-# ---------------------------------------------------------------------------
-# Quick smoke test
-# ---------------------------------------------------------------------------
-if __name__ == "__main__":
-    import numpy as np
-    from ngboost import NGBRegressor
-
-    rng = np.random.default_rng(0)
-    n, p = 300, 4
-    X = rng.standard_normal((n, p))
-    # Shifted Gamma: shape=2, rate=1, loc=3  →  Y in (3, ∞)
-    Y = rng.gamma(shape=2.0, scale=1.0, size=n) + 3.0
-
-    model = NGBRegressor(Dist=GammaLoc, n_estimators=50, verbose=False)
-    model.fit(X, Y)
-
-    preds = model.predict(X[:5])
-    print("GammaLoc smoke test — point predictions (should be ~5):", preds)
-
-    dist_pred = model.pred_dist(X[:3])
-    cdf_vals = dist_pred.cdf(Y[:3])
-    print("GammaLoc CDF at training points:", cdf_vals)
-    print("GammaLoc smoke test PASSED.")

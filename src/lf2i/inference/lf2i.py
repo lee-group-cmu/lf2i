@@ -6,7 +6,7 @@ import torch
 from lf2i.simulator import Simulator
 from lf2i.test_statistics import TestStatistic, ACORE, BFF, Waldo, Posterior
 from lf2i.calibration.critical_values import train_qr_algorithm
-from lf2i.calibration.p_values import augment_calibration_set, estimate_rejection_proba
+from lf2i.calibration.p_values import estimate_rejection_proba
 from lf2i.confidence_regions.neyman_inversion import compute_confidence_regions
 from lf2i.diagnostics.coverage_probability import (
     estimate_coverage_proba, 
@@ -215,18 +215,12 @@ class LF2I:
                     n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2  # all cores minus 1
                 )
             else:
-                inputs_for_calib, rejection_indicators_for_calib = augment_calibration_set(
-                    test_statistics=self.test_statistics_calib,
-                    poi=self.parameters_calib,
-                    num_augment=num_augment,
-                )
                 self.calibration_model[calib_dict_key] = estimate_rejection_proba(
-                    inputs=inputs_for_calib,
-                    rejection_indicators=rejection_indicators_for_calib,
+                    test_statistics=self.test_statistics_calib,
+                    parameters=self.parameters_calib,
                     algorithm=calibration_model,
-                    algorithm_kwargs=self.calibration_model_kwargs,
+                    augment_kwargs={'num_augment': num_augment},
                     verbose=verbose,
-                    n_jobs=self.test_statistic.n_jobs if hasattr(self.test_statistic, 'n_jobs') else -2
                 )
 
         # construct confidence_regions

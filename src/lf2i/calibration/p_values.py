@@ -1,86 +1,128 @@
-from typing import Union, Tuple, Any, Optional, List, Dict
+from typing import Union, Tuple, Any, Optional, Dict
 import inspect
 import warnings
 
 import numpy as np
 import torch
-from torch.nn import BCEWithLogitsLoss
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import RandomizedSearchCV
-from sklearn.calibration import CalibratedClassifierCV
-from catboost import CatBoostClassifier
 
-try:
-    from tabicl import TabICLClassifier  # optional convenience import
-    HAVE_TABICL = True
-except Exception:
-    TabICLClassifier = None
-    HAVE_TABICL = False
-
-from lf2i.calibration.torch_utils import FeedForwardNN, LearnerClassification
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_fit_p_values
-from lf2i.utils.miscellanea import select_n_jobs, to_np_if_torch
-from lf2i.calibration.parametric_cd import ParametricCDFEstimator
+from lf2i.utils.miscellanea import to_np_if_torch
+from lf2i.estimators.base_cdf import AbstractCDFEstimator
+from lf2i.estimators.base_probabilistic_classifier import AbstractProbabilisticClassifier
 
 
-def conditional_sampling(
-    poi: np.ndarray,
-    test_statistics: np.ndarray,
-    num_augment: int, 
-    min_points_per_bin: int = 50
-) -> np.ndarray:
-    """
-    Perform conditional sampling of test statistics based on the parameters of interest (POI). 
-    This method divides the POI space into multidimensional bins, associates each bin with the 
-    corresponding test statistics, and resamples conditionally from the empirical distribution 
-    of test statistics within each bin.
+def estimate_rejection_proba(
+    test_statistics: Union[np.ndarray, torch.Tensor],
+    parameters: Union[np.ndarray, torch.Tensor],
+    algorithm: Any,
+    augment_kwargs: Optional[Dict[str, Any]] = None,
+    acceptance_region: Optional[str] = None,
+    verbose: bool = True,
+) -> Any:
+    """Fit a calibration model to estimate rejection probabilities (p-values).
+
+    Handles augmentation internally: CDF estimators receive raw ``(T, θ)`` pairs
+    and model ``p(T | θ)`` directly; probabilistic classifiers receive augmented
+    ``(τ, θ)`` pairs with ``1[T ≤ τ]`` labels produced by
+    :func:`augment_calibration_set`.
 
     Parameters
     ----------
-    poi : np.ndarray
-        A 2D array where each row represents a parameter of interest (POI) and each column corresponds 
-        to a dimension in the parameter space. Shape: (num_samples, num_dimensions).
-    test_statistics : np.ndarray
-        A 1D array of test statistics evaluated for each parameter of interest. Shape: (num_samples,).
-    num_augment : int
-        Number of samples to draw from the conditional distribution of test statistics for each POI bin.
-    min_points_per_bin : int, optional
-        Minimum number of points required per bin for constructing the POI bins. The POI space will 
-        be divided into bins such that each bin contains at least this number of points. Default is 50.
+    test_statistics : array-like of shape (N,)
+        Test statistics ``T_i`` evaluated at the i-th calibration parameter
+        ``θ_i`` and corresponding sample ``x_i ~ F_{θ_i}``.
+    parameters : array-like of shape (N,) or (N, d)
+        Parameters of interest ``θ_i`` for each calibration sample.
+        Any width ``d ≥ 1`` is accepted; 1-D input is promoted to ``(N, 1)``.
+    algorithm : AbstractCDFEstimator or AbstractProbabilisticClassifier
+        - **CDF estimator** (``fit(X)`` with no ``y`` argument): receives
+          ``(T, θ)`` stacked as ``X`` and learns ``p(T | θ)`` directly.
+          ``augment_kwargs`` are ignored for this branch.
+        - **Probabilistic classifier** (``fit(X, y)``): receives augmented
+          ``(τ, θ)`` inputs and ``1[T ≤ τ]`` labels produced internally by
+          :func:`augment_calibration_set`.
+    augment_kwargs : dict, optional
+        Forwarded to :func:`augment_calibration_set` for probabilistic
+        classifiers.  Recognised keys (with defaults):
+
+        - ``num_augment`` (int, default 1): cutoffs resampled per observation.
+        - ``conditional_resampling`` (bool, default True): resample from
+          ``p(τ | θ)`` rather than the marginal.
+        - ``min_points_per_bin`` (int, default 50): minimum bin occupancy for
+          conditional resampling.
+
+        Silently ignored (with a verbose note) when ``algorithm`` is a CDF
+        estimator.
+    acceptance_region : str, optional
+        **Deprecated and ignored.**  Directionality is the caller's
+        responsibility.  Passing a value emits a :class:`DeprecationWarning`.
+    verbose : bool, default True
+        Print a one-line summary of the preprocessing performed.
 
     Returns
     -------
-    np.ndarray
-        A 2D array of resampled test statistics. Shape: (num_samples, num_augment), where `num_samples` 
-        corresponds to the number of rows in `poi`.
-
-    Raises
-    ------
-    AssertionError
-        If bin assignments fail or there is no data available for a specific bin.
+    Any
+        The fitted ``algorithm`` object.
     """
-    # Define bins for each dimension of POI
-    def equal_size_bin_edges(poi_onedim, min_points_per_bin):
-        n_bins = max(1, len(poi_onedim) // min_points_per_bin)
-        return np.percentile(poi_onedim, np.linspace(0, 100, n_bins + 1))  # there are n_bins+1 edges
-    poi_bin_edges = [equal_size_bin_edges(poi[:, dim], min_points_per_bin=min_points_per_bin) for dim in range(poi.shape[1])]
+    if acceptance_region is not None:
+        warnings.warn(
+            "The `acceptance_region` argument to `estimate_rejection_proba` is deprecated and "
+            "will be removed in a future version. Directionality is now handled by the caller "
+            "(e.g. LF2I.inference). The argument is ignored.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+    assert isinstance(algorithm, (AbstractCDFEstimator, AbstractProbabilisticClassifier)), (
+        f"algorithm must implement AbstractCDFEstimator or AbstractProbabilisticClassifier, "
+        f"got {type(algorithm)}"
+    )
 
-    # Assign each poi to a multidimensional bin
-    poi_bin_indices = np.stack([np.digitize(poi[:, dim], poi_bin_edges[dim], right=True) - 1 for dim in range(poi.shape[1])], axis=1)
-    poi_bin_indices = np.clip(poi_bin_indices, 0, [len(poi_bin_edges[dim]) - 2 for dim in range(poi.shape[1])])  # Clip to valid ranges
-    assert (poi_bin_indices.min() >= 0) and (poi_bin_indices.max() < len(poi_bin_edges[0]) - 1), "Bin assignment failed"  # Ensure no alignment issues
-    
-    # Vectorized sampling from p(ts|poi)
-    unique_bins = np.unique(poi_bin_indices, axis=0)
-    samples = []
-    for bin_idx in unique_bins:
-        mask = np.all(poi_bin_indices == bin_idx, axis=1)
-        ts_in_bin = test_statistics[mask]
-        assert len(ts_in_bin) > 0, f"No data available for b in bin {bin_idx}."
-        samples.extend(np.random.choice(ts_in_bin, size=num_augment * mask.sum(), replace=True))
+    # Normalise to numpy
+    test_statistics = to_np_if_torch(test_statistics).reshape(-1)
+    parameters = to_np_if_torch(parameters)
+    if parameters.ndim == 1:
+        parameters = parameters.reshape(-1, 1)
+    assert len(test_statistics) == len(parameters), (
+        f"test_statistics and parameters must have the same number of rows, "
+        f"got {len(test_statistics)} and {len(parameters)}"
+    )
 
-    return np.array(samples).reshape(len(poi), num_augment)
+    if 'y' not in inspect.signature(algorithm.fit).parameters:
+        # CDF estimator: learn p(T | θ) directly from raw (T, θ) pairs
+        if verbose and augment_kwargs:
+            print("  [calibration] CDF estimator — augment_kwargs ignored.")
+        inputs = preprocess_fit_p_values(
+            np.hstack([test_statistics[:, None], parameters]), algorithm
+        )
+        if verbose:
+            print(f"  [calibration] CDF estimator: fitting on {len(inputs)} raw (T, θ) pairs.")
+        algorithm.fit(X=inputs)
+    else:
+        # Probabilistic classifier: augment calibration set first
+        _kw: Dict[str, Any] = {
+            'num_augment': 1,
+            'conditional_resampling': True,
+            'min_points_per_bin': 50,
+        }
+        if augment_kwargs:
+            _kw.update(augment_kwargs)
+        if verbose:
+            n, m = len(test_statistics), _kw['num_augment']
+            print(
+                f"  [calibration] Classifier: augmenting {n} pairs "
+                f"× {m} cutoffs → {n * m} rows "
+                f"(conditional_resampling={_kw['conditional_resampling']})."
+            )
+        inputs, rejection_indicators = augment_calibration_set(
+            test_statistics=test_statistics,
+            poi=parameters,
+            **_kw,
+        )
+        inputs = preprocess_fit_p_values(inputs, algorithm)
+        rejection_indicators = preprocess_fit_p_values(rejection_indicators, algorithm).reshape(-1,)
+        algorithm.fit(X=inputs, y=rejection_indicators)
 
+    return algorithm
 
 def augment_calibration_set(
     test_statistics: Union[np.ndarray, torch.Tensor],
@@ -143,162 +185,60 @@ def augment_calibration_set(
     shuffle_idx = np.random.permutation(num_augment * poi.shape[0])
     return np.hstack((resampled_cutoffs, rep_poi))[shuffle_idx, :], rejection_indicators[shuffle_idx]
 
-
-def estimate_rejection_proba(
-    inputs: np.ndarray,
-    rejection_indicators: np.ndarray,
-    algorithm: Union[str, Any],
-    acceptance_region: Optional[str] = None,
-    algorithm_kwargs: Union[Dict[str, Any], Dict[str, Dict[str, Any]]] = {},
-    cat_poi_idxs: Optional[List[int]] = None,
-    verbose: bool = True,
-    n_jobs: int = -2
-) -> Any:
-    """Dispatcher to train CDF or probabilistic classification models for p-value estimation.
-
-    The calibration model is always trained in the CDF direction: ``predict_proba`` returns
-    ``(N, 2)`` with columns ``[1-CDF, CDF]`` where column 1 is monotone non-decreasing.
-    Selecting the appropriate column for p-values based on the test statistic's acceptance
-    region is the responsibility of the caller.
+def conditional_sampling(
+    poi: np.ndarray,
+    test_statistics: np.ndarray,
+    num_augment: int, 
+    min_points_per_bin: int = 50
+) -> np.ndarray:
+    """
+    Perform conditional sampling of test statistics based on the parameters of interest (POI). 
+    This method divides the POI space into multidimensional bins, associates each bin with the 
+    corresponding test statistics, and resamples conditionally from the empirical distribution 
+    of test statistics within each bin.
 
     Parameters
     ----------
-    inputs : np.ndarray
-        Augmented calibration inputs as provided by `lf2i.calibration.p_values.augment_calibration_set`.
-    rejection_indicators : np.ndarray
-        CDF indicators as provided by `lf2i.calibration.p_values.augment_calibration_set`.
-    algorithm : Union[str, Any]
-        ``'parametric-nn'`` (default) for the parametric sigmoid CDF estimator, or a custom
-        object implementing :class:`lf2i.estimators.AbstractCDFEstimator` (``fit(X)``) or
-        :class:`lf2i.estimators.AbstractProbabilisticClassifier` (``fit(X, y)``).
-
-        The following string options are **deprecated** and will be removed in a future version:
-        ``'cat-gb'``, ``'logistic'``, ``'tfm'``, ``'spline'``.
-    acceptance_region : str, optional
-        Deprecated and ignored. Directionality is now handled by the caller. Passing a value
-        emits a :class:`DeprecationWarning`.
-    algorithm_kwargs : Union[Dict[str, Any], Dict[str, Dict[str, Any]]], optional
-        Keyword arguments for the desired algorithm, by default {}.
-        If algorithm == 'cat-gb', pass {'cv': hp_dist} to do a randomized search over the
-        hyperparameters in hp_dist via 5-fold cross validation.
-        If algorithm == 'logistic', any valid LogisticRegression parameters can be passed.
-    cat_poi_idxs : Optional[List[int]], optional
-        If `algorithm == 'cat-gb'`, sequence of indexes to indicate the columns of `inputs`
-        containing categorical POIs, by default None.
-    verbose : bool, optional
-        Whether to print information on the hyper-parameter search, by default True.
-    n_jobs : int, optional
-        Number of workers for parallel operations. By default -2 (all cores minus one).
+    poi : np.ndarray
+        A 2D array where each row represents a parameter of interest (POI) and each column corresponds 
+        to a dimension in the parameter space. Shape: (num_samples, num_dimensions).
+    test_statistics : np.ndarray
+        A 1D array of test statistics evaluated for each parameter of interest. Shape: (num_samples,).
+    num_augment : int
+        Number of samples to draw from the conditional distribution of test statistics for each POI bin.
+    min_points_per_bin : int, optional
+        Minimum number of points required per bin for constructing the POI bins. The POI space will 
+        be divided into bins such that each bin contains at least this number of points. Default is 50.
 
     Returns
     -------
-    Any
-        Fitted calibration model.
+    np.ndarray
+        A 2D array of resampled test statistics. Shape: (num_samples, num_augment), where `num_samples` 
+        corresponds to the number of rows in `poi`.
+
+    Raises
+    ------
+    AssertionError
+        If bin assignments fail or there is no data available for a specific bin.
     """
-    if acceptance_region is not None:
-        warnings.warn(
-            "The `acceptance_region` argument to `estimate_rejection_proba` is deprecated and "
-            "will be removed in a future version. Directionality is now handled by the caller "
-            "(e.g. LF2I.inference). The argument is ignored.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
+    # Define bins for each dimension of POI
+    def equal_size_bin_edges(poi_onedim, min_points_per_bin):
+        n_bins = max(1, len(poi_onedim) // min_points_per_bin)
+        return np.percentile(poi_onedim, np.linspace(0, 100, n_bins + 1))  # there are n_bins+1 edges
+    poi_bin_edges = [equal_size_bin_edges(poi[:, dim], min_points_per_bin=min_points_per_bin) for dim in range(poi.shape[1])]
 
-    n_jobs = select_n_jobs(n_jobs)
-    inputs, rejection_indicators = preprocess_fit_p_values(inputs, algorithm), preprocess_fit_p_values(rejection_indicators, algorithm).reshape(-1, )
+    # Assign each poi to a multidimensional bin
+    poi_bin_indices = np.stack([np.digitize(poi[:, dim], poi_bin_edges[dim], right=True) - 1 for dim in range(poi.shape[1])], axis=1)
+    poi_bin_indices = np.clip(poi_bin_indices, 0, [len(poi_bin_edges[dim]) - 2 for dim in range(poi.shape[1])])  # Clip to valid ranges
+    assert (poi_bin_indices.min() >= 0) and (poi_bin_indices.max() < len(poi_bin_edges[0]) - 1), "Bin assignment failed"  # Ensure no alignment issues
+    
+    # Vectorized sampling from p(ts|poi)
+    unique_bins = np.unique(poi_bin_indices, axis=0)
+    samples = []
+    for bin_idx in unique_bins:
+        mask = np.all(poi_bin_indices == bin_idx, axis=1)
+        ts_in_bin = test_statistics[mask]
+        assert len(ts_in_bin) > 0, f"No data available for b in bin {bin_idx}."
+        samples.extend(np.random.choice(ts_in_bin, size=num_augment * mask.sum(), replace=True))
 
-    if isinstance(algorithm, str):
-        if algorithm == 'cat-gb':
-            warnings.warn(
-                "'cat-gb' is deprecated and will be removed in a future version. "
-                "Pass an AbstractProbabilisticClassifier or use 'parametric-nn' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            # CDF direction: monotone non-decreasing in cutoff dimension
-            if 'cv' in algorithm_kwargs:
-                algorithm = RandomizedSearchCV(
-                    estimator=CatBoostClassifier(
-                        loss_function='CrossEntropy',
-                        silent=True,
-                        monotone_constraints="0:1",
-                    ),
-                    param_distributions=algorithm_kwargs['cv'],
-                    n_iter=10 if 'n_iter' not in algorithm_kwargs else algorithm_kwargs['n_iter'],
-                    n_jobs=n_jobs,
-                    refit=False,
-                    cv=5,
-                    verbose=1 if verbose else 0
-                )
-                algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
-
-                algorithm = CalibratedClassifierCV(
-                    estimator=CatBoostClassifier(
-                        loss_function='CrossEntropy',
-                        silent=True,
-                        monotone_constraints="0:1",
-                        **(algorithm.best_params_ if 'cv' in algorithm_kwargs else algorithm_kwargs)
-                    ),
-                    method='isotonic',
-                    cv=5,
-                    n_jobs=n_jobs
-                )
-            else:
-                algorithm = CatBoostClassifier(
-                    loss_function='CrossEntropy',
-                    silent=True,
-                    monotone_constraints="0:1",
-                )
-            algorithm.fit(X=inputs, y=rejection_indicators, cat_features=cat_poi_idxs)
-        elif algorithm == 'logistic':
-            warnings.warn(
-                "'logistic' is deprecated and will be removed in a future version. "
-                "Pass an AbstractProbabilisticClassifier or use 'parametric-nn' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            algorithm = CalibratedClassifierCV(
-                estimator=LogisticRegression(
-                    max_iter=1000,
-                    n_jobs=n_jobs,
-                    **algorithm_kwargs
-                ),
-                method='sigmoid',
-                cv=5,
-                n_jobs=n_jobs
-            )
-            algorithm.fit(X=inputs, y=rejection_indicators)
-        elif algorithm == 'tfm':
-            warnings.warn(
-                "'tfm' is deprecated and will be removed in a future version. "
-                "Pass an AbstractProbabilisticClassifier or use 'parametric-nn' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            assert HAVE_TABICL, "TabICL is not installed. Please install it to use the 'tfm' algorithm."
-            tfm_kwargs = algorithm_kwargs if algorithm_kwargs else {
-                'n_estimators': 1,
-                'feat_shuffle_method': 'none',
-                'class_shuffle_method': 'none',
-                'outlier_threshold': 3.0,
-                'support_many_classes': False,
-                'n_jobs': n_jobs
-            }
-            algorithm = TabICLClassifier(**tfm_kwargs)
-            algorithm.fit(X=inputs, y=rejection_indicators)
-        elif algorithm == 'parametric-nn':
-            nn_kwargs = algorithm_kwargs if algorithm_kwargs else {}
-            algorithm = ParametricCDFEstimator(**nn_kwargs)
-            algorithm.fit(X=inputs)
-        else:
-            raise ValueError(f"Only 'cat-gb', 'logistic', 'tfm', 'parametric-nn', or a custom algorithm (Any) are supported, got {algorithm}")
-    else:
-        inputs = preprocess_fit_p_values(inputs, algorithm)
-        if 'y' not in inspect.signature(algorithm.fit).parameters:
-            # AbstractCDFEstimator: fit takes X only
-            algorithm.fit(X=inputs)
-        else:
-            # AbstractProbabilisticClassifier: fit takes X and y
-            rejection_indicators = preprocess_fit_p_values(rejection_indicators, algorithm).reshape(-1,)
-            algorithm.fit(X=inputs, y=rejection_indicators)
-    return algorithm
+    return np.array(samples).reshape(len(poi), num_augment)

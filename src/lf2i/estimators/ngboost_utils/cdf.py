@@ -32,7 +32,7 @@ import numpy as np
 import torch
 
 try:
-    from ngboost.ngboost import NGBoost
+    from ngboost.api import NGBRegressor
     from ngboost.distns import Gamma
     from ngboost.scores import LogScore
     from ngboost.learners import default_tree_learner
@@ -47,7 +47,7 @@ except ImportError:
 from lf2i.estimators.base_cdf import AbstractCDFEstimator
 
 
-class NGBoostCDFEstimator(NGBoost, AbstractCDFEstimator):
+class NGBoostCDFEstimator(NGBRegressor, AbstractCDFEstimator):
     """Conditional CDF estimator combining NGBoost with the AbstractCDFEstimator interface.
 
     Models  F(λ | θ)  where λ is a test statistic and θ are parameters of
@@ -71,6 +71,8 @@ class NGBoostCDFEstimator(NGBoost, AbstractCDFEstimator):
     Base : sklearn regressor instance, default ``default_tree_learner``
     natural_gradient : bool, default True
     n_estimators : int, default 500
+        Upper bound on boosting rounds.  Training stops earlier if
+        ``early_stopping_rounds`` is set and the validation loss stagnates.
     learning_rate : float, default 0.01
     minibatch_frac : float, default 1.0
     col_sample : float, default 1.0
@@ -79,7 +81,12 @@ class NGBoostCDFEstimator(NGBoost, AbstractCDFEstimator):
     tol : float, default 1e-4
     random_state : int or None, default None
     validation_fraction : float, default 0.1
-    early_stopping_rounds : int or None, default None
+        Fraction of training data held out for early-stopping validation.
+    early_stopping_rounds : int, default 20
+        Stop training if the validation loss does not improve for this many
+        consecutive rounds; the model reverts to the best checkpoint.
+        Set to ``None`` to disable early stopping and always run all
+        ``n_estimators`` rounds.
     """
 
     # pylint: disable=too-many-positional-arguments
@@ -98,14 +105,14 @@ class NGBoostCDFEstimator(NGBoost, AbstractCDFEstimator):
         tol=1e-4,
         random_state=None,
         validation_fraction=0.1,
-        early_stopping_rounds=None,
+        early_stopping_rounds=20,
     ):
         if not HAVE_NGBOOST:
             raise ImportError(
                 "NGBoostCDFEstimator requires the 'ngboost' package. "
                 "Install it with: pip install ngboost"
             )
-        NGBoost.__init__(
+        NGBRegressor.__init__(
             self,
             Dist=Dist if Dist is not None else Gamma,
             Score=Score if Score is not None else LogScore,
@@ -140,7 +147,7 @@ class NGBoostCDFEstimator(NGBoost, AbstractCDFEstimator):
             Column 0 holds test statistics λ(x_i; θ_i).
             Columns 1: hold the corresponding parameters of interest θ_i.
         **kwargs
-            Forwarded to ``NGBoost.fit`` (e.g. ``sample_weight``,
+            Forwarded to ``NGBRegressor.fit`` (e.g. ``sample_weight``,
             ``X_val`` / ``Y_val`` for early stopping, etc.).
 
         Returns
@@ -157,10 +164,10 @@ class NGBoostCDFEstimator(NGBoost, AbstractCDFEstimator):
                 f"Received shape {X.shape}."
             )
 
-        Y = X[:, 0]          # test statistics  λ  → NGBoost response
-        features = X[:, 1:]  # parameters of interest θ  → NGBoost predictors
+        Y = X[:, 0]          # test statistics  λ  → NGBRegressor response
+        features = X[:, 1:]  # parameters of interest θ  → NGBRegressor predictors
 
-        NGBoost.fit(self, features, Y, **kwargs)
+        NGBRegressor.fit(self, features, Y, **kwargs)
         return self
 
     def predict_proba(
@@ -176,7 +183,7 @@ class NGBoostCDFEstimator(NGBoost, AbstractCDFEstimator):
             Column 0 holds test statistics λ.
             Columns 1: hold the parameters of interest θ.
         **kwargs
-            Forwarded to ``NGBoost.pred_dist`` (e.g. ``max_iter``).
+            Forwarded to ``NGBRegressor.pred_dist`` (e.g. ``max_iter``).
 
         Returns
         -------
@@ -196,4 +203,4 @@ class NGBoostCDFEstimator(NGBoost, AbstractCDFEstimator):
         pred = self.pred_dist(features, max_iter=max_iter)
         cdf_vals = pred.cdf(lambda_vals)
 
-        return np.column_stack([cdf_vals, 1.0 - cdf_vals])
+        return np.column_stack([1.0 - cdf_vals, cdf_vals])

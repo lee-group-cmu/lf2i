@@ -19,42 +19,6 @@ class BrierScoreLoss(nn.Module):
         mask = ~torch.eye(n, dtype=torch.bool, device=lambda_obs.device)
         return ((cdf_vals - indicators)**2)[mask].mean()
 
-class WeightedBrierScoreLoss(nn.Module):
-    """
-    Brier score with per-column Gaussian weights that emphasise a target CDF level.
-
-    Up-weights λ_j values whose empirical rank in the mini-batch is near `center`,
-    focusing CDF accuracy where p-values are computed (near the critical α level).
-
-    Parameters
-    ----------
-    center : float
-        Target CDF level to emphasise (e.g. 0.9 for a 90% confidence set).
-    bandwidth : float
-        Width of the Gaussian emphasis window. Default 0.1.
-    """
-    def __init__(self, center: float = 0.9, bandwidth: float = 0.1):
-        super().__init__()
-        self.center    = center
-        self.bandwidth = bandwidth
-
-    def forward(
-            self,
-            cdf_vals:   torch.Tensor,   # (n, n)
-            lambda_obs: torch.Tensor,   # (n,)
-    ) -> torch.Tensor:
-        n = lambda_obs.shape[0]
-        indicators = (lambda_obs.unsqueeze(1) <= lambda_obs.unsqueeze(0)).float()
-        mask = ~torch.eye(n, dtype=torch.bool, device=lambda_obs.device)
-        # empirical rank of each λ_j as a proxy for its CDF level
-        ranks = torch.argsort(torch.argsort(lambda_obs)).float() / max(n - 1, 1)  # (n,) in [0,1]
-        col_weights = torch.exp(-0.5 * ((ranks - self.center) / self.bandwidth) ** 2)
-        col_weights = col_weights / col_weights.sum()
-        sq_err = (cdf_vals - indicators) ** 2    # (n, n)
-        # weight along column axis (j = λ level), exclude diagonal
-        return (sq_err * col_weights.unsqueeze(0))[mask].sum()
-
-
 class WeightedPinballLoss(nn.Module):
     """
     Pinball loss integrated over α ∈ (0, 1) with a smooth weight function w(α):
@@ -141,58 +105,6 @@ class WeightedPinballLoss(nn.Module):
         )
         # weight each α level, then average over samples
         return 2 * (pinball * self.weights.unsqueeze(0)).sum(dim=1).mean()
-
-
-class MomentRegressionLoss(nn.Module):
-    """
-    Directly supervises mu(θ) and log_kappa(θ) with KNN-estimated conditional
-    moment targets computed within each mini-batch.
-
-    For each sample i, the k nearest neighbours in θ-space within the batch
-    are used to estimate E[λ|θ_i] and std[λ|θ_i]. These serve as regression
-    targets for mu and log_kappa = -log(std) respectively.
-
-    Unlike distributional losses (Brier, pinball), this loss has informative
-    gradient signal even in regions where the logistic family is misspecified,
-    making it suitable as a location-scale pre-training objective for stage 1
-    of TwoStageCalibrationModel.
-
-    Parameters
-    ----------
-    knn_k : int
-        Number of nearest neighbours in θ-space per sample. Default 30.
-    lk_weight : float
-        Relative weight on the log_kappa MSE term. Default 1.0.
-    min_std : float
-        Floor on estimated conditional std for numerical stability.
-    """
-    def __init__(self, knn_k: int = 30, lk_weight: float = 1.0, min_std: float = 1e-3):
-        super().__init__()
-        self.knn_k     = knn_k
-        self.lk_weight = lk_weight
-        self.min_std   = min_std
-
-    def forward(
-        self,
-        mu:         torch.Tensor,   # (n, 1)
-        log_kappa:  torch.Tensor,   # (n, 1)
-        lambda_obs: torch.Tensor,   # (n,)
-        theta:      torch.Tensor,   # (n, d)
-    ) -> torch.Tensor:
-        n = lambda_obs.shape[0]
-        k = min(self.knn_k, n - 1)
-        with torch.no_grad():
-            dists = torch.cdist(theta, theta)           # (n, n)
-            dists.fill_diagonal_(float('inf'))          # exclude self
-            knn_idx = dists.topk(k, largest=False).indices  # (n, k)
-        lam_knn    = lambda_obs[knn_idx]                # (n, k)
-        mu_target  = lam_knn.mean(dim=1, keepdim=True)  # (n, 1)
-        std_target = lam_knn.std(dim=1, keepdim=True).clamp(min=self.min_std)
-        lk_target  = -torch.log(std_target)             # (n, 1)
-        loss_mu = (mu - mu_target).pow(2).mean()
-        loss_lk = (log_kappa - lk_target).pow(2).mean()
-        return loss_mu + self.lk_weight * loss_lk
-
 
 class SigmoidCDF(nn.Module):
     """
@@ -509,16 +421,6 @@ class ParametricCDFEstimator:
         # ── criterion ─────────────────────────────────────────────────────────
         if self.loss == 'brier':
             criterion = BrierScoreLoss()
-        elif self.loss == 'weighted_brier':
-            criterion = WeightedBrierScoreLoss(
-                center    = self.center,
-                bandwidth = self.bandwidth,
-            )
-        elif self.loss == 'moment':
-            criterion = MomentRegressionLoss(
-                knn_k     = self.knn_k,
-                lk_weight = self.lk_weight,
-            )
         else:
             criterion = WeightedPinballLoss(
                 n_alpha   = self.n_alpha,
@@ -558,9 +460,7 @@ class ParametricCDFEstimator:
                 beta      = self.beta_net_(theta_b)
                 mu        = beta[:, 0:1]
                 log_kappa = beta[:, 1:2]
-                if isinstance(criterion, MomentRegressionLoss):
-                    batch_loss = criterion(mu, log_kappa, lam_b, theta_b)
-                elif isinstance(criterion, WeightedPinballLoss):
+                if isinstance(criterion, WeightedPinballLoss):
                     alpha_row           = criterion.alpha_grid.unsqueeze(0).to(lam_b.device)
                     predicted_quantiles = self.cdf_model_.quantile(alpha_row, mu, log_kappa)
                     batch_loss          = criterion(predicted_quantiles, lam_b) + self.smooth_reg * log_kappa.mean()
