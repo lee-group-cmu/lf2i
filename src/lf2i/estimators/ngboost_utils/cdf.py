@@ -33,18 +33,19 @@ import torch
 
 try:
     from ngboost.api import NGBRegressor
-    from ngboost.distns import Gamma
+    from ngboost.distns import Normal
     from ngboost.scores import LogScore
     from ngboost.learners import default_tree_learner
     HAVE_NGBOOST = True
 except ImportError:
     NGBoost = object          # fallback so the class body parses without ngboost
-    Gamma = None
+    Normal = None
     LogScore = None
     default_tree_learner = None
     HAVE_NGBOOST = False
 
 from lf2i.estimators.base_cdf import AbstractCDFEstimator
+from lf2i.estimators.ngboost_utils.distns.gamma_loc import GammaLoc
 from sklearn.model_selection import train_test_split
 
 
@@ -64,10 +65,8 @@ class NGBoostCDFEstimator(NGBRegressor, AbstractCDFEstimator):
 
     Parameters
     ----------
-    Dist : NGBoost distribution class, default ``Gamma``
+    Dist : NGBoost distribution class, default ``Normal``
         Distributional family for the conditional distribution of λ | θ.
-        ``Gamma`` is a natural default when test statistics are non-negative
-        (e.g. likelihood-ratio statistics).
     Score : NGBoost score class, default ``LogScore``
     Base : sklearn regressor instance, default ``default_tree_learner``
     natural_gradient : bool, default True
@@ -115,7 +114,7 @@ class NGBoostCDFEstimator(NGBRegressor, AbstractCDFEstimator):
             )
         NGBRegressor.__init__(
             self,
-            Dist=Dist if Dist is not None else Gamma,
+            Dist=Dist if Dist is not None else Normal,
             Score=Score if Score is not None else LogScore,
             Base=Base if Base is not None else default_tree_learner,
             natural_gradient=natural_gradient,

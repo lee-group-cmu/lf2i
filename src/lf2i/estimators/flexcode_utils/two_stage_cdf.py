@@ -51,6 +51,7 @@ class TwoStageCalibrationModel:
         self.stage2_ = FlexCodeCDFEstimator(FlexCodeModel(
             model=regression_cls,
             max_basis=max_basis,
+            basis_system='db4',
             z_min=0.0,
             z_max=1.0,
         ))

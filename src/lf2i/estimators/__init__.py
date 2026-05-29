@@ -7,9 +7,7 @@ from lf2i.estimators.base_quantile_regressor import AbstractQuantileRegressor
 from lf2i.estimators.torch_utils.cdf import (
     ParametricCDFEstimator,
     BrierScoreLoss,
-    WeightedBrierScoreLoss,
     WeightedPinballLoss,
-    MomentRegressionLoss,
     SigmoidCDF,
     BetaNetwork,
 )
@@ -25,7 +23,9 @@ except ImportError:
 # ── NGBoost-based implementations (optional: requires ngboost) ────────────────
 try:
     from lf2i.estimators.ngboost_utils.cdf import NGBoostCDFEstimator
+    from lf2i.estimators.ngboost_utils.two_stage_cdf import TwoStageCalibrationModel as NGBoostTwoStageCalibrationModel
     from lf2i.estimators.ngboost_utils.distns.gamma_loc import GammaLoc, GammaLocLogScore
+    from lf2i.estimators.ngboost_utils.distns.kumaraswamy_mixture import Kumaraswamy
     HAVE_NGBOOST = True
 except ImportError:
     HAVE_NGBOOST = False
