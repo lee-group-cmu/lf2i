@@ -7,7 +7,7 @@ from lf2i.estimators.base_quantile_regressor import AbstractQuantileRegressor
 from lf2i.estimators.torch_utils.cdf import (
     ParametricCDFEstimator,
     BrierScoreLoss,
-    WeightedPinballLoss,
+    QuantileWeightedCRPSLoss,
     SigmoidCDF,
     BetaNetwork,
 )

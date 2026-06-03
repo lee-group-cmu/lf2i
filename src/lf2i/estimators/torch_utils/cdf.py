@@ -20,7 +20,7 @@ class BrierScoreLoss(nn.Module):
         mask = ~torch.eye(n, dtype=torch.bool, device=lambda_obs.device)
         return ((cdf_vals - indicators)**2)[mask].mean()
 
-class WeightedPinballLoss(nn.Module):
+class QuantileWeightedCRPSLoss(nn.Module):
     """
     Pinball loss integrated over α ∈ (0, 1) with a smooth weight function w(α):
 
@@ -207,11 +207,11 @@ class ParametricCDFEstimator:
         Hidden layer activation. One of 'elu', 'tanh', 'silu', 'relu'.
         Default 'tanh'.
     loss : str
-        Loss function. One of 'brier', 'pinball'. Default 'brier'.
+        Loss function. One of 'brier', 'weighted'. Default 'brier'.
     n_alpha : int
-        Quadrature points for 'pinball'. Default 500.
+        Quadrature points for 'weighted'. Default 500.
     weight_fn : str or callable
-        Weight function for 'pinball'. One of 'uniform', 'gaussian', 'beta',
+        Weight function for 'weighted'. One of 'uniform', 'gaussian', 'beta',
         or a callable taking a 1-D alpha Tensor and returning non-negative
         weights. Default 'gaussian'.
     center : float
@@ -264,21 +264,11 @@ class ParametricCDFEstimator:
         device:      Optional[str] = None,
         verbose:     bool  = True,
     ):
-        if loss not in ('brier', 'weighted_brier', 'pinball', 'moment'):
+        if loss not in ('brier', 'weighted_brier', 'weighted', 'moment'):
             raise ValueError(
-                f"loss must be 'brier', 'weighted_brier', 'pinball', or 'moment', got '{loss}'."
+                f"loss must be 'brier', 'weighted_brier', 'weighted', or 'moment', got '{loss}'."
             )
 
-        if cdf_model == 'ispline':
-            warnings.warn(
-                "cdf_model='ispline' is deprecated and has been removed. "
-                "Use cdf_model='sigmoid' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            raise ValueError(
-                "cdf_model='ispline' has been removed. Use cdf_model='sigmoid' instead."
-            )
         if normalize_ts not in ('none', 'mean-std', 'min-max', 'percentiles'):
             raise ValueError(
                 f"normalize_ts must be one of 'none', 'mean-std', 'min-max', 'percentiles'. "

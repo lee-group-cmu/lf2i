@@ -9,12 +9,14 @@ from lf2i.utils.calibration_diagnostics_inputs import preprocess_fit_p_values
 from lf2i.utils.miscellanea import to_np_if_torch
 from lf2i.estimators.base_cdf import AbstractCDFEstimator
 from lf2i.estimators.base_probabilistic_classifier import AbstractProbabilisticClassifier
+from lf2i.estimators.torch_utils.cdf import ParametricCDFEstimator
 
 
 def estimate_rejection_proba(
     test_statistics: Union[np.ndarray, torch.Tensor],
     parameters: Union[np.ndarray, torch.Tensor],
-    algorithm: Any,
+    algorithm: Union[str, Any],
+    algorithm_kwargs: Dict[str, Any] = {},
     augment_kwargs: Optional[Dict[str, Any]] = None,
     acceptance_region: Optional[str] = None,
     verbose: bool = True,
@@ -34,13 +36,18 @@ def estimate_rejection_proba(
     parameters : array-like of shape (N,) or (N, d)
         Parameters of interest ``θ_i`` for each calibration sample.
         Any width ``d ≥ 1`` is accepted; 1-D input is promoted to ``(N, 1)``.
-    algorithm : AbstractCDFEstimator or AbstractProbabilisticClassifier
+    algorithm : str or AbstractCDFEstimator or AbstractProbabilisticClassifier
+        - ``'nn'``: constructs a default :class:`ParametricCDFEstimator`.
+          Pass ``algorithm_kwargs`` to override any constructor argument.
         - **CDF estimator** (``fit(X)`` with no ``y`` argument): receives
           ``(T, θ)`` stacked as ``X`` and learns ``p(T | θ)`` directly.
           ``augment_kwargs`` are ignored for this branch.
         - **Probabilistic classifier** (``fit(X, y)``): receives augmented
           ``(τ, θ)`` inputs and ``1[T ≤ τ]`` labels produced internally by
           :func:`augment_calibration_set`.
+    algorithm_kwargs : dict, optional
+        Keyword arguments forwarded to the constructor when ``algorithm='nn'``.
+        Ignored for pre-instantiated estimators.
     augment_kwargs : dict, optional
         Forwarded to :func:`augment_calibration_set` for probabilistic
         classifiers.  Recognised keys (with defaults):
@@ -64,6 +71,14 @@ def estimate_rejection_proba(
     Any
         The fitted ``algorithm`` object.
     """
+    if isinstance(algorithm, str):
+        if algorithm == 'nn':
+            algorithm = ParametricCDFEstimator(**algorithm_kwargs)
+        else:
+            raise ValueError(
+                f"Only 'nn' or a custom algorithm instance are currently supported, got '{algorithm}'."
+            )
+
     if acceptance_region is not None:
         warnings.warn(
             "The `acceptance_region` argument to `estimate_rejection_proba` is deprecated and "
