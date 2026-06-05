@@ -1,15 +1,21 @@
-# Part of this code was adapted from https://colab.research.google.com/drive/1nXOlrmVHqCHiixqiMF6H8LSciz583_W2
-
-from typing import Sequence, Optional, List
-from tqdm import tqdm
+from typing import Union, Dict, Any, Sequence, Optional, List
+import warnings
 
 import numpy as np
 import torch
 from torch.nn.functional import sigmoid
+from tqdm import tqdm
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.metrics import make_scorer, mean_pinball_loss
+from catboost import CatBoostRegressor
+
+from lf2i.utils.calibration_diagnostics_inputs import preprocess_train_quantile_regression
+from lf2i.utils.miscellanea import select_n_jobs
+from lf2i.estimators import AbstractQuantileRegressor
 
 
 class QuantileLoss(torch.nn.Module):
-    """Quantile loss as a PyTorch module. 
+    """Quantile loss as a PyTorch module.
     Note that, although it supports multiple quantiles, there is currently no explicit constraint on their monotonicity to avoid quantile crossings.
 
     Parameters
@@ -18,14 +24,14 @@ class QuantileLoss(torch.nn.Module):
         Target quantiles. Values must be in the range `(0, 1)`.
     """
     def __init__(
-        self, 
+        self,
         quantiles: Sequence[float]
     ) -> None:
         super().__init__()
         self.quantiles = quantiles
 
     def forward(
-        self, 
+        self,
         input: torch.Tensor,
         target: torch.Tensor
     ) -> torch.Tensor:
@@ -34,7 +40,7 @@ class QuantileLoss(torch.nn.Module):
         losses = []
         for i, q in enumerate(self.quantiles):
             errors = target - input[:, i]
-            # “check” function
+            # "check" function
             losses.append(torch.max((q - 1) * errors, q * errors).unsqueeze(1))
         loss = torch.mean(torch.sum(torch.cat(losses, dim=1), dim=1))
         return loss
@@ -46,9 +52,9 @@ class FeedForwardNN(torch.nn.Module):
     Parameters
     ----------
     input_d : int
-        Dimensionality of the input. 
+        Dimensionality of the input.
     output_d : int
-        Dimensionality of the output. 
+        Dimensionality of the output.
     hidden_layer_shapes : Sequence[int]
         The i-th element represents the number of neurons in the i-th hidden layer.
     dropout_p : float, optional
@@ -81,7 +87,7 @@ class FeedForwardNN(torch.nn.Module):
         if dropout_p:
             self.model += [torch.nn.Dropout(p=dropout_p)]
 
-        # hidden 
+        # hidden
         for i in range(0, len(self.hidden_layer_shapes)-1):
             self.model += [torch.nn.Linear(self.hidden_layer_shapes[i], self.hidden_layer_shapes[i+1]), self.hidden_activation]
             if batch_norm:
@@ -95,7 +101,7 @@ class FeedForwardNN(torch.nn.Module):
     def forward(self, X: torch.Tensor) -> torch.Tensor:
         return self.model(X)
 
-    
+
 class Learner:
     """Utility class to train a neural network.
 
@@ -124,7 +130,7 @@ class Learner:
         self.loss = loss.to(self.device)
         self.loss_trajectory: List[np.ndarray] = []
         self.verbose = verbose
-    
+
     def __getstate__(self):
         # The optimizer is only needed during training; drop it to avoid pickling
         # torch.backends.* ConfigModuleInstance objects that live in its closure chain.
@@ -137,9 +143,9 @@ class Learner:
 
     def fit(
         self,
-        X: torch.Tensor, 
+        X: torch.Tensor,
         y: torch.Tensor,
-        epochs: int, 
+        epochs: int,
         batch_size: int
     ) -> None:
         self.model.train()
@@ -152,10 +158,10 @@ class Learner:
             epoch_losses = []
             for idx in range(0, X.shape[0], batch_size):
                 self.optimizer.zero_grad()
-                
+
                 batch_X = X[idx: min(idx + batch_size, X.shape[0]), :].float().to(self.device)
                 batch_y = y[idx: min(idx + batch_size, y.shape[0])].reshape(-1, 1).float().to(self.device)
-                
+
                 batch_predictions = self.model(batch_X)
                 batch_loss = self.loss(input=batch_predictions, target=batch_y)
                 batch_loss.backward()
@@ -182,7 +188,7 @@ class LearnerRegression(Learner):
     ) -> torch.Tensor:
         self.model.eval()
         return self.model(X.to(self.device)).cpu().detach()
-    
+
 
 class LearnerClassification(Learner):
 
