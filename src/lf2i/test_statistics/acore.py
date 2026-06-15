@@ -43,6 +43,14 @@ class ACORE(TestStatistic):
     n_jobs : int, optional
         Number of workers to use when computing ACORE over multiple inputs, by default -2, which uses all cores minus one.
         `n_jobs == -1` uses all cores. If `n_jobs < -1`, then `n_jobs = os.cpu_count()+1+n_jobs`.
+    optimizer : str, optional
+        Choice between 'coordinate_descent' and 'Nelder-Mead', by default 'coordinate_descent'
+    param_space_bounds : List, optional
+        List of tuples bounding optimization in each parameter component
+    max_iter : int, optional
+        Number of iterations of coordinate descent
+    estimator_train_kwargs: Dict, optional
+        Keyword arguments to be passed to the estimator constructor at estimation stage
     """
     
     def __init__(
@@ -92,8 +100,6 @@ class ACORE(TestStatistic):
 
         Parameters
         ----------
-        labels : Union[np.ndarray, torch.Tensor]
-            Class labels 0/1.
         parameters : Union[np.ndarray, torch.Tensor]
             Simulated parameters to be used for training.
         samples : Union[np.ndarray, torch.Tensor]
@@ -119,12 +125,11 @@ class ACORE(TestStatistic):
         samples:  Union[np.ndarray, torch.Tensor],
         mode: str,
         param_space_bounds: Optional[List[Tuple[float]]] = None,
-        condition_on_poi: bool = False # TODO: implement evaluation mode for POI-conditional sets
     ) -> np.ndarray:
-        r"""Evaluate the ACORE test statistic over the given parameters and samples. 
-        Behaviour differs depending on mode: 
+        r"""Evaluate the ACORE test statistic over the given parameters and samples.
+        Behaviour differs depending on mode:
             - 'critical_values' and 'diagnostics' compute ACORE once for each pair :math:`(\theta, X)`.
-            - 'confidence_sets' computes ACORE over all pairs given by the cartesian product of `parameters` (the parameter grid to construct confidence sets) and `samples`. 
+            - 'confidence_sets' computes ACORE over all pairs given by the cartesian product of `parameters` (the parameter grid to construct confidence sets) and `samples`.
 
         Parameters
         ----------
@@ -136,8 +141,6 @@ class ACORE(TestStatistic):
             Either 'critical_values', 'confidence_sets', 'diagnostics'.
         param_space_bounds : Optional[List[Tuple[float]]]
             Bounds of the parameter space, both POIs and nuisances. Must be in the same order as in `parameters`.
-        condition_on_poi : bool
-            Whether to condition on the POI when maximizing the likelihood for the denominator of the ACORE
 
         Returns
         -------
@@ -153,11 +156,11 @@ class ACORE(TestStatistic):
             param_space_bounds = self.param_space_bounds
 
         if mode == 'critical_values':
-            return self._compute_for_critical_values(parameters, samples, param_space_bounds, condition_on_poi)
+            return self._compute_for_critical_values(parameters, samples, param_space_bounds)
         elif mode == 'confidence_sets':
-            return self._compute_for_confidence_sets(parameters, samples, param_space_bounds, condition_on_poi)
+            return self._compute_for_confidence_sets(parameters, samples, param_space_bounds)
         elif mode == 'diagnostics':
-            return self._compute_for_diagnostics(parameters, samples, param_space_bounds, condition_on_poi)
+            return self._compute_for_diagnostics(parameters, samples, param_space_bounds)
         else:
             raise ValueError(f"Only `critical_values`, `confidence_sets`, and `diagnostics` are supported, got {mode}")
 
@@ -166,92 +169,62 @@ class ACORE(TestStatistic):
         parameters: Union[np.ndarray, torch.Tensor],
         samples: Union[np.ndarray, torch.Tensor, None],
         param_space_bounds: Optional[List[Tuple[float]]],
-        condition_on_poi: bool = False
     ) -> Union[np.ndarray, Tuple[np.ndarray]]:
         # NOTE: this only considers simple null hypothesis with respect to the POI, which is what we need for confidence sets
         parameters, samples, params_samples = preprocess_for_odds_cv(
             parameters, samples, self.param_dim, self.batch_size, self.data_dim, self.estimator, self.param_space_bounds
         )
 
-        if not condition_on_poi:
-            if self.nuisance_dim == 0:
-                numerator = self._log_odds(self.estimator.predict_proba(X=params_samples))[:, 1]
-                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
-                    denominator = np.array(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(
-                        lambda idx: self._denominator_method_selector(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds) 
-                        )(i) for i in it
-                    ))
-                return (numerator - denominator)
-            else:
-                def do_one(idx: int) -> float:
-                    num = self._denominator_method_selector(sample=samples[idx], fixed_poi=parameters[idx, :self.poi_dim], optimization_bounds=param_space_bounds)
-                    den = self._denominator_method_selector(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
-                    return (num - den)
-
-                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
-                    acore = np.array(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(do_one)(i) for i in it))
-                return acore
-
-        else:
-            assert self.nuisance_dim > 0, "Conditioning on the POI when maximizing the likelihood for the denominator of the ACORE only makes sense if there are nuisance parameters to optimize over. Got nuisance_dim = 0."
+        if self.nuisance_dim == 0:
             numerator = self._log_odds(self.estimator.predict_proba(X=params_samples))[:, 1]
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
                 denominator = np.array(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(
-                    lambda idx: self._denominator_method_selector(sample=samples[idx], fixed_poi=parameters[idx, :self.poi_dim], optimization_bounds=param_space_bounds) 
+                    lambda idx: self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
                     )(i) for i in it
                 ))
             return (numerator - denominator)
+        else:
+            def do_one(idx: int) -> float:
+                num = self._maximize_log_odds(sample=samples[idx], fixed_poi=parameters[idx, :self.poi_dim], optimization_bounds=param_space_bounds)
+                den = self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
+                return (num - den)
+
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Evaluating ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
+                acore = np.array(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(do_one)(i) for i in it))
+            return acore
 
     def _compute_for_confidence_sets(
-        self, 
+        self,
         parameter_grid: Union[np.ndarray, torch.Tensor],
         samples: Union[np.ndarray, torch.Tensor],
         param_space_bounds: List[List[float]],
-        condition_on_poi: bool = False
     ) -> np.ndarray:
         parameter_grid, samples, param_grid_samples = preprocess_for_odds_cs(
             parameter_grid, samples, self.param_dim, self.batch_size, self.data_dim, self.estimator, self.param_space_bounds
         )
         poi_grid = parameter_grid[:, :self.poi_dim]
 
-        if not condition_on_poi:
-            if self.nuisance_dim == 0:
-                # log_odds already aggregates wrt batch_size
-                numerator = self._log_odds(self.estimator.predict_proba(X=param_grid_samples)).reshape(samples.shape[0], parameter_grid.shape[0])
-                # denominator is the same regardless of parameter grid value
-                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
-                    denominator = np.array(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(
-                        lambda idx: self._denominator_method_selector(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds) 
-                        )(i) for i in it
-                    )).reshape(-1, 1)
-                return (numerator - denominator)  # automatic broadcasting along dimension 1
-            else:
-                def param_grid_loop(sample: Union[np.ndarray, torch.Tensor], denominator: float) -> np.ndarray:
-                    numerator = np.empty(shape=(parameter_grid.shape[0], ))
-                    for j in range(parameter_grid.shape[0]):
-                        numerator[j] = self._denominator_method_selector(sample=sample, fixed_poi=poi_grid[j, :], optimization_bounds=param_space_bounds)
-                    return (numerator - denominator)
-                
-                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
-                    out = np.vstack(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(lambda idx: param_grid_loop(
-                        sample=samples[idx], 
-                        denominator=self._denominator_method_selector(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
-                        ).reshape(1, -1))(i) for i in it
-                    ))
-                return out
-
+        if self.nuisance_dim == 0:
+            # log_odds already aggregates wrt batch_size
+            numerator = self._log_odds(self.estimator.predict_proba(X=param_grid_samples)).reshape(samples.shape[0], parameter_grid.shape[0])
+            # denominator is the same regardless of parameter grid value
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
+                denominator = np.array(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(
+                    lambda idx: self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
+                    )(i) for i in it
+                )).reshape(-1, 1)
+            return (numerator - denominator)  # automatic broadcasting along dimension 1
         else:
-            assert self.nuisance_dim > 0, "Conditioning on the POI when maximizing the likelihood for the denominator of the ACORE only makes sense if there are nuisance parameters to optimize over. Got nuisance_dim = 0."
             def param_grid_loop(sample: Union[np.ndarray, torch.Tensor], denominator: float) -> np.ndarray:
                 numerator = np.empty(shape=(parameter_grid.shape[0], ))
                 for j in range(parameter_grid.shape[0]):
-                    numerator[j] = self._denominator_method_selector(sample=sample, fixed_poi=poi_grid[j, :], optimization_bounds=param_space_bounds)
+                    numerator[j] = self._maximize_log_odds(sample=sample, fixed_poi=poi_grid[j, :], optimization_bounds=param_space_bounds)
                 return (numerator - denominator)
 
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
                 out = np.vstack(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(lambda idx: param_grid_loop(
-                    sample=samples[idx], 
-                    denominator=self._denominator_method_selector(sample=samples[idx], fixed_poi=poi_grid[idx, :], optimization_bounds=param_space_bounds)
+                    sample=samples[idx],
+                    denominator=self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
                     ).reshape(1, -1))(i) for i in it
                 ))
             return out
@@ -261,7 +234,6 @@ class ACORE(TestStatistic):
         parameters: Union[np.ndarray, torch.Tensor],
         samples: Union[np.ndarray, torch.Tensor],
         param_space_bounds: List[List[float]],
-        condition_on_poi: bool = False
     ) -> np.ndarray:
         return self._compute_for_critical_values(parameters, samples, param_space_bounds)
 
@@ -300,23 +272,12 @@ class ACORE(TestStatistic):
         )
         return self._log_odds(self.estimator.predict_proba(X=params_samples))[:, 1]
 
-    def _denominator_method_selector(
-        self,
-        sample: Union[np.ndarray, torch.Tensor],
-        fixed_poi: Union[np.ndarray, torch.Tensor],
-        optimization_bounds: List[Tuple[float]],
-        condition_on_poi: bool = False
-    ) -> float:
-        return self._maximize_log_odds(sample, fixed_poi, optimization_bounds, condition_on_poi=condition_on_poi)
-
     def _maximize_log_odds(
         self,
         sample: Union[np.ndarray, torch.Tensor],
         fixed_poi: Union[np.ndarray, torch.Tensor],  # needed only if maximizing solely over nuisances; otherwise empty array
         optimization_bounds: List[Tuple[float]],
         argmax: bool = False,
-        # max_iter: Optional[int] = 1,
-        condition_on_poi: bool = False # TODO: implement conditioning on the POI when maximizing the likelihood for the denominator of the ACORE
     ) -> float:
         assert fixed_poi.shape[0] in [0, self.poi_dim], f"fixed_poi should be either empty or have the same number of dimensions as the number of POIs, got {fixed_poi.shape[0]} and {self.poi_dim} respectively"
 
@@ -375,30 +336,3 @@ class ACORE(TestStatistic):
         else:
             return self._log_lik(nominal_parameter, sample)
 
-    def _compute_restricted_mle_for_confidence_sets(
-        self,
-        parameter_grid: Union[np.ndarray, torch.Tensor],
-        samples: Union[np.ndarray, torch.Tensor],
-        param_space_bounds: List[List[float]]
-    ) -> np.ndarray:
-        parameter_grid, samples, param_grid_samples = preprocess_for_odds_cs(parameter_grid, samples, self.param_dim, self.batch_size, self.data_dim, self.estimator)
-        poi_grid = parameter_grid[:, :self.poi_dim]
-
-        if self.nuisance_dim == 0:
-            # log_odds already aggregates wrt batch_size
-            mle = self._log_odds(self.estimator.predict_proba(X=param_grid_samples), argmax=True).reshape(samples.shape[0], parameter_grid.shape[0])
-            return mle
-        else:
-            def param_grid_loop(sample: Union[np.ndarray, torch.Tensor], denominator: float) -> np.ndarray:
-                mle = np.empty(shape=(parameter_grid.shape[0], self.param_dim))
-                for j in range(parameter_grid.shape[0]):
-                    mle[j, :] = self._maximize_log_odds(sample=sample, fixed_poi=poi_grid[j, :], optimization_bounds=param_space_bounds, argmax=True)
-                return mle
-            
-            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing ACORE for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
-                out = np.vstack(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(lambda idx: param_grid_loop(
-                    sample=samples[idx], 
-                    denominator=self._maximize_log_odds(sample=samples[idx], fixed_poi=torch.empty(0), optimization_bounds=param_space_bounds)
-                    ).reshape(1, parameter_grid.shape[0], self.param_dim))(i) for i in it
-                ))
-            return out
