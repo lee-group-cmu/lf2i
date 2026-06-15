@@ -418,9 +418,9 @@ def coverage_boxplot(
     confidence_level: float,
     whiskers_loc: Union[Tuple[float, float], float] = 1.5,
     plot_fliers: bool = True,
-    ylim: Optional[Sequence[float]] = None,
+    ylim: Optional[Sequence[float]] = (0, 1),
     save_fig_path: Optional[str] = None,
-    figsize: Tuple = (5, 5)
+    figsize: Tuple = (8, 6)
 ) -> None:
     plt.figure(figsize=figsize)
 
@@ -457,8 +457,8 @@ def coverage_nominal_actual_band(
     ax: Optional[Axes] = None,
 ) -> None:
     cls = np.asarray(confidence_levels)
-    min_coverage = np.array([np.min(p) for p in probabilities])
-    max_coverage = np.array([np.max(p) for p in probabilities])
+    min_coverage = np.array([np.quantile(p, 0.025) for p in probabilities])
+    max_coverage = np.array([np.quantile(p, 0.975) for p in probabilities])
 
     own_fig = ax is None
     if own_fig:

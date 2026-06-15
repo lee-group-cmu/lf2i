@@ -200,7 +200,7 @@ def set_size_boxplot(
     labels: Sequence[str],
     whiskers_loc: Union[Tuple[float, float], float] = 1.5,
     plot_fliers: bool = True,
-    ylim: Optional[Sequence[float]] = None,
+    ylim: Optional[Sequence[float]] = (0, 1),
     save_fig_path: Optional[str] = None,
     figsize: Tuple = (8, 6)
 ) -> None:
