@@ -11,6 +11,7 @@ from lf2i.estimators.torch_utils.cdf import (
     SigmoidCDF,
     BetaNetwork,
 )
+from lf2i.estimators.torch_utils.cdf_alt import QuantileOperatorCDFEstimator
 
 # ── FlexCode-based implementations (optional: requires flexcode) ──────────────
 try:

@@ -133,7 +133,7 @@ class TwoStageCalibrationModel:
             self._stage1_template = stage1
         else:
             kw = dict(stage1_kwargs or {})
-            kw.setdefault("Dist", GammaLoc)
+            kw.setdefault("Dist", None)
             self._stage1_template = NGBoostCDFEstimator(**kw)
 
         if stage2 is not None:
