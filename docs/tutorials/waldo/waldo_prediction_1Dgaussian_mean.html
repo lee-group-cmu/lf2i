@@ -1,15 +1,15 @@
 <!doctype html>
-<html class="no-js">
+<html class="no-js" lang="en" data-content_root="../../">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="Confidence Sets via Posterior Estimators" href="waldo_posterior_2Dgaussian_mean.html" /><link rel="prev" title="WALDO" href="index_waldo_tutorials.html" />
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" />
 
-    <meta name="generator" content="sphinx-4.5.0, furo 2022.09.29"/>
-        <title>Confidence Sets via Prediction Algorithms - LF2I: Likelihood-Free Frequentist Inference 0.1.0 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?digest=d81277517bee4d6b0349d71bb2661d4890b5617c" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    <!-- Generated with Sphinx 7.2.6 and Furo 2023.09.10 -->
+        <title>Confidence Regions from Prediction Algorithms - LF2I 0.3.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=36a5483c" />
     
     
 
@@ -22,14 +22,14 @@
   }
   @media not print {
     body[data-theme="dark"] {
-      --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+      --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
-        --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+        --color-code-background: #0d1117;
+  --color-code-foreground: #e6edf3;
   
       }
     }
@@ -123,7 +123,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">LF2I: Likelihood-Free Frequentist Inference 0.1.0 documentation</div></a>
+      <a href="../../index.html"><div class="brand">LF2I 0.3.1 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -146,32 +146,38 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
   
   
-  <span class="sidebar-brand-text">LF2I: Likelihood-Free Frequentist Inference 0.1.0 documentation</span>
+  <span class="sidebar-brand-text">LF2I 0.3.1 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
-  <input class="sidebar-search" placeholder=Search name="q" aria-label="Search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
-<ul class="current">
-<li class="toctree-l1 current has-children"><a class="reference internal" href="index_waldo_tutorials.html">WALDO</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Confidence Sets via Prediction Algorithms</a></li>
-<li class="toctree-l2"><a class="reference internal" href="waldo_posterior_2Dgaussian_mean.html">Confidence Sets via Posterior Estimators</a></li>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="index.html">Waldo</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Waldo</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="waldo_posterior.html">Confidence Regions from Posterior Estimators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="waldo_prediction.html">Confidence Regions from Prediction Algorithms</a></li>
 </ul>
 </li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API docs</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../lf2i.inference.html">lf2i.inference package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../lf2i.test_statistics.html">lf2i.test_statistics package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../lf2i.critical_values.html">lf2i.critical_values package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../lf2i.confidence_regions.html">lf2i.confidence_regions package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../lf2i.diagnostics.html">lf2i.diagnostics package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../lf2i.simulator.html">lf2i.simulator package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../lf2i.plot.html">lf2i.plot package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../lf2i.utils.html">lf2i.utils package</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../modules.html">lf2i</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of lf2i</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../lf2i.html">lf2i package</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of lf2i package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../lf2i.inference.html">lf2i.inference package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../lf2i.test_statistics.html">lf2i.test_statistics package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../lf2i.critical_values.html">lf2i.critical_values package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../lf2i.confidence_regions.html">lf2i.confidence_regions package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../lf2i.diagnostics.html">lf2i.diagnostics package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../lf2i.simulator.html">lf2i.simulator package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../lf2i.plot.html">lf2i.plot package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../lf2i.utils.html">lf2i.utils package</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 
 </div>
@@ -206,13 +212,15 @@
           </label>
         </div>
         <article role="main">
-          <section id="confidence-sets-via-prediction-algorithms">
-<h1>Confidence Sets via Prediction Algorithms<a class="headerlink" href="#confidence-sets-via-prediction-algorithms" title="Permalink to this headline">#</a></h1>
+          <section id="confidence-regions-from-prediction-algorithms">
+<h1>Confidence Regions from Prediction Algorithms<a class="headerlink" href="#confidence-regions-from-prediction-algorithms" title="Link to this heading">#</a></h1>
 <section id="intro-settings">
-<h2>INTRO &amp; SETTINGS<a class="headerlink" href="#intro-settings" title="Permalink to this headline">#</a></h2>
-<p>The goal of this tutorial is to show the capabilities of <code class="docutils literal notranslate"><span class="pre">lf2i</span></code> and <code class="docutils literal notranslate"><span class="pre">Waldo</span></code> with a simple example: inferring the mean $\theta \in \mathbb{R}$ of a Gaussian model with fixed variance, and a Gaussian prior distribution</p>
-<p>.. math::<code class="docutils literal notranslate"><span class="pre">\theta</span> <span class="pre">\sim</span> <span class="pre">\mathcal{N}(0,</span> <span class="pre">0.1),</span> <span class="pre">\\</span> <span class="pre">\text{</span> <span class="pre">}</span> <span class="pre">X|\theta</span> <span class="pre">\sim</span> <span class="pre">\mathcal{N}(\theta,</span> <span class="pre">0.01)</span></code></p>
-<p>In addition, we assume that we only observe one sample for each true :math:<code class="docutils literal notranslate"><span class="pre">\theta$,</span> <span class="pre">i.e.,</span> <span class="pre">$n=1</span></code>. <br />
+<h2>INTRO &amp; SETTINGS<a class="headerlink" href="#intro-settings" title="Link to this heading">#</a></h2>
+<p>The goal of this tutorial is to show the capabilities of <code class="docutils literal notranslate"><span class="pre">lf2i</span></code> and <code class="docutils literal notranslate"><span class="pre">Waldo</span></code> with a simple example: inferring the mean :math:<code class="docutils literal notranslate"><span class="pre">\theta</span> <span class="pre">\in</span> <span class="pre">\mathbb{R}</span></code> of a Gaussian model with fixed variance, and a Gaussian prior distribution</p>
+<div class="highlight-math notranslate"><div class="highlight"><pre><span></span>\theta \sim \mathcal{N}(0, 0.1), \\ \text{ } X|\theta \sim \mathcal{N}(\theta, 0.01)
+</pre></div>
+</div>
+<p>In addition, we assume that we only observe one sample for each true :math:<code class="docutils literal notranslate"><span class="pre">\theta</span></code>, i.e., :math:<code class="docutils literal notranslate"><span class="pre">n=1</span></code>. <br />
 For this tutorial, we leverage a prediction algorithm as the main underlying inferential model.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># SETTINGS</span>
 
@@ -222,15 +230,15 @@ For this tutorial, we leverage a prediction algorithm as the main underlying inf
 
 <span class="n">PARAM_DIM</span> <span class="o">=</span> <span class="mi">1</span>
 <span class="n">DATA_DIM</span> <span class="o">=</span> <span class="mi">1</span>
-<span class="n">DATA_SAMPLE_SIZE</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># assume we get to see only one observed sample for each “true” parameter</span>
+<span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># assume we get to see only one observed sample for each “true” parameter</span>
 <span class="n">PARAM_SPACE_BOUNDS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.5</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">}</span>  <span class="c1"># a grid of points over [low, high]^(param_dim) is used to construct confidence sets</span>
 
-<span class="n">CONFIDENCE_LEVEL</span> <span class="o">=</span> <span class="mf">0.95</span>
+<span class="n">CONFIDENCE_LEVEL</span> <span class="o">=</span> <span class="mf">0.90</span>
 </pre></div>
 </div>
 </section>
 <section id="simulate">
-<h2>SIMULATE<a class="headerlink" href="#simulate" title="Permalink to this headline">#</a></h2>
+<h2>SIMULATE<a class="headerlink" href="#simulate" title="Link to this heading">#</a></h2>
 <p>Let’s start from the simulator, which is used internally to generate the data needed to</p>
 <ol class="arabic simple">
 <li><p>estimate the test statistics;</p></li>
@@ -243,57 +251,67 @@ For this tutorial, we leverage a prediction algorithm as the main underlying inf
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">simulator</span> <span class="o">=</span> <span class="n">GaussianMean</span><span class="p">(</span>
     <span class="n">likelihood_cov</span><span class="o">=</span><span class="n">LIKELIHOOD_COV</span><span class="p">,</span>
     <span class="n">prior</span><span class="o">=</span><span class="s1">&#39;gaussian&#39;</span><span class="p">,</span>
-    <span class="n">parameter_space_bounds</span><span class="o">=</span><span class="n">PARAM_SPACE_BOUNDS</span><span class="p">,</span>
-    <span class="n">param_grid_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
-    <span class="n">param_dim</span><span class="o">=</span><span class="n">PARAM_DIM</span><span class="p">,</span> 
+    <span class="n">poi_space_bounds</span><span class="o">=</span><span class="n">PARAM_SPACE_BOUNDS</span><span class="p">,</span>
+    <span class="n">poi_grid_size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+    <span class="n">poi_dim</span><span class="o">=</span><span class="n">PARAM_DIM</span><span class="p">,</span> 
     <span class="n">data_dim</span><span class="o">=</span><span class="n">DATA_DIM</span><span class="p">,</span>
-    <span class="n">data_sample_size</span><span class="o">=</span><span class="n">DATA_SAMPLE_SIZE</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
     <span class="n">prior_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;loc&#39;</span><span class="p">:</span> <span class="n">PRIOR_LOC</span><span class="p">,</span> <span class="s1">&#39;cov&#39;</span><span class="p">:</span> <span class="n">PRIOR_COV</span><span class="p">}</span>
 <span class="p">)</span>
 </pre></div>
 </div>
 <section id="observations">
-<h3>Observations<a class="headerlink" href="#observations" title="Permalink to this headline">#</a></h3>
+<h3>Observations<a class="headerlink" href="#observations" title="Link to this heading">#</a></h3>
 <p>For simplicity, let’s use the simulator to get two “observed” samples from the true likelihood: one consistent with the prior (:math:<code class="docutils literal notranslate"><span class="pre">\theta^{\star}</span> <span class="pre">=</span> <span class="pre">0</span></code>) and one not (:math:<code class="docutils literal notranslate"><span class="pre">\theta^{\star}</span> <span class="pre">=</span> <span class="pre">-1.45</span></code>)</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch</span>
 
 <span class="n">true_param_consistent</span><span class="p">,</span> <span class="n">true_param_notconsistent</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([</span><span class="mi">0</span><span class="p">]),</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([</span><span class="o">-</span><span class="mf">1.45</span><span class="p">])</span>
-<span class="n">observed_x_consistent</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">likelihood</span><span class="p">(</span><span class="n">true_param_consistent</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">sample_shape</span><span class="o">=</span><span class="p">(</span><span class="n">DATA_SAMPLE_SIZE</span><span class="p">,</span> <span class="p">))</span>
-<span class="n">observed_x_notconsistent</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">likelihood</span><span class="p">(</span><span class="n">true_param_notconsistent</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">sample_shape</span><span class="o">=</span><span class="p">(</span><span class="n">DATA_SAMPLE_SIZE</span><span class="p">,</span> <span class="p">))</span>
+<span class="n">observed_x_consistent</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">likelihood</span><span class="p">(</span><span class="n">true_param_consistent</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">sample_shape</span><span class="o">=</span><span class="p">(</span><span class="n">BATCH_SIZE</span><span class="p">,</span> <span class="p">))</span>
+<span class="n">observed_x_notconsistent</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">likelihood</span><span class="p">(</span><span class="n">true_param_notconsistent</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">sample_shape</span><span class="o">=</span><span class="p">(</span><span class="n">BATCH_SIZE</span><span class="p">,</span> <span class="p">))</span>
 </pre></div>
 </div>
 </section>
 </section>
 <section id="confidence-set-by-leveraging-a-prediction-algorithm">
-<h2>CONFIDENCE SET by leveraging a PREDICTION ALGORITHM<a class="headerlink" href="#confidence-set-by-leveraging-a-prediction-algorithm" title="Permalink to this headline">#</a></h2>
+<h2>CONFIDENCE SET by leveraging a PREDICTION ALGORITHM<a class="headerlink" href="#confidence-set-by-leveraging-a-prediction-algorithm" title="Link to this heading">#</a></h2>
 <p>Assume we want to do inference on the Gaussian mean by predicting its value given the data. <code class="docutils literal notranslate"><span class="pre">Waldo</span></code> allows to leverage any prediction algorithm to obtain a confidence region for the parameter of interest that is guaranteed to have the desired level of coverage regardless of</p>
 <ol class="arabic simple">
 <li><p>the prior distribution;</p></li>
 <li><p>the true value of the parameter;</p></li>
 <li><p>the size of the observed sample</p></li>
 </ol>
-<p>The prediction algorithm can be already trained or not. The example below assumes the algorithm (in this case GradientBoosting) has not been trained yet</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">lf2i.inference.lf2i</span> <span class="kn">import</span> <span class="n">WALDO</span>
+<p>The prediction algorithm can be pre-trained or not. The example below assumes the algorithm (in this case GradientBoosting) has not been trained yet</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">lf2i.inference</span> <span class="kn">import</span> <span class="n">LF2I</span>
 <span class="kn">from</span> <span class="nn">lf2i.plot.parameter_regions</span> <span class="kn">import</span> <span class="n">plot_parameter_region</span>
-<span class="kn">from</span> <span class="nn">lf2i.utils.other_methods</span> <span class="kn">import</span> <span class="n">central_prediction_sets</span>
+<span class="kn">from</span> <span class="nn">lf2i.utils.other_methods</span> <span class="kn">import</span> <span class="n">gaussian_prediction_sets</span>
 </pre></div>
 </div>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">waldo</span> <span class="o">=</span> <span class="n">WALDO</span><span class="p">(</span>
-    <span class="n">simulator</span><span class="o">=</span><span class="n">simulator</span><span class="p">,</span>
-    <span class="n">estimator</span><span class="o">=</span><span class="s1">&#39;mlp&#39;</span><span class="p">,</span>  <span class="c1"># for the conditional mean</span>
-    <span class="n">method</span><span class="o">=</span><span class="s1">&#39;prediction&#39;</span><span class="p">,</span>
-    <span class="n">confidence_level</span><span class="o">=</span><span class="n">CONFIDENCE_LEVEL</span><span class="p">,</span>
-    <span class="n">conditional_variance_estimator</span><span class="o">=</span><span class="s1">&#39;gb&#39;</span><span class="p">,</span>  <span class="c1"># for the conditional variance</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">lf2i</span> <span class="o">=</span> <span class="n">LF2I</span><span class="p">(</span>
+    <span class="n">test_statistic</span><span class="o">=</span><span class="s1">&#39;waldo&#39;</span><span class="p">,</span>
+    <span class="n">poi_dim</span><span class="o">=</span><span class="n">PARAM_DIM</span><span class="p">,</span>
+    <span class="n">estimation_method</span><span class="o">=</span><span class="s1">&#39;prediction&#39;</span><span class="p">,</span>
+    <span class="n">estimator</span><span class="o">=</span><span class="s1">&#39;mlp_r&#39;</span><span class="p">,</span>  <span class="c1"># simple feed-forward NN for the conditional mean</span>
+    <span class="n">cond_variance_estimator</span><span class="o">=</span><span class="s1">&#39;gb_r&#39;</span><span class="p">,</span>  <span class="c1"># for the conditional variance</span>
     <span class="n">estimator_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;hidden_layer_sizes&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="p">),</span> <span class="s1">&#39;alpha&#39;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">},</span>
     <span class="n">cond_variance_estimator_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;n_estimators&#39;</span><span class="p">:</span> <span class="mi">500</span><span class="p">,</span> <span class="s1">&#39;max_depth&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">confidence_region</span> <span class="o">=</span> <span class="n">waldo</span><span class="o">.</span><span class="n">infer</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">observed_x_consistent</span><span class="p">,</span> <span class="n">observed_x_notconsistent</span><span class="p">)),</span> <span class="n">b</span><span class="o">=</span><span class="mi">10_000</span><span class="p">,</span> <span class="n">b_prime</span><span class="o">=</span><span class="mi">5_000</span><span class="p">)</span>
+<p>Note that for this example we are using the simulator to obtain training datasets. If one has pre-simulated datasets, they can be given as inputs directly to the <code class="docutils literal notranslate"><span class="pre">inference</span></code> method.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">confidence_region</span> <span class="o">=</span> <span class="n">lf2i</span><span class="o">.</span><span class="n">inference</span><span class="p">(</span>
+    <span class="n">x</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">observed_x_consistent</span><span class="p">,</span> <span class="n">observed_x_notconsistent</span><span class="p">)),</span> 
+    <span class="n">evaluation_grid</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">poi_grid</span><span class="p">,</span>
+    <span class="n">confidence_level</span><span class="o">=</span><span class="n">CONFIDENCE_LEVEL</span><span class="p">,</span>
+    <span class="n">simulator</span><span class="o">=</span><span class="n">simulator</span><span class="p">,</span>
+    <span class="n">b</span><span class="o">=</span><span class="mi">10_000</span><span class="p">,</span> <span class="n">b_prime</span><span class="o">=</span><span class="mi">5_000</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>Constructing confidence regions ...
 </pre></div>
 </div>
 <section id="observation-consistent-with-the-prior">
-<h3>Observation consistent with the prior<a class="headerlink" href="#observation-consistent-with-the-prior" title="Permalink to this headline">#</a></h3>
+<h3>Observation consistent with the prior<a class="headerlink" href="#observation-consistent-with-the-prior" title="Link to this heading">#</a></h3>
 <p>Waldo Confidence Region</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># The red star in the plot is the true parameter</span>
 
@@ -301,86 +319,86 @@ For this tutorial, we leverage a prediction algorithm as the main underlying inf
     <span class="n">parameter_region</span><span class="o">=</span><span class="n">confidence_region</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
     <span class="n">param_dim</span><span class="o">=</span><span class="n">PARAM_DIM</span><span class="p">,</span>
     <span class="n">true_parameter</span><span class="o">=</span><span class="n">true_param_consistent</span><span class="p">,</span>
-    <span class="n">parameter_space_bounds</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">parameter_space_bounds</span><span class="p">,</span>
+    <span class="n">parameter_space_bounds</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">poi_space_bounds</span><span class="p">,</span>
     <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p><img alt="png" src="../../_images/waldo_prediction_1Dgaussian_mean_17_0.png" /></p>
+<p><img alt="png" src="../../_images/waldo_prediction_1Dgaussian_mean_18_0.png" /></p>
 <p>Central (Gaussian approximation) prediction sets</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">plot_parameter_region</span><span class="p">(</span>
-    <span class="n">parameter_region</span><span class="o">=</span><span class="n">central_prediction_sets</span><span class="p">(</span>
-        <span class="n">conditional_mean_estimator</span><span class="o">=</span><span class="n">waldo</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">estimator</span><span class="p">,</span>
-        <span class="n">conditional_variance_estimator</span><span class="o">=</span><span class="n">waldo</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">cond_variance_estimator</span><span class="p">,</span>
+    <span class="n">parameter_region</span><span class="o">=</span><span class="n">gaussian_prediction_sets</span><span class="p">(</span>
+        <span class="n">conditional_mean_estimator</span><span class="o">=</span><span class="n">lf2i</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">estimator</span><span class="p">,</span>
+        <span class="n">conditional_variance_estimator</span><span class="o">=</span><span class="n">lf2i</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">cond_variance_estimator</span><span class="p">,</span>
         <span class="n">samples</span><span class="o">=</span><span class="n">observed_x_consistent</span><span class="p">,</span>
         <span class="n">confidence_level</span><span class="o">=</span><span class="n">CONFIDENCE_LEVEL</span><span class="p">,</span>
         <span class="n">param_dim</span><span class="o">=</span><span class="n">PARAM_DIM</span>
     <span class="p">),</span>
     <span class="n">param_dim</span><span class="o">=</span><span class="n">PARAM_DIM</span><span class="p">,</span>
     <span class="n">true_parameter</span><span class="o">=</span><span class="n">true_param_consistent</span><span class="p">,</span>
-    <span class="n">parameter_space_bounds</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">parameter_space_bounds</span><span class="p">,</span>
+    <span class="n">parameter_space_bounds</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">poi_space_bounds</span><span class="p">,</span>
     <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span>
     <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p><img alt="png" src="../../_images/waldo_prediction_1Dgaussian_mean_19_0.png" /></p>
+<p><img alt="png" src="../../_images/waldo_prediction_1Dgaussian_mean_20_0.png" /></p>
 </section>
 <section id="observation-not-consistent-with-the-prior">
-<h3>Observation <em>not</em> consistent with the prior<a class="headerlink" href="#observation-not-consistent-with-the-prior" title="Permalink to this headline">#</a></h3>
+<h3>Observation <strong>NOT</strong> consistent with the prior<a class="headerlink" href="#observation-not-consistent-with-the-prior" title="Link to this heading">#</a></h3>
 <p>Waldo Confidence Region</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">plot_parameter_region</span><span class="p">(</span>
     <span class="n">parameter_region</span><span class="o">=</span><span class="n">confidence_region</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
     <span class="n">param_dim</span><span class="o">=</span><span class="n">PARAM_DIM</span><span class="p">,</span>
     <span class="n">true_parameter</span><span class="o">=</span><span class="n">true_param_notconsistent</span><span class="p">,</span>
-    <span class="n">parameter_space_bounds</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">parameter_space_bounds</span><span class="p">,</span>
+    <span class="n">parameter_space_bounds</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">poi_space_bounds</span><span class="p">,</span>
     <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p><img alt="png" src="../../_images/waldo_prediction_1Dgaussian_mean_22_0.png" /></p>
-<p>Central (Gaussian approximation) prediction sets</p>
+<p><img alt="png" src="../../_images/waldo_prediction_1Dgaussian_mean_23_0.png" /></p>
+<p>Gaussian prediction intervals centered around the prediction. <br />
+Different observations might give slightly different results, but on average this method does not provide the correct level of coverage (see Diagnostics below)</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">plot_parameter_region</span><span class="p">(</span>
-    <span class="n">parameter_region</span><span class="o">=</span><span class="n">central_prediction_sets</span><span class="p">(</span>
-        <span class="n">conditional_mean_estimator</span><span class="o">=</span><span class="n">waldo</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">estimator</span><span class="p">,</span>
-        <span class="n">conditional_variance_estimator</span><span class="o">=</span><span class="n">waldo</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">cond_variance_estimator</span><span class="p">,</span>
+    <span class="n">parameter_region</span><span class="o">=</span><span class="n">gaussian_prediction_sets</span><span class="p">(</span>
+        <span class="n">conditional_mean_estimator</span><span class="o">=</span><span class="n">lf2i</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">estimator</span><span class="p">,</span>
+        <span class="n">conditional_variance_estimator</span><span class="o">=</span><span class="n">lf2i</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">cond_variance_estimator</span><span class="p">,</span>
         <span class="n">samples</span><span class="o">=</span><span class="n">observed_x_notconsistent</span><span class="p">,</span>
         <span class="n">confidence_level</span><span class="o">=</span><span class="n">CONFIDENCE_LEVEL</span><span class="p">,</span>
         <span class="n">param_dim</span><span class="o">=</span><span class="n">PARAM_DIM</span>
     <span class="p">),</span>
     <span class="n">param_dim</span><span class="o">=</span><span class="n">PARAM_DIM</span><span class="p">,</span>
     <span class="n">true_parameter</span><span class="o">=</span><span class="n">true_param_notconsistent</span><span class="p">,</span>
-    <span class="n">parameter_space_bounds</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">parameter_space_bounds</span><span class="p">,</span>
+    <span class="n">parameter_space_bounds</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">poi_space_bounds</span><span class="p">,</span>
     <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span>
     <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p><img alt="png" src="../../_images/waldo_prediction_1Dgaussian_mean_24_0.png" /></p>
+<p><img alt="png" src="../../_images/waldo_prediction_1Dgaussian_mean_25_0.png" /></p>
 </section>
 </section>
 <section id="diagnostics">
-<h2>DIAGNOSTICS<a class="headerlink" href="#diagnostics" title="Permalink to this headline">#</a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">lf2i.plot.coverage_diagnostics</span> <span class="kn">import</span> <span class="n">coverage_regions_plot</span>
+<h2>DIAGNOSTICS<a class="headerlink" href="#diagnostics" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">lf2i.plot.coverage_diagnostics</span> <span class="kn">import</span> <span class="n">coverage_probability_plot</span>
 </pre></div>
 </div>
 <section id="central-gaussian-approximation-prediction-sets">
-<h3>Central (Gaussian approximation) Prediction Sets<a class="headerlink" href="#central-gaussian-approximation-prediction-sets" title="Permalink to this headline">#</a></h3>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">parameters</span><span class="p">,</span> <span class="n">mean_proba</span><span class="p">,</span> <span class="n">upper_proba</span><span class="p">,</span> <span class="n">lower_proba</span> <span class="o">=</span> <span class="n">waldo</span><span class="o">.</span><span class="n">diagnose</span><span class="p">(</span>
-    <span class="n">b_doubleprime</span><span class="o">=</span><span class="mi">10_000</span><span class="p">,</span>
-    <span class="n">region_type</span><span class="o">=</span><span class="s1">&#39;prediction&#39;</span>
+<h3>Central (Gaussian approximation) Prediction Sets<a class="headerlink" href="#central-gaussian-approximation-prediction-sets" title="Link to this heading">#</a></h3>
+<p>Note that for this example we are using the simulator to obtain training dataset. If one has pre-simulated dataset, it can be given as input directly to the <code class="docutils literal notranslate"><span class="pre">diagnostics</span></code> method.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">diagnostic_estimator</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">mean_proba</span><span class="p">,</span> <span class="n">upper_proba</span><span class="p">,</span> <span class="n">lower_proba</span> <span class="o">=</span> <span class="n">lf2i</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">(</span>
+    <span class="n">region_type</span><span class="o">=</span><span class="s1">&#39;prediction&#39;</span><span class="p">,</span>
+    <span class="n">simulator</span><span class="o">=</span><span class="n">simulator</span><span class="p">,</span>
+    <span class="n">b_double_prime</span><span class="o">=</span><span class="mi">10_000</span><span class="p">,</span>
+    <span class="n">evaluation_grid</span><span class="o">=</span><span class="n">simulator</span><span class="o">.</span><span class="n">poi_grid</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">PARAM_DIM</span><span class="p">),</span>
+    <span class="n">confidence_level</span><span class="o">=</span><span class="n">CONFIDENCE_LEVEL</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>R[write to console]: Loading required package: nlme
-
-R[write to console]: This is mgcv 1.8-38. For overview type &#39;help(&quot;mgcv-package&quot;)&#39;.
-</pre></div>
-</div>
-<p>Coverage is close to the correct level (95%) only when the true parameter is close to the bulk of the prior distribution</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">coverage_regions_plot</span><span class="p">(</span>
+<p>Coverage is close to the correct level (:math:<code class="docutils literal notranslate"><span class="pre">90%</span></code>) only when the true parameter is close to the bulk of the prior distribution</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">coverage_probability_plot</span><span class="p">(</span>
     <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
-    <span class="n">mean_proba</span><span class="o">=</span><span class="n">mean_proba</span><span class="p">,</span> 
+    <span class="n">coverage_probability</span><span class="o">=</span><span class="n">mean_proba</span><span class="p">,</span> 
     <span class="n">upper_proba</span><span class="o">=</span><span class="n">upper_proba</span><span class="p">,</span>
     <span class="n">lower_proba</span><span class="o">=</span><span class="n">lower_proba</span><span class="p">,</span>
     <span class="n">confidence_level</span><span class="o">=</span><span class="n">CONFIDENCE_LEVEL</span><span class="p">,</span>
@@ -390,20 +408,22 @@ R[write to console]: This is mgcv 1.8-38. For overview type &#39;help(&quot;mgcv
 <span class="p">)</span>
 </pre></div>
 </div>
-<p><img alt="png" src="../../_images/waldo_prediction_1Dgaussian_mean_30_0.png" /></p>
+<p><img alt="png" src="../../_images/waldo_prediction_1Dgaussian_mean_32_0.png" /></p>
 </section>
 <section id="waldo-confidence-regions">
-<h3>Waldo Confidence Regions<a class="headerlink" href="#waldo-confidence-regions" title="Permalink to this headline">#</a></h3>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">parameters</span><span class="p">,</span> <span class="n">mean_proba</span><span class="p">,</span> <span class="n">upper_proba</span><span class="p">,</span> <span class="n">lower_proba</span> <span class="o">=</span> <span class="n">waldo</span><span class="o">.</span><span class="n">diagnose</span><span class="p">(</span>
-    <span class="n">b_doubleprime</span><span class="o">=</span><span class="mi">10_000</span><span class="p">,</span>
-    <span class="n">region_type</span><span class="o">=</span><span class="s1">&#39;lf2i&#39;</span>
+<h3>Waldo Confidence Regions<a class="headerlink" href="#waldo-confidence-regions" title="Link to this heading">#</a></h3>
+<p>Note that for this example we are using the simulator to obtain training dataset. If one has pre-simulated dataset, it can be given as input directly to the <code class="docutils literal notranslate"><span class="pre">diagnostics</span></code> method.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">diagnostic_estimator</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">mean_proba</span><span class="p">,</span> <span class="n">upper_proba</span><span class="p">,</span> <span class="n">lower_proba</span> <span class="o">=</span> <span class="n">lf2i</span><span class="o">.</span><span class="n">diagnostics</span><span class="p">(</span>
+    <span class="n">region_type</span><span class="o">=</span><span class="s1">&#39;lf2i&#39;</span><span class="p">,</span>
+    <span class="n">simulator</span><span class="o">=</span><span class="n">simulator</span><span class="p">,</span>
+    <span class="n">b_double_prime</span><span class="o">=</span><span class="mi">10_000</span><span class="p">,</span>
 <span class="p">)</span>
 </pre></div>
 </div>
-<p>Coverage is approximately the correct level (95%) everywhere</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">coverage_regions_plot</span><span class="p">(</span>
+<p>Coverage is approximately the correct level (90%) everywhere</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">coverage_probability_plot</span><span class="p">(</span>
     <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
-    <span class="n">mean_proba</span><span class="o">=</span><span class="n">mean_proba</span><span class="p">,</span> 
+    <span class="n">coverage_probability</span><span class="o">=</span><span class="n">mean_proba</span><span class="p">,</span> 
     <span class="n">upper_proba</span><span class="o">=</span><span class="n">upper_proba</span><span class="p">,</span>
     <span class="n">lower_proba</span><span class="o">=</span><span class="n">lower_proba</span><span class="p">,</span>
     <span class="n">confidence_level</span><span class="o">=</span><span class="n">CONFIDENCE_LEVEL</span><span class="p">,</span>
@@ -413,7 +433,7 @@ R[write to console]: This is mgcv 1.8-38. For overview type &#39;help(&quot;mgcv
 <span class="p">)</span>
 </pre></div>
 </div>
-<p><img alt="png" src="../../_images/waldo_prediction_1Dgaussian_mean_34_0.png" /></p>
+<p><img alt="png" src="../../_images/waldo_prediction_1Dgaussian_mean_37_0.png" /></p>
 </section>
 </section>
 </section>
@@ -423,31 +443,13 @@ R[write to console]: This is mgcv 1.8-38. For overview type &#39;help(&quot;mgcv
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="waldo_posterior_2Dgaussian_mean.html">
-              <div class="page-info">
-                <div class="context">
-                  <span>Next</span>
-                </div>
-                <div class="title">Confidence Sets via Posterior Estimators</div>
-              </div>
-              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
-            </a>
-          <a class="prev-page" href="index_waldo_tutorials.html">
-              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
-              <div class="page-info">
-                <div class="context">
-                  <span>Previous</span>
-                </div>
-                
-                <div class="title">WALDO</div>
-                
-              </div>
-            </a>
+          
+          
         </div>
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2022, Luca Masserano, Niccolò Dalmasso, David Zhao, Rafael Izbicki, Ann B. Lee
+                Copyright &#169; 2023, Luca Masserano
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             
@@ -480,7 +482,7 @@ R[write to console]: This is mgcv 1.8-38. For overview type &#39;help(&quot;mgcv
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Confidence Sets via Prediction Algorithms</a><ul>
+<li><a class="reference internal" href="#">Confidence Regions from Prediction Algorithms</a><ul>
 <li><a class="reference internal" href="#intro-settings">INTRO &amp; SETTINGS</a></li>
 <li><a class="reference internal" href="#simulate">SIMULATE</a><ul>
 <li><a class="reference internal" href="#observations">Observations</a></li>
@@ -488,7 +490,7 @@ R[write to console]: This is mgcv 1.8-38. For overview type &#39;help(&quot;mgcv
 </li>
 <li><a class="reference internal" href="#confidence-set-by-leveraging-a-prediction-algorithm">CONFIDENCE SET by leveraging a PREDICTION ALGORITHM</a><ul>
 <li><a class="reference internal" href="#observation-consistent-with-the-prior">Observation consistent with the prior</a></li>
-<li><a class="reference internal" href="#observation-not-consistent-with-the-prior">Observation <em>not</em> consistent with the prior</a></li>
+<li><a class="reference internal" href="#observation-not-consistent-with-the-prior">Observation <strong>NOT</strong> consistent with the prior</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#diagnostics">DIAGNOSTICS</a><ul>
@@ -507,11 +509,10 @@ R[write to console]: This is mgcv 1.8-38. For overview type &#39;help(&quot;mgcv
       
     </aside>
   </div>
-</div><script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-    <script src="../../_static/jquery.js"></script>
-    <script src="../../_static/underscore.js"></script>
-    <script src="../../_static/doctools.js"></script>
-    <script src="../../_static/scripts/furo.js"></script>
+</div><script src="../../_static/documentation_options.js?v=4621528c"></script>
+    <script src="../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/scripts/furo.js?v=32e29ea5"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     </body>
 </html>

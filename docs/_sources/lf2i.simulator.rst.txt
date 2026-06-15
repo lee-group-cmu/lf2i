@@ -11,6 +11,16 @@ lf2i.simulator.gaussian module
    :members:
    :undoc-members:
    :show-inheritance:
+   :member-order: bysource
+
+lf2i.simulator.hep module
+-------------------------
+
+.. automodule:: lf2i.simulator.hep
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
 
 Module contents
 ---------------
@@ -19,3 +29,4 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+   :member-order: bysource

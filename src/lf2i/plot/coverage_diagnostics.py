@@ -2,15 +2,13 @@ from typing import Optional, Tuple, Union, Dict, List, Sequence, Any
 from warnings import simplefilter
 
 import numpy as np
-from rpy2.robjects.vectors import ListVector
 import pandas as pd
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.axes._axes import Axes
+import matplotlib.colors as mcolors
 import seaborn as sns
-
-from lf2i.diagnostics.diagnostics import predict_r_estimator
 
 
 def coverage_probability_plot(
@@ -21,25 +19,32 @@ def coverage_probability_plot(
     upper_proba: Optional[np.ndarray] = None,
     lower_proba: Optional[np.ndarray] = None,
     save_fig_path: Optional[str] = None,
-    figsize: Tuple = (10, 15),
-    ylims: Tuple = (0, 1),
+    figsize: Tuple = (10, 8),
+    xlims: Optional[Tuple[float]] = None,
+    ylims: Optional[Tuple[float]] = None,
     params_labels: Optional[Union[Tuple[str], List[str]]] = None,
     vmin_vmax: Optional[Union[Tuple, List]] = None,
-    custom_ax: Optional[Axes] = None,  # if passing custom ax for pairplot,
+    custom_ax: Optional[Axes] = None,  # if passing custom ax for pairplot
+    show_text: bool = False,
+    show_undercoverage: bool = False,
+    title: Optional[str] = None,
+    n_bins: int = 30,
+    n_levels: int = 15
 ) -> None:
+    # TODO: Plot variance in coverage
     if param_dim == 1:
         df_plot = pd.DataFrame({
             "parameters": parameters.reshape(-1,),
             "mean_proba": coverage_probability.reshape(-1,),
-            "lower_proba": lower_proba.reshape(-1,),
-            "upper_proba": upper_proba.reshape(-1,)
+            # "lower_proba": lower_proba.reshape(-1,),
+            # "upper_proba": upper_proba.reshape(-1,)
         }).sort_values(by="parameters")
 
-        _, ax = plt.subplots(1, 1, figsize=figsize)
+        _, ax = plt.subplots(1, 1)
         ax.plot(df_plot.parameters, df_plot.mean_proba, color='crimson', label='Estimated Coverage')
-        ax.plot(df_plot.parameters, df_plot.lower_proba, color='crimson')
-        ax.plot(df_plot.parameters, df_plot.upper_proba, color='crimson')
-        ax.fill_between(x=df_plot.parameters, y1=df_plot.lower_proba, y2=df_plot.upper_proba, alpha=0.2, color='crimson')
+        # ax.plot(df_plot.parameters, df_plot.lower_proba, color='crimson')
+        # ax.plot(df_plot.parameters, df_plot.upper_proba, color='crimson')
+        # ax.fill_between(x=df_plot.parameters, y1=df_plot.lower_proba, y2=df_plot.upper_proba, alpha=0.2, color='crimson')
         ax.axhline(y=confidence_level, color='black', linestyle="--", linewidth=3, 
                     label=f"Nominal coverage = {round(100 * confidence_level, 1)} %", zorder=10)
         
@@ -47,55 +52,161 @@ def coverage_probability_plot(
             ax.set_xlabel(r"$\theta$", fontsize=45)
         else:
             ax.set_xlabel(params_labels[0], fontsize=45)
+
         ax.set_ylabel("Coverage", fontsize=45)
-        ax.set_ylim(*ylims)
+        ax.set_ylim(*ylims if ylims is not None else (0, 1))
         ax.legend()
     else:
         vmin_vmax = vmin_vmax or (0, 100)
         if param_dim == 2:
-            fig = plt.figure(figsize=figsize)
+            if custom_ax is None:
+                fig = plt.figure()
             ax = custom_ax or plt.gca()
 
-            x_bins = np.histogram_bin_edges(parameters[:, 0], bins='auto')
-            y_bins = np.histogram_bin_edges(parameters[:, 1], bins='auto')
-            binned_sum_proba, xedges, yedges = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins], weights=np.round(coverage_probability*100, 2))
-            bin_counts, xedges, yedges = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins]) 
-            heatmap_values = binned_sum_proba/bin_counts
-            heatmap = ax.imshow(heatmap_values.T, cmap='inferno', aspect='auto', extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], vmin=vmin_vmax[0], vmax=vmin_vmax[1])
+            x_bins = np.histogram_bin_edges(parameters[:, 0], bins=n_bins)
+            y_bins = np.histogram_bin_edges(parameters[:, 1], bins=n_bins)
+            binned_sum_proba, xedges, yedges = np.histogram2d(
+                parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins], weights=np.round(coverage_probability*100, 2)
+            )
+            bin_counts, _, _ = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins]) 
+            heatmap_values = binned_sum_proba / bin_counts
+
+            levels = np.linspace(vmin_vmax[0], vmin_vmax[1], num=n_levels)
+            # Create mesh grid for plotting - use bin CENTERS not edges
+            x_centers = (xedges[:-1] + xedges[1:]) / 2
+            y_centers = (yedges[:-1] + yedges[1:]) / 2
+            X, Y = np.meshgrid(x_centers, y_centers)
+
+            cmap, norm = create_jetr_cmap(confidence_level=confidence_level*100)
+            contour_filled = ax.contourf(
+                X, Y, heatmap_values.T,
+                levels=levels, cmap=cmap, norm=norm, extend='both'
+            )
+            contour_lines = ax.contour(
+                X, Y, heatmap_values.T,
+                levels=levels, colors="white", linewidths=0.8
+            )
+            # clabels = ax.clabel(contour_lines, levels[::2], inline=True, fontsize=25, fmt="%1.1f%%")
+            # for txt in clabels:
+            #     txt.set_color("black")
+            #     txt.set_bbox(dict(facecolor="white", edgecolor="black", boxstyle="square,pad=0.1"))
+
+            # if show_text:
+            #     # Add numerical labels at contour centroids
+            #     for y_index in range(len(yedges)-1):
+            #         for x_index in range(len(xedges)-1):
+            #             label = heatmap_values.T[::-1, :][y_index, x_index]
+            #             if not np.isnan(label):
+            #                 ax.text(xedges[x_index] + 0.5*(xedges[1]-xedges[0]), 
+            #                         yedges[y_index] + 0.5*(yedges[1]-yedges[0]), 
+            #                         f'{label:.1f}', color='black', ha='center', va='center', fontsize=7)
+
+            if show_undercoverage:
+                binned_sum_upper_proba, _, _ = np.histogram2d(
+                    parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins], weights=np.round(upper_proba*100, 2)
+                )
+                bin_counts_upper, _, _ = np.histogram2d(parameters[:, 0], parameters[:, 1], bins=[x_bins, y_bins]) 
+                heatmap_upper_values = binned_sum_upper_proba / bin_counts_upper
+
+                for y_index in range(len(yedges)-1):
+                    for x_index in range(len(xedges)-1):
+                        if heatmap_upper_values.T[::-1, :][y_index, x_index] < confidence_level * 100:
+                            ax.scatter(xedges[x_index] + 0.5*(xedges[1]-xedges[0]), 
+                                       yedges[y_index] + 0.5*(yedges[1]-yedges[0]), 
+                                       marker='X', color='red', s=200)
+
             if custom_ax is None:
-                # use one commmon colorbar on main figure
-                cbar = fig.colorbar(heatmap, format='%1.2f')
-                cbar.ax.yaxis.set_ticks(np.round(np.linspace(vmin_vmax[0], vmin_vmax[1], num=5), 1))
-                cbar.ax.yaxis.set_ticklabels([str(label)+"%" for label in np.round(np.linspace(vmin_vmax[0], vmin_vmax[1], num=5), 1)])
+                # Use a common colorbar
+                cbar = fig.colorbar(contour_filled, format='%1.2f')
+                standard_ticks = np.round(np.linspace(vmin_vmax[0], vmin_vmax[1], num=6), 1)
+                all_ticks = np.unique(np.sort(np.append(standard_ticks[:-1], confidence_level * 100)))
+                tick_labels = [f"{label:.0f}\%" for label in all_ticks]
+                for i, label in enumerate(all_ticks):
+                    if abs(label - confidence_level*100) <= 1e-6:
+                        tick_labels[i] = r"$\mathbf{{{label}}}$\textbf{{\%}}".format(label=int(label))
+                cbar.ax.yaxis.set_ticks(all_ticks)
+                cbar.ax.set_yticklabels(tick_labels, fontsize=30)
+                cbar.ax.axhline(y=confidence_level*100, xmin=0, xmax=1, color="black", linestyle="--", linewidth=2.5)
+
+            ax.tick_params(axis='both', labelsize=20)
+            if params_labels is None:
+                ax.set_xlabel(r"$\theta^{{(1)}}$", fontsize=25, labelpad=3)
+                ax.set_ylabel(r"$\theta^{{(2)}}$", fontsize=25, labelpad=10, rotation=0)
+            else:
+                ax.set_xlabel(params_labels[0], fontsize=25, labelpad=3)
+                ax.set_ylabel(params_labels[1], fontsize=25, labelpad=10, rotation=0)
+
+            # Set limits properly to show all data
+            if xlims is not None:
+                ax.set_xlim(*xlims)
+            else:
+                ax.set_xlim(parameters[:, 0].min(), parameters[:, 0].max())
+                
+            if ylims is not None:
+                ax.set_ylim(*ylims)
+            else:
+                ax.set_ylim(parameters[:, 1].min(), parameters[:, 1].max())
+
+            if xlims is not None and ylims is not None:
+                # Set limits based on parameter_space_bounds
+                x_low, x_high = xlims
+                y_low, y_high = ylims
+                ax.set_xlim(x_low, x_high)
+                ax.set_ylim(y_low, y_high)
+                
+                # Set ticks based on the actual bounds
+                ax.set_xticks(np.linspace(x_low, x_high, 5))
+                ax.set_xticklabels([f'{x:.1f}' for x in np.linspace(x_low, x_high, 5)])
+                ax.set_yticks(np.linspace(y_low, y_high, 5))
+                ax.set_yticklabels([f'{y:.1f}' for y in np.linspace(y_low, y_high, 5)])
+            else:
+                # Use data-driven ticks
+                x_range = parameters[:, 0]
+                y_range = parameters[:, 1]
+                ax.set_xticks(np.linspace(x_range.min(), x_range.max(), 5))
+                ax.set_xticklabels([f'{x:.1f}' for x in np.linspace(x_range.min(), x_range.max(), 5)])
+                ax.set_yticks(np.linspace(y_range.min(), y_range.max(), 5))
+                ax.set_yticklabels([f'{y:.1f}' for y in np.linspace(y_range.min(), y_range.max(), 5)])
+
         elif param_dim == 3:
-            fig = plt.figure(figsize=figsize)
+            fig = plt.figure()
             ax = fig.add_subplot(projection='3d')
             ax.set_box_aspect(aspect=None, zoom=0.85)
             scatter = ax.scatter(parameters[:, 0], parameters[:, 1], parameters[:, 2], c=np.round(coverage_probability*100, 2), 
                                 cmap=cm.get_cmap(name='inferno'), vmin=vmin_vmax[0], vmax=vmin_vmax[1], alpha=1)
             cbar = fig.colorbar(scatter, format='%1.2f', location='top', orientation='horizontal', pad=-0.05)
-            cbar.ax.xaxis.set_ticks(np.linspace(0, 100, num=11, dtype=int))
-            cbar.ax.xaxis.set_ticklabels([str(label)+"%" for label in np.linspace(0, 100, num=11, dtype=int)])
+            cbar.ax.xaxis.set_ticks(np.linspace(0, 100, num=6, dtype=int))
+            cbar.ax.xaxis.set_ticklabels([str(label)+r"$\%$" for label in np.linspace(0, 100, num=6, dtype=int)], fontsize=30)
         else:
             raise ValueError("Impossible to plot coverage for a parameter with more than three dimensions")
 
         if custom_ax is None:
             # handle formatting within function passing custom ax. Used only for `param_dim == 2`
-            cbar.set_label('Estimated Coverage', fontsize=30, labelpad=10)
-            cbar.ax.tick_params(labelsize=15)
+            cbar.set_label('Estimated Coverage', fontsize=40, labelpad=10)
+            cbar.ax.tick_params(labelsize=30)
             simplefilter(action="ignore", category=UserWarning)
         
             ax.tick_params(axis='both', labelsize=20)
             if params_labels is None:
-                ax.set_xlabel(r"$\theta^{{(1)}}$", fontsize=45, labelpad=30)
-                ax.set_ylabel(r"$\theta^{{(2)}}$", fontsize=45, rotation=0, labelpad=30)
+                ax.set_xlabel(r"$\theta^{{(1)}}$", fontsize=25, labelpad=3)
+                ax.set_ylabel(r"$\theta^{{(2)}}$", fontsize=25, rotation=0, labelpad=3)
                 if param_dim == 3:
-                    ax.set_zlabel(r"$\theta^{{(3)}}$", fontsize=45, rotation=180, labelpad=30)
+                    ax.set_zlabel(r"$\theta^{{(3)}}$", fontsize=25, rotation=180, labelpad=3)
             else:
-                ax.set_xlabel(params_labels[0], fontsize=45, labelpad=30)
-                ax.set_ylabel(params_labels[1], fontsize=45, rotation=0, labelpad=30)
+                ax.set_xlabel(params_labels[0], fontsize=40, labelpad=3)
+                ax.set_ylabel(params_labels[1], fontsize=40, rotation=0, labelpad=10)
                 if param_dim == 3:
-                    ax.set_zlabel(params_labels[2], fontsize=45, rotation=180, labelpad=30)
+                    ax.set_zlabel(params_labels[2], fontsize=25, rotation=180, labelpad=3)
+            if xlims is not None:
+                ax.set_xticks(np.linspace(xlims[0], xlims[1], 5))
+                ax.set_xticklabels(np.linspace(xlims[0], xlims[1], 5), fontsize=30)
+            if ylims is not None:
+                ax.set_yticks(np.linspace(ylims[0], ylims[1], 5))
+                ax.set_yticklabels(np.linspace(ylims[0], ylims[1], 5), fontsize=30)
+            ax.tick_params(labelsize=30)
+
+    if title is not None:
+        ax.set_title(title, size=25, pad=20)
     
     if custom_ax is None:
         # save and show only if this is the primary figure. Used only for `param_dim == 2`
@@ -104,9 +215,9 @@ def coverage_probability_plot(
         plt.show()
     else:
         # avoid showing subfigure separately from main plot when calling plt.show()
-        plt.close()
+        # plt.close()
         # return to attach global colorbar
-        return heatmap
+        return contour_filled
     
 
 def coverage_regions_plot(
@@ -192,7 +303,7 @@ def coverage_pairplot(
     save_fig_path: Optional[str] = None,
     **kwargs
 ) -> None:
-    assert plot_type in ['proba_marginal', 'proba_partial_dependence', 'coverage_regions_marginal']
+    assert plot_type in ['proba_partial_dependence_mean', 'proba_partial_dependence_min', 'coverage_regions_marginal']
     
     rows = cols = parameters.shape[1]  # param dim
     fig, ax = plt.subplots(rows, cols, figsize=figsize)
@@ -203,7 +314,7 @@ def coverage_pairplot(
             if col <= row:
                 ax[row, col].axis('off')
             else:
-                if plot_type == 'proba_marginal':
+                if plot_type == 'proba_partial_dependence_mean':
                     heatmap = coverage_probability_plot(
                         parameters=parameters[:, [col, row]],  # swap order to have 'row' parameter on y axis
                         coverage_probability=probabilities[f'{row}{col}']['mean_proba'],  # dictionary
@@ -213,41 +324,10 @@ def coverage_pairplot(
                         custom_ax=ax[row, col],
                         **kwargs
                     )
-                elif plot_type == 'proba_partial_dependence':
-                    if (diagnostics_estimator) and isinstance(diagnostics_estimator, ListVector):  # rpy2 ListVector; support only gam for now. TODO: other prob clfs
-                        # for partial dependence plots
-                        assert aggregate_fun is not None
-                        other_params_idx = list(set(range(rows)).difference(set([row, col])))
-                        if aggregate_fun == 'mean':
-                            which_other_params = parameters[np.argmin(np.abs(probabilities - np.mean(probabilities))), other_params_idx]
-                        elif aggregate_fun == 'min':
-                            which_other_params = parameters[np.argmin(probabilities), other_params_idx]
-                        elif aggregate_fun == 'max':
-                            which_other_params = parameters[np.argmax(probabilities), other_params_idx]
-                        else:
-                            raise NotImplementedError
-                        assert which_other_params.shape == (len(other_params_idx), )
-                        partial_dependence_params = np.copy(parameters)
-                        partial_dependence_params[:, other_params_idx] = which_other_params
-                        partial_dependence_probabilities, _, _ = predict_r_estimator(
-                            fitted_estimator=diagnostics_estimator,
-                            parameters=partial_dependence_params,
-                            param_dim=rows,
-                            n_sigma=2  # unused
-                        )
-                
-                        heatmap = coverage_probability_plot(
-                            parameters=parameters[:, [col, row]],  # swap order to have 'row' parameter on y axis
-                            coverage_probability=partial_dependence_probabilities,  # array
-                            confidence_level=confidence_level,
-                            param_dim=2,  # pairplot
-                            vmin_vmax=vmin_vmax,
-                            custom_ax=ax[row, col],
-                            **kwargs
-                        )
-                    else:
-                        raise NotImplementedError
+                elif plot_type == 'proba_partial_dependence_min':
+                    raise NotImplementedError
                 elif plot_type == 'coverage_regions_marginal':
+                    raise NotImplementedError  # TODO: need to double check
                     coverage_regions_plot(
                         parameters=parameters[:, [col, row]],  # swap order to have 'row' parameter on y axis
                         confidence_level=confidence_level,
@@ -365,3 +445,98 @@ def coverage_boxplot(
     if save_fig_path is not None:
         plt.savefig(save_fig_path, bbox_inches='tight')
     plt.show()
+
+def coverage_nominal_actual_band(
+    probabilities: Sequence[np.ndarray],
+    confidence_levels: np.ndarray,
+    color: str = 'steelblue',
+    fill_alpha: float = 0.25,
+    ylim: Optional[Sequence[float]] = None,
+    save_fig_path: Optional[str] = None,
+    figsize: Tuple = (5, 5),
+    ax: Optional[Axes] = None,
+) -> None:
+    cls = np.asarray(confidence_levels)
+    min_coverage = np.array([np.min(p) for p in probabilities])
+    max_coverage = np.array([np.max(p) for p in probabilities])
+
+    own_fig = ax is None
+    if own_fig:
+        _, ax = plt.subplots(figsize=figsize)
+
+    ax.plot(cls, min_coverage, color=color, linewidth=1.5, solid_capstyle='round')
+    ax.plot(cls, max_coverage, color=color, linewidth=1.5, solid_capstyle='round',
+            label='Coverage range over $\\theta$')
+    ax.fill_between(cls, min_coverage, max_coverage, color=color, alpha=fill_alpha)
+    ax.plot([0, 1], [0, 1], linestyle='--', linewidth=1, color='red', label='Nominal = Actual')
+
+    ax.set_xlim(0, 1)
+    ax.set_xticks(cls)
+    ax.set_xticklabels(
+        [f'{round(cl * 100, 1):.0f}%' for cl in cls],
+        fontsize=11,
+        rotation=45 if len(cls) > 6 else 0,
+    )
+    ax.set_xlabel('Nominal Coverage', fontsize=14)
+    ax.set_ylabel('Actual Coverage', fontsize=14)
+    ax.set_title('Nominal vs. Actual Coverage', fontsize=20)
+
+    if ylim:
+        ax.set_ylim(*ylim)
+        yticks = np.arange(start=ylim[0], stop=ylim[1] + 0.01, step=0.05)
+    else:
+        ax.set_ylim(0, 1.0)
+        yticks = np.arange(0, 1.0, 0.1)
+    ax.set_yticks(yticks)
+    ax.set_yticklabels([f'{round(v * 100, 0):.0f}%' for v in yticks], fontsize=11)
+
+    ax.tick_params(axis='both', labelsize=11)
+    ax.legend(loc='lower right', fontsize=12)
+
+    if own_fig:
+        plt.tight_layout()
+        if save_fig_path is not None:
+            plt.savefig(save_fig_path, bbox_inches='tight')
+        plt.show()
+
+class PinGreenNormalize(mcolors.Normalize):
+    def __init__(self, vmin=0, vmax=100, vcenter=40, green_index=0.35, clip=False):
+        super().__init__(vmin, vmax, clip)
+        self.vcenter = vcenter
+        self.green_index = green_index
+
+    def __call__(self, value, clip=None):
+        x = np.ma.masked_array(value, np.isnan(value))
+        result = np.ma.empty(x.shape, dtype=float)
+
+        # below the confidence level
+        idx_below = x <= self.vcenter
+        if self.vmin < self.vcenter:
+            result[idx_below] = (x[idx_below] - self.vmin) / (self.vcenter - self.vmin) * self.green_index
+        else:
+            # vmin == vcenter
+            result[idx_below] = 0.0
+        
+        # above the confidence level
+        idx_above = x > self.vcenter
+        if self.vcenter < self.vmax:
+            result[idx_above] = self.green_index + (
+                (x[idx_above] - self.vcenter) / (self.vmax - self.vcenter)
+                * (1.0 - self.green_index)
+            )
+        else:
+            # vcenter == vmax
+            result[idx_above] = 1.0
+        
+        return result
+
+def create_jetr_cmap(confidence_level=40):
+    """
+    Returns a reversed jet colormap plus a custom normalization that pins 
+    'confidence_level' to a bright green region.
+    """
+    green_index = 0.47  # 0.35 in jet_r is roughly bright green
+    
+    cmap = plt.get_cmap('jet_r')
+    norm = PinGreenNormalize(vmin=0, vmax=100, vcenter=confidence_level, green_index=green_index)
+    return cmap, norm

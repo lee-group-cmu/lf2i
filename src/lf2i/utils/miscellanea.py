@@ -1,6 +1,86 @@
+from typing import Sequence, Union
+import os
+
 import numpy as np
 import pandas as pd
+import torch
 
 
-def np_to_pd(array, names):
+def np_to_pd(array: np.ndarray, names: Sequence[str]):
     return pd.DataFrame({names[i]: array[:, i] for i in range(len(names))})
+
+
+def to_np_if_pd(inp: Union[pd.DataFrame, pd.Series]) -> np.ndarray:
+    return inp.to_numpy() if isinstance(inp, (pd.DataFrame, pd.Series)) else inp
+
+
+def to_np_if_torch(inp: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
+    return inp if isinstance(inp, np.ndarray) else inp.cpu().detach().numpy()
+
+
+def to_torch_if_np(inp: Union[np.ndarray, torch.Tensor]) -> torch.Tensor:
+    return inp if isinstance(inp, torch.Tensor) else torch.from_numpy(inp)
+
+
+def _estimator_on_gpu(estimator) -> bool:
+    """Return True if estimator is a PyTorch nn.Module with parameters on CUDA."""
+    if isinstance(estimator, torch.nn.Module):
+        try:
+            return next(estimator.parameters()).device.type == 'cuda'
+        except StopIteration:
+            return False
+    if hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module):
+        try:
+            return next(estimator.model.parameters()).device.type == 'cuda'
+        except StopIteration:
+            return False
+    return False
+
+
+def check_for_nans(inp: Union[np.ndarray, pd.Series, pd.DataFrame, torch.Tensor]) -> Union[np.ndarray, pd.Series, pd.DataFrame, torch.Tensor]:
+    if isinstance(inp, np.ndarray):
+        if np.isnan(inp).sum() > 0:
+            raise ValueError("Input contains NaN values")
+    elif isinstance(inp, (pd.Series, pd.DataFrame)):
+        if inp.isnull().values.any():
+            raise ValueError("Input contains NaN values")
+    else:
+        if torch.isnan(inp).sum() > 0:
+            raise ValueError("Input contains NaN values")
+
+
+def check_for_infs(inp: Union[np.ndarray, pd.Series, pd.DataFrame, torch.Tensor]) -> Union[np.ndarray, pd.Series, pd.DataFrame, torch.Tensor]:
+    if isinstance(inp, np.ndarray):
+        if np.isinf(inp).sum() > 0:
+            raise ValueError("Input contains Inf values")
+    elif isinstance(inp, (pd.Series, pd.DataFrame)):
+        if np.isinf(inp.values).any():
+            raise ValueError("Input contains Inf values")
+    else:
+        if torch.isinf(inp).sum() > 0:
+            raise ValueError("Input contains Inf values")
+
+
+def find_nans_and_infs(inp: Union[np.ndarray, torch.Tensor]) -> Union[np.ndarray, torch.Tensor]:
+    if inp.ndim == 1:
+        if isinstance(inp, np.ndarray):
+            return (np.isnan(inp) | np.isinf(inp))
+        else:
+            return (torch.isnan(inp) | torch.isinf(inp))
+    else:
+        if isinstance(inp, np.ndarray):
+            return (np.isnan(inp).any(axis=1) | np.isinf(inp).any(axis=1))
+        else:
+            return (torch.isnan(inp).any(axis=1) | torch.isinf(inp).any(axis=1))
+
+
+def select_n_jobs(n_jobs: int):
+    if n_jobs < -1:
+        n_jobs = max(1, os.cpu_count()+1+n_jobs)
+    elif n_jobs == -1:
+        n_jobs = os.cpu_count()
+    elif n_jobs == 0:
+        raise ValueError('n_jobs must be greater than 0')
+    else:
+        n_jobs = n_jobs
+    return n_jobs

@@ -1,5 +1,4 @@
-from random import sample
-from typing import Tuple, Union, List
+from typing import Tuple, Union, List, Any
 import warnings
 
 import numpy as np
@@ -7,15 +6,19 @@ import torch
 from sklearn.base import BaseEstimator
 from xgboost.sklearn import XGBModel
 
+from lf2i.utils.miscellanea import check_for_nans, to_np_if_torch
+
 
 def preprocess_waldo_estimation(
     parameters: Union[np.ndarray, torch.Tensor], 
     samples: Union[np.ndarray, torch.Tensor], 
-    method: str,
-    estimator: object,
+    estimation_method: str,
+    estimator: Any,
     param_dim: int
 ) -> Tuple[Union[np.ndarray, torch.Tensor], ...]:
-    if method == 'prediction':
+    check_for_nans(parameters)
+    check_for_nans(samples)
+    if estimation_method == 'prediction':
         # make sure types are correct for:
         if isinstance(estimator, torch.nn.Module):
             # PyTorch models
@@ -26,9 +29,9 @@ def preprocess_waldo_estimation(
         if isinstance(estimator, (BaseEstimator, XGBModel)):
             # Scikit-Learn or XGBoost models
             if isinstance(parameters, torch.Tensor):
-                parameters = parameters.numpy()
+                parameters = to_np_if_torch(parameters)
             if isinstance(samples, torch.Tensor):
-                samples = samples.numpy()
+                samples = to_np_if_torch(samples)
     else:
         # for posterior estimation we currently support `SBI` from mackelab, which uses PyTorch
         if isinstance(parameters, np.ndarray):
@@ -36,36 +39,56 @@ def preprocess_waldo_estimation(
         if isinstance(samples, np.ndarray):
             samples = torch.from_numpy(samples)
     
-    if (len(samples.shape) == 3) and (samples.shape[1] > 1):
-        warnings.warn(f"You provided a simulated set with single-sample size = {samples.shape[1]}. This dimension will be flattened for estimation or evaluation. Is this the desired behaviour?")
-    if (param_dim == 1) and (method == 'prediction'):
+    if (param_dim == 1) and (estimation_method == 'prediction'):
         parameters = parameters.reshape(-1, )
     else:
         parameters = parameters.reshape(-1, param_dim)
-    return parameters, samples.reshape(-1, samples.shape[-1])
+
+    # Handle samples shape
+    if estimation_method == 'posterior':
+        # SNPE expects (n_simulations, x_dim), flatten batch dimension if present
+        if samples.ndim == 3:  # (size, batch_size, data_dim)
+            # For batch_size=1, just squeeze; for batch_size>1, need to handle differently
+            if samples.shape[1] == 1:
+                samples = samples.squeeze(1)  # -> (size, data_dim)
+            else:
+                # Flatten: each batch element becomes a separate simulation
+                n_total = samples.shape[0] * samples.shape[1]
+                samples = samples.reshape(n_total, -1)
+                # Need to repeat parameters accordingly
+                parameters = parameters.repeat_interleave(samples.shape[0] // parameters.shape[0], dim=0)
+        elif samples.ndim == 1:
+            samples = samples.reshape(-1, 1)
+    else:
+        if samples.ndim == 1:
+            samples = samples.reshape(-1, 1)
+        elif samples.ndim > 2 and samples.shape[-1] == 1:
+            samples = samples.squeeze(-1)
+
+    return parameters, samples
 
 
 def preprocess_waldo_evaluation(
     parameters: Union[np.ndarray, torch.Tensor], 
     samples: Union[np.ndarray, torch.Tensor], 
-    method: str,
-    estimator: object,
+    estimation_method: str,
+    estimator: Any,
     param_dim: int
 ) -> Tuple[Union[np.ndarray, torch.Tensor], ...]:
-    return preprocess_waldo_estimation(parameters, samples, method, estimator, param_dim)
+    return preprocess_waldo_estimation(parameters, samples, estimation_method, estimator, param_dim)
 
 
 def preprocess_waldo_computation(
     parameters: Union[np.ndarray, torch.Tensor],
-    conditional_mean: Union[np.ndarray, List],
-    conditional_var: Union[np.ndarray, List],
+    conditional_mean: Union[np.ndarray, List, Tuple],
+    conditional_var: Union[np.ndarray, List, Tuple],
     param_dim: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     if isinstance(parameters, torch.Tensor):
-        parameters = parameters.numpy()
+        parameters = to_np_if_torch(parameters)
     if param_dim == 1:
         parameters = parameters.reshape(-1, param_dim)
-        if isinstance(conditional_mean, List):
+        if isinstance(conditional_mean, (List, Tuple)):
             # method == posterior
             conditional_mean = np.vstack(conditional_mean)
             conditional_var = np.vstack(conditional_var)
@@ -81,18 +104,19 @@ def preprocess_waldo_computation(
             conditional_mean = conditional_mean.reshape(-1, 1, param_dim)
             conditional_var = conditional_var.reshape(-1, param_dim, param_dim)
     
-    return parameters, conditional_mean, epsilon_variance_correction(conditional_var, param_dim)
+    return parameters, conditional_mean, check_if_positive(conditional_var, param_dim)
 
 
-def epsilon_variance_correction(
-    conditional_var: Union[List, np.ndarray],
-    param_dim: int,
-    epsilon: float = 1e-3
-) -> Union[List, np.ndarray]:
-    """Make sure the estimated conditional variance is always >= 0+epsilon to avoid ZeroDivisionError or exploding test statistics.
-    """
+def check_if_positive(
+    conditional_var: Union[List[np.ndarray], Tuple[np.ndarray], np.ndarray], 
+    param_dim: int
+) -> Union[List, Tuple, np.ndarray]:
+    error_msg = """At least one element of `conditional_var` is negative.\n
+                You should make sure your conditional variance estimator output is non-negative."""
     if param_dim == 1:
-        return conditional_var - min(0, np.min(conditional_var)) + epsilon
+        if not (conditional_var > 0).all():
+            raise ValueError(error_msg)
     else:
-        # not implemented
-        return conditional_var
+        # TODO: check if positive definite. We know it's symmetric; do we want to check for eigenvals > 0 for all conditional vars?
+        pass
+    return conditional_var

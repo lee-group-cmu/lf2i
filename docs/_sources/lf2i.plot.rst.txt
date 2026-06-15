@@ -4,14 +4,6 @@ lf2i.plot package
 Submodules
 ----------
 
-lf2i.plot.confidence\_regions module
-------------------------------------
-
-.. automodule:: lf2i.plot.parameter_regions
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 lf2i.plot.coverage\_diagnostics module
 --------------------------------------
 
@@ -19,6 +11,25 @@ lf2i.plot.coverage\_diagnostics module
    :members:
    :undoc-members:
    :show-inheritance:
+   :member-order: bysource
+
+lf2i.plot.miscellanea module
+----------------------------
+
+.. automodule:: lf2i.plot.miscellanea
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
+
+lf2i.plot.parameter\_regions module
+-----------------------------------
+
+.. automodule:: lf2i.plot.parameter_regions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource
 
 Module contents
 ---------------
@@ -27,3 +38,4 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+   :member-order: bysource

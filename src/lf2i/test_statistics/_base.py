@@ -1,7 +1,9 @@
 from typing import Union, Dict, Any, List
 from abc import ABC, abstractmethod
 
-from lf2i.test_statistics.estimators import ESTIMATORS
+from lf2i.estimators.base_likelihoods import AbstractClassifier
+from lf2i.estimators.base_posteriors import AbstractNeuralPosteriorTrainer
+from lf2i.test_statistics._estimators import ESTIMATORS, _REMOVED_POSTERIOR_ESTIMATORS
 
 
 class TestStatistic(ABC):
@@ -12,15 +14,19 @@ class TestStatistic(ABC):
     acceptance_region : str
         Whether the acceptance region for the corresponding test is defined to be on the right or on the left of the critical value. 
         Must be either `left` or `right`.
-    estimator_kwargs: Dict
-        Hyperparameters and settings for the estimator, by default {}.
+    estimation_method : str
+        The method with which the test statistic is estimated. 
+        If likelihood-based test statistics are used, e.g. ACORE and BFF, then 'likelihood'. 
+        If prediction/posterior-based test statistics are used, e.g. WALDO, then 'prediction' or 'posterior'.
     """
     
     def __init__(
         self,
         acceptance_region: str,
+        estimation_method: str
     ) -> None:
         self.acceptance_region = acceptance_region
+        self.estimation_method = estimation_method
         self._estimator_trained = dict()
     
     def _choose_estimator(
@@ -29,6 +35,29 @@ class TestStatistic(ABC):
         estimator_kwargs: Dict,
         estimand_name: str
     ) -> Any:
+        # Likelihood estimator handling
+        if estimand_name == 'likelihood':
+            assert isinstance(estimator, AbstractClassifier), (
+                "Likelihood estimator must be an AbstractClassifier."
+            )
+            self._estimator_trained[estimand_name] = False
+            return estimator
+
+        # Posterior estimator handling
+        if estimand_name == 'posterior':
+            if estimator in _REMOVED_POSTERIOR_ESTIMATORS:
+                raise ValueError(
+                    f"Posterior estimator '{estimator}' is no longer available as a keyword.\n"
+                    f"See documentation for AbstractNeuralPosteriorTrainer interface requirements."
+                )
+            else:
+                assert isinstance(estimator, AbstractNeuralPosteriorTrainer), (
+                    "Posterior estimator must be an AbstractNeuralPosteriorTrainer."
+                )
+            self._estimator_trained[estimand_name] = False
+            return estimator
+
+        # Keyword-based estimator handling
         if isinstance(estimator, str):
             self._estimator_trained[estimand_name] = False
             if estimator not in ESTIMATORS:

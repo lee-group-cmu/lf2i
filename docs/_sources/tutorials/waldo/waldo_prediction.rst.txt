@@ -1,0 +1,4 @@
+.. toctree::
+   :maxdepth: 4
+
+.. mdinclude:: waldo_prediction_1Dgaussian_mean.md

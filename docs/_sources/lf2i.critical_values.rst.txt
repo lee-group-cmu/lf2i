@@ -11,6 +11,7 @@ lf2i.critical\_values.nn\_qr\_algorithm module
    :members:
    :undoc-members:
    :show-inheritance:
+   :member-order: bysource
 
 lf2i.critical\_values.quantile\_regression module
 -------------------------------------------------
@@ -19,6 +20,7 @@ lf2i.critical\_values.quantile\_regression module
    :members:
    :undoc-members:
    :show-inheritance:
+   :member-order: bysource
 
 Module contents
 ---------------
@@ -27,3 +29,4 @@ Module contents
    :members:
    :undoc-members:
    :show-inheritance:
+   :member-order: bysource

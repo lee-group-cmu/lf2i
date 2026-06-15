@@ -1,6 +1,21 @@
 lf2i package
 ============
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   lf2i.inference
+   lf2i.test_statistics
+   lf2i.critical_values
+   lf2i.confidence_regions
+   lf2i.diagnostics
+   lf2i.simulator
+   lf2i.plot
+   lf2i.utils
+
 Submodules
 ----------
 
