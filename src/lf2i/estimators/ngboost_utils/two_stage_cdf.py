@@ -72,9 +72,9 @@ except ImportError:  # pragma: no cover
     from cdf import NGBoostCDFEstimator
 
 try:
-    from lf2i.estimators import GammaLoc, Kumaraswamy
+    from lf2i.estimators import GammaLoc, Kumaraswamy, Histogram20
 except ImportError:  # pragma: no cover
-    GammaLoc, Kumaraswamy = None, None
+    GammaLoc, Kumaraswamy, Histogram20 = None, None, None
 
 
 class TwoStageCalibrationModel:

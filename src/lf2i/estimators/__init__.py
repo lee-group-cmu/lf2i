@@ -27,6 +27,7 @@ try:
     from lf2i.estimators.ngboost_utils.two_stage_cdf import TwoStageCalibrationModel as NGBoostTwoStageCalibrationModel
     from lf2i.estimators.ngboost_utils.distns.gamma_loc import GammaLoc, GammaLocLogScore
     from lf2i.estimators.ngboost_utils.distns.kumaraswamy_mixture import Kumaraswamy
+    from lf2i.estimators.ngboost_utils.distns.histogram import Histogram20
     HAVE_NGBOOST = True
 except ImportError:
     HAVE_NGBOOST = False
