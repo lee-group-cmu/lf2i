@@ -518,7 +518,10 @@ def parameter_regions_pairplot(
                             confidence_levels=diagonal_levels or [],
                             true_theta=true_parameter[row:row+1].reshape(1, 1),
                             colors=colors,
-                            # xlim=parameter_space_bounds[param_names[row]] if parameter_space_bounds is not None and param_names is not None else None,
+                            xlim=(
+                                parameter_space_bounds[param_names[row]]['low'],
+                                parameter_space_bounds[param_names[row]]['high'],
+                            ) if parameter_space_bounds is not None and param_names is not None else None,
                             custom_ax=ax[row, col],
                         )
                     elif diagonal_type == 'posterior' and posterior_estimator is not None and posterior_observations is not None:
@@ -529,7 +532,10 @@ def parameter_regions_pairplot(
                             param_dim=row,
                             true_theta=true_parameter.reshape(1, -1),
                             colors=colors,
-                            # xlim=parameter_space_bounds[param_names[row]] if parameter_space_bounds is not None and param_names is not None else None,
+                            xlim=(
+                                parameter_space_bounds[param_names[row]]['low'],
+                                parameter_space_bounds[param_names[row]]['high'],
+                            ) if parameter_space_bounds is not None and param_names is not None else None,
                             custom_ax=ax[row, col],
                         )
                     ax[row, col].legend().set_visible(False)  # Hide legend for diagonal plots
@@ -908,9 +914,9 @@ def plot_confidence_distributions_1D(
         if point_estimates is not None:
             pe = to_np_if_torch(point_estimates[xdx]).reshape(-1)
             ax.scatter(pe[0], 0, edgecolor='blue', facecolor='white', marker='*',
-                       label='Point Estimate', clip_on=False, zorder=5)
+                       label='Point Estimate', clip_on=False, s=300, linewidth=2, zorder=5)
             ax.axvline(x=pe[0], color='blue', alpha=0.5, linestyle='--',
-                       label='_nolegend_', clip_on=False)
+                       label='_nolegend_', clip_on=False, lw=5)
 
         if true_theta is not None:
             tt = to_np_if_torch(true_theta).reshape(n_obs, -1)

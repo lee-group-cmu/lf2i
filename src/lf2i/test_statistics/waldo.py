@@ -210,6 +210,6 @@ class Waldo(TestStatistic):
                 cond_var = np.cov(posterior_samples.T)  # need samples.shape = (data_d, num_samples)
                 return cond_mean, cond_var
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Approximating conditional mean and covariance for {samples.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
-                out = list(zip(*Parallel(n_jobs=self.n_jobs, prefer='threading' if _estimator_on_gpu(self.estimator) else 'loky')(delayed(sampling_loop)(idx) for idx in it)))  # axis 0 indexes different simulations/observations
+                out = list(zip(*Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(sampling_loop)(idx) for idx in it)))  # axis 0 indexes different simulations/observations
                 conditional_mean, conditional_var = out[0], out[1]
         return self._compute(parameters, conditional_mean, conditional_var, mode)

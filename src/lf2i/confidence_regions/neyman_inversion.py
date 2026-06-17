@@ -178,6 +178,7 @@ def compute_confidence_curves(
             Slice-dim coordinates of each evaluated grid point.
     """
     # --- Step 1: preprocess point_estimates and evaluation_grid ---
+    user_grid_bounds_given = grid_bounds is not None
     point_estimates, eg_np, grid_bounds, built_nonrect = preprocess_confidence_curves(
         point_estimates=point_estimates,
         evaluation_grid=evaluation_grid,
@@ -226,6 +227,7 @@ def compute_confidence_curves(
             grid_bounds=grid_bounds,
             eg_np=eg_np,
             nonrect_eval_grid=nonrect_eval_grid,
+            user_grid_bounds_given=user_grid_bounds_given,
         )
 
 
@@ -291,6 +293,7 @@ def _eval_pvalues(test_statistic_obj, calibration_model, calib_dict_key, grid_nd
 def _compute_curves_oat(
     test_statistic_obj, calibration_model, calib_dict_key, x_np, point_estimates,
     alpha, pv_col, param_dim, grid_size, grid_bounds, eg_np, nonrect_eval_grid,
+    user_grid_bounds_given=False,
 ):
     """Classic OAT sweep: vary one dimension at a time."""
     n_obs = point_estimates.shape[0]
@@ -305,7 +308,7 @@ def _compute_curves_oat(
         xi = x_np[i:i + 1]
 
         neighbors = None
-        if eg_np is not None:
+        if eg_np is not None and not user_grid_bounds_given:
             neighbors = nonrect_eval_grid.neighbors(pe, k=_knn_k)
 
         for d in range(param_dim):

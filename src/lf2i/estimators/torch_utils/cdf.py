@@ -262,7 +262,7 @@ class ParametricCDFEstimator:
         lk_weight:   float = 1.0,    # moment loss: weight on log_kappa MSE term
         warmup:      int   = 0,      # epochs with flat LR before cosine decay (useful for moment loss)
         device:      Optional[str] = None,
-        verbose:     bool  = True,
+        verbose:     bool  = False,
     ):
         if loss not in ('brier', 'weighted_brier', 'weighted', 'moment'):
             raise ValueError(
@@ -451,7 +451,7 @@ class ParametricCDFEstimator:
                 beta      = self.beta_net_(theta_b)
                 mu        = beta[:, 0:1]
                 log_kappa = beta[:, 1:2]
-                if isinstance(criterion, WeightedPinballLoss):
+                if isinstance(criterion, QuantileWeightedCRPSLoss):
                     alpha_row           = criterion.alpha_grid.unsqueeze(0).to(lam_b.device)
                     predicted_quantiles = self.cdf_model_.quantile(alpha_row, mu, log_kappa)
                     batch_loss          = criterion(predicted_quantiles, lam_b) + self.smooth_reg * log_kappa.mean()

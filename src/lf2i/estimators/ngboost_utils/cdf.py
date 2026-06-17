@@ -38,7 +38,8 @@ try:
     from ngboost.learners import default_tree_learner
     HAVE_NGBOOST = True
 except ImportError:
-    NGBoost = object          # fallback so the class body parses without ngboost
+    class NGBRegressor:         # fallback so the class body parses without ngboost
+        pass
     Normal = None
     LogScore = None
     default_tree_learner = None
