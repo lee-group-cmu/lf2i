@@ -427,10 +427,9 @@ def coverage_boxplot(
     plt.boxplot(x=probabilities, notch=False, labels=labels, whis=whiskers_loc, sym=None if plot_fliers else '')
     plt.axhline(y=confidence_level, label=f'Nominal Coverage Level: {round(confidence_level*100, 1)}%', linestyle='--', linewidth=1, color='red')
     whiskers_vals = (f'0.25-{round(whiskers_loc, 1)}IQR', f'0.75+{round(whiskers_loc, 1)}IQR') if isinstance(whiskers_loc, float) else (whiskers_loc[0]/100, whiskers_loc[1]/100)
-    plt.plot([], [], ' ', label=f"\nBox: (0.25, 0.5, 0.75) \nWhiskers: {whiskers_vals}")  # just to add explanation on boxplots
-
+    
     sns.set_style('whitegrid')
-    plt.title('Joint Coverage Probability', fontsize=20)
+    plt.title('Coverage probability', fontsize=20)
     plt.legend(loc='lower right')
 
     if ylim:

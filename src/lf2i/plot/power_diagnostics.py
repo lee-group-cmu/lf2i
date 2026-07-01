@@ -219,10 +219,8 @@ def set_size_boxplot(
         f'0.75+{round(whiskers_loc, 1)}IQR'
     ) if isinstance(whiskers_loc, float) else (whiskers_loc[0]/100, whiskers_loc[1]/100)
     
-    plt.plot([], [], ' ', label=f"Box: (0.25, 0.5, 0.75)\nWhiskers: {whiskers_vals}")
-
-    plt.title('Confidence Set Sizes', fontsize=20)
-    plt.ylabel('Set Size', fontsize=18)
+    plt.title('Set Size', fontsize=20)
+    plt.ylabel('Fraction of parameter space', fontsize=18)
     plt.legend(loc='upper right')
     
     if ylim:

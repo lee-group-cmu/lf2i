@@ -39,7 +39,7 @@ class QuantileLoss(torch.nn.Module):
         assert input.size(0) == target.size(0)
         losses = []
         for i, q in enumerate(self.quantiles):
-            errors = target - input[:, i]
+            errors = target.squeeze(-1) - input[:, i]
             # "check" function
             losses.append(torch.max((q - 1) * errors, q * errors).unsqueeze(1))
         loss = torch.mean(torch.sum(torch.cat(losses, dim=1), dim=1))
