@@ -1,0 +1,382 @@
+from typing import Dict, Union, Tuple, Sequence
+import warnings
+
+import numpy as np
+import torch
+
+from lf2i.simulator import Simulator
+from lf2i.test_statistics import TestStatistic
+from lf2i.utils.miscellanea import to_torch_if_np, to_np_if_torch
+
+
+def monte_carlo_confidence_region(
+    test_statistic: TestStatistic,
+    simulator: Simulator,
+    test_param: torch.Tensor,
+    param_grid: torch.Tensor,
+    x: torch.Tensor,
+    confidence_level: float,
+    monte_carlo_size: int = 2_000,
+    critical_values: torch.Tensor=None,
+):
+    # evaluate posterior over grid of values
+    if isinstance(test_statistic, TestStatistic):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ... when using NSF
+            ts_values = test_statistic.evaluate(parameters=param_grid, samples=x, mode='confidence_sets').reshape(-1)
+    else:
+        raise ValueError
+
+    if critical_values is None:
+        critical_values = monte_carlo_critical_values(test_statistic, simulator, param_grid, confidence_level, monte_carlo_size)
+    critical_values = np.array(critical_values)
+
+    if test_statistic.acceptance_region == 'left':
+        return param_grid[ts_values < critical_values, :]
+    else:
+        return param_grid[ts_values > critical_values, :]
+
+
+def monte_carlo_critical_values(
+    test_statistic: TestStatistic,
+    simulator: Simulator,
+    param_grid: torch.Tensor,
+    confidence_level: Union[float, list],
+    monte_carlo_size: int
+):
+    parameters_mc = param_grid.repeat_interleave(monte_carlo_size, dim=0)
+    samples_mc = simulator(parameters_mc)
+    ts_values_mc = test_statistic.evaluate(
+        parameters=parameters_mc,
+        samples=samples_mc,
+        mode='critical_values'
+    ).reshape(-1, monte_carlo_size)
+
+    # return a 1D array for a single confidence level, or a dict mapping each level to its 1D array of critical values
+    if np.ndim(confidence_level) == 0:
+        confidence_level = confidence_level if test_statistic.acceptance_region == 'left' else 1-confidence_level
+        mc_critical_values = np.quantile(ts_values_mc, confidence_level, axis=1)
+        return mc_critical_values
+    else:
+        q = np.asarray(confidence_level)
+        q = q if test_statistic.acceptance_region == 'left' else 1-q
+        mc_q = np.quantile(ts_values_mc, q, axis=1)  # shape (len(q), n_params)
+        return mc_q # {float(level): mc_q[i, :] for i, level in enumerate(confidence_level)}
+
+
+def monte_carlo_coverage(
+    test_statistic: TestStatistic,
+    calibration_model,
+    simulator: Simulator,
+    evaluation_grid: np.ndarray,
+    confidence_level: Union[float, Sequence[float]],
+    calibration_method: str,
+    monte_carlo_size: int = 500,
+) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, Dict[float, np.ndarray]]]:
+    """MC-exact coverage at each point of ``evaluation_grid``.
+
+    Parameters
+    ----------
+    confidence_level : Union[float, Sequence[float]]
+        One or more nominal confidence levels in (0, 1). Simulation and test-statistic
+        evaluation are performed only once regardless of how many levels are requested.
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        ``(evaluation_grid, coverage_per_grid_point)`` if ``confidence_level`` is a
+        scalar float, where ``coverage_per_grid_point`` has shape ``(n_grid,)``.
+    Tuple[np.ndarray, Dict[float, np.ndarray]]
+        ``(evaluation_grid, {cl: coverage_per_grid_point, ...})`` if
+        ``confidence_level`` is a sequence, one entry per requested level.
+    """
+    # Deferred to avoid circular import: coverage_probability imports from other_methods
+    from lf2i.diagnostics.coverage_probability import compute_indicators_lf2i
+    from lf2i.utils.calibration_diagnostics_inputs import (
+        preprocess_predict_p_values,
+        preprocess_predict_quantile_regression,
+    )
+
+    assert calibration_method in ['critical-values', 'p-values'], \
+        "calibration_method must be 'critical-values' or 'p-values'"
+
+    scalar_input = isinstance(confidence_level, float)
+    cls: list = [confidence_level] if scalar_input else list(confidence_level)
+
+    evaluation_grid = np.asarray(evaluation_grid)
+    n_grid = evaluation_grid.shape[0]
+    param_dim = evaluation_grid.shape[1] if evaluation_grid.ndim > 1 else 1
+
+    # Simulate once — this is the expensive step, shared across all levels.
+    parameters_mc = np.repeat(evaluation_grid.reshape(n_grid, param_dim), monte_carlo_size, axis=0)
+    parameters_mc_torch = to_torch_if_np(parameters_mc)
+    samples_mc = simulator(parameters_mc_torch)
+    ts_values = to_np_if_torch(
+        test_statistic.evaluate(parameters=parameters_mc_torch, samples=samples_mc, mode='diagnostics')
+    ).reshape(-1)
+
+    calib_key = (
+        'multiple_levels' if 'multiple_levels' in calibration_model
+        else f'{cls[0]:.2f}'
+    )
+
+    # Pre-compute quantities that are shared across levels.
+    if calibration_method == 'critical-values':
+        all_critical_values = to_np_if_torch(calibration_model[calib_key].predict(
+            preprocess_predict_quantile_regression(parameters_mc, calibration_model[calib_key], param_dim)
+        ))
+        p_values = None
+    else:
+        all_critical_values = None
+        p_values = to_np_if_torch(calibration_model[calib_key].predict_proba(
+            X=preprocess_predict_p_values('diagnostics', ts_values, parameters_mc, calibration_model[calib_key])
+        )[:, 1])
+
+    # Compute coverage for each confidence level cheaply (no re-simulation).
+    results: Dict[float, np.ndarray] = {}
+    for cl in cls:
+        if calibration_method == 'critical-values':
+            if calib_key == 'multiple_levels':
+                idx_cl = np.argmin(np.abs(
+                    cl - (1 - np.array(
+                        calibration_model['multiple_levels'].estimator.get_params()['loss_function']
+                        .split('=')[1].split(',')
+                    ).astype(float))
+                ))
+                critical_values_cl = all_critical_values[:, idx_cl]
+            else:
+                # One model per level: look up the model for this specific level.
+                key_cl = f'{cl:.2f}'
+                if key_cl not in calibration_model:
+                    raise KeyError(
+                        f"No calibration model found for confidence_level={cl} "
+                        f"(tried key '{key_cl}'). Available keys: {list(calibration_model.keys())}"
+                    )
+                critical_values_cl = to_np_if_torch(calibration_model[key_cl].predict(
+                    preprocess_predict_quantile_regression(parameters_mc, calibration_model[key_cl], param_dim)
+                ))
+            alpha_cl = None
+        else:
+            critical_values_cl = None
+            alpha_cl = 1 - cl
+
+        indicators = compute_indicators_lf2i(
+            calibration_method=calibration_method,
+            test_statistics=ts_values,
+            parameters=parameters_mc,
+            critical_values=critical_values_cl,
+            p_values=p_values,
+            alpha=alpha_cl,
+            acceptance_region=test_statistic.acceptance_region,
+            param_dim=param_dim,
+        )
+        results[cl] = indicators.reshape(n_grid, monte_carlo_size).mean(axis=1)
+
+    if scalar_input:
+        return evaluation_grid, results[cls[0]]
+    return evaluation_grid, results
+
+
+def monte_carlo_coverage_posterior(
+    posterior_estimator,
+    simulator: Simulator,
+    evaluation_grid: np.ndarray,
+    credible_level: Union[float, Sequence[float]],
+    parameter_grid: torch.Tensor,
+    monte_carlo_size: int = 500,
+    num_level_sets: int = 10_000,
+    n_jobs: int = -2,
+    **posterior_kwargs
+) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, Dict[float, np.ndarray]]]:
+    """MC-exact coverage of HPD credible regions at each point of ``evaluation_grid``.
+
+    For each parameter value in ``evaluation_grid``, draws ``monte_carlo_size`` samples
+    from the simulator, computes the HPD credible region of the posterior at the given
+    level, and checks whether the true parameter is included.
+
+    Parameters
+    ----------
+    posterior_estimator :
+        Trained posterior estimator with a ``log_prob`` method (e.g. from ``sbi``).
+    simulator : Simulator
+        lf2i Simulator used to draw samples.
+    evaluation_grid : np.ndarray, shape (n_grid, param_dim)
+        Parameter values at which to evaluate coverage.
+    credible_level : Union[float, Sequence[float]]
+        Nominal credible level(s), each in (0, 1).
+    parameter_grid : torch.Tensor, shape (n_param_grid, param_dim)
+        Dense grid over the parameter space used to approximate the HPD region.
+    monte_carlo_size : int, optional
+        MC draws per grid point. Default 500.
+    num_level_sets : int, optional
+        Number of level sets for the HPD binary search. Default 10_000.
+    n_jobs : int, optional
+        Joblib parallelism for HPD computation. Default -2.
+    **posterior_kwargs
+        Extra keyword arguments forwarded to the posterior's ``log_prob`` method.
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        ``(evaluation_grid, coverage_per_grid_point)`` when ``credible_level`` is a scalar.
+    Tuple[np.ndarray, Dict[float, np.ndarray]]
+        ``(evaluation_grid, {cl: coverage_per_grid_point, ...})`` when a sequence.
+    """
+    from lf2i.diagnostics.coverage_probability import compute_indicators_posterior
+
+    evaluation_grid = np.asarray(evaluation_grid)
+    n_grid = evaluation_grid.shape[0]
+    param_dim = evaluation_grid.shape[1] if evaluation_grid.ndim > 1 else 1
+
+    scalar_input = isinstance(credible_level, float)
+    cls: list = [credible_level] if scalar_input else list(credible_level)
+
+    # Simulate once — shared across all credible levels.
+    parameters_mc = np.repeat(evaluation_grid.reshape(n_grid, param_dim), monte_carlo_size, axis=0)
+    parameters_mc_torch = to_torch_if_np(parameters_mc)
+    samples_mc = simulator(parameters_mc_torch)
+
+    results: Dict[float, np.ndarray] = {}
+    for cl in cls:
+        indicators = compute_indicators_posterior(
+            posterior=posterior_estimator,
+            parameters=parameters_mc_torch,
+            samples=samples_mc,
+            parameter_grid=parameter_grid,
+            credible_level=cl,
+            param_dim=param_dim,
+            batch_size=1,
+            num_level_sets=num_level_sets,
+            return_size=False,
+            n_jobs=n_jobs,
+            **posterior_kwargs
+        )
+        results[cl] = np.asarray(indicators).reshape(n_grid, monte_carlo_size).mean(axis=1)
+
+    if scalar_input:
+        return evaluation_grid, results[cls[0]]
+    return evaluation_grid, results
+
+
+def monte_carlo_pvalue_diagnostics(
+    test_statistic: TestStatistic,
+    calibration_model,
+    simulator: Simulator,
+    evaluation_grid: np.ndarray,
+    monte_carlo_size: int = 500,
+    pinball_levels: Sequence[float] = None,
+):
+    """
+    For each theta in evaluation_grid, draw MC samples, evaluate the test statistic,
+    and compare the calibration model's predicted CDF to the empirical CDF.
+
+    Returns a dict with per-theta arrays:
+      'mse'              – mean((p_hat_(i) - u_i)^2) over sorted samples
+      'crps'             – integral (F_hat - F_emp)^2 dt via trapezoid rule at sample points
+      'pinball_<alpha>'  – pinball loss L_alpha(u_i, p_hat_i) for each alpha in pinball_levels
+    where u_i = (i - 0.5) / M is the midpoint empirical CDF estimate.
+    """
+    from lf2i.utils.calibration_diagnostics_inputs import (
+        preprocess_predict_p_values,
+    )
+
+    if pinball_levels is None:
+        pinball_levels = np.linspace(0.05, 0.95, 19)
+
+    n_grid = evaluation_grid.shape[0]
+    M = monte_carlo_size
+
+    # Tile: repeat each theta M times -> (n_grid*M, param_dim)
+    params_mc = evaluation_grid.repeat_interleave(M, dim=0)
+    samples_mc = simulator(params_mc)
+
+    # Evaluate test statistic for all (theta, x) pairs at once
+    ts_all = to_np_if_torch(
+        test_statistic.evaluate(
+            parameters=params_mc,
+            samples=samples_mc,
+            mode='diagnostics',
+        )
+    ).reshape(-1)  # (n_grid*M,)
+
+    # Resolve calibration model key (p-values: one shared model, possibly 'multiple_levels')
+    calib_key = (
+        'multiple_levels' if 'multiple_levels' in calibration_model
+        else next(iter(calibration_model))
+    )
+    calib_model = calibration_model[calib_key]
+
+    # Evaluate calibration model for all (theta, T) pairs at once
+    params_mc_np = to_np_if_torch(params_mc)
+    X_pred = preprocess_predict_p_values('diagnostics', ts_all, params_mc_np, calib_model)
+    p_hat_all = calib_model.predict_proba(X=X_pred)[:, 1]  # (n_grid*M,)
+
+    # Reshape to (n_grid, M)
+    ts_grid = ts_all.reshape(n_grid, M)
+    p_hat_grid = p_hat_all.reshape(n_grid, M)
+
+    crps = np.zeros(n_grid)
+    crps_ref = np.zeros(n_grid)
+    pinball_per_alpha = {alpha: np.zeros(n_grid) for alpha in pinball_levels}
+    pinball_ref_per_alpha = {alpha: np.zeros(n_grid) for alpha in pinball_levels}
+
+    # Marginal empirical CDF from all MC samples pooled across grid points
+    T_all = ts_grid.flatten()  # (n_grid*M,)
+    T_all_sorted = np.sort(T_all)
+    n_total = len(T_all_sorted)
+
+    def marginal_cdf(t_vals):
+        """Fraction of pooled MC samples <= t for each t in t_vals."""
+        ranks = np.searchsorted(T_all_sorted, t_vals, side='right')
+        return ranks / n_total
+
+    def marginal_quantile(alpha):
+        return np.quantile(T_all_sorted, alpha)
+
+    for j in range(n_grid):
+        sort_idx = np.argsort(ts_grid[j])
+        p_hat_sorted = p_hat_grid[j][sort_idx]
+        T_sorted = ts_grid[j][sort_idx]
+
+        # Empirical CDF: midpoint estimate (i - 0.5) / M for i = 1, ..., M
+        u = (np.arange(1, M + 1) - 0.5) / M
+        # p-value = 1-F for 'left', F for 'right'; match target to direction
+        u_target = u  # calib model always predicts CDF; acceptance_region handling is downstream
+        residuals = p_hat_sorted - u_target
+
+        # CRPS: trapezoid integral of (F_hat(t) - F_emp(t))^2 over the MC sample range
+        dT = np.diff(T_sorted)  # (M-1,)
+        seg_err_sq = 0.5 * (residuals[:-1] ** 2 + residuals[1:] ** 2)
+        crps[j] = np.sum(seg_err_sq * dT)
+
+        # Reference CRPS: marginal CDF predictor vs local empirical CDF
+        F_marginal = marginal_cdf(T_sorted)
+        ref_residuals = F_marginal - u_target
+        ref_seg_err_sq = 0.5 * (ref_residuals[:-1] ** 2 + ref_residuals[1:] ** 2)
+        crps_ref[j] = np.sum(ref_seg_err_sq * dT)
+
+        # Pinball loss per alpha: L_alpha(Q_hat(alpha|x), Y_i) averaged over local samples
+        for alpha in pinball_levels:
+            # Model's predicted quantile at alpha: interpolate p_hat_sorted -> T_sorted
+            q_hat = np.interp(alpha, p_hat_sorted, T_sorted)
+            pb_residuals = T_sorted - q_hat  # Y_i - q_hat
+            pinball_per_alpha[alpha][j] = np.mean(
+                np.where(pb_residuals >= 0, alpha * pb_residuals, (alpha - 1) * pb_residuals)
+            )
+
+            # Reference pinball: marginal quantile as predictor
+            q_ref = marginal_quantile(alpha)
+            ref_pb_residuals = T_sorted - q_ref
+            pinball_ref_per_alpha[alpha][j] = np.mean(
+                np.where(ref_pb_residuals >= 0, alpha * ref_pb_residuals, (alpha - 1) * ref_pb_residuals)
+            )
+
+    # Normalized CRPS: local / reference (0 = perfect, 1 = no better than ignoring X)
+    crps_normalized = np.where(crps_ref > 0, crps / crps_ref, np.nan)
+
+    estimation_errors = {'crps': crps_normalized}
+    for alpha in pinball_levels:
+        pb = pinball_per_alpha[alpha]
+        pb_ref = pinball_ref_per_alpha[alpha]
+        estimation_errors[f'pinball_{alpha:.2f}'] = np.where(pb_ref > 0, pb / pb_ref, np.nan)
+    return evaluation_grid, estimation_errors

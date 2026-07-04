@@ -701,7 +701,7 @@ class LF2I:
                 raise ValueError(
                     "region_type='posterior' requires both `posterior_estimator` and `parameter_grid`."
                 )
-            from lf2i.utils.other_methods import monte_carlo_coverage_posterior
+            from lf2i.diagnostics.monte_carlo_methods import monte_carlo_coverage_posterior
             return monte_carlo_coverage_posterior(
                 posterior_estimator=posterior_estimator,
                 simulator=simulator,
@@ -715,7 +715,7 @@ class LF2I:
             )
         if calibration_method is None:
             raise ValueError("`calibration_method` is required when region_type='lf2i'.")
-        from lf2i.utils.other_methods import monte_carlo_coverage
+        from lf2i.diagnostics.monte_carlo_methods import monte_carlo_coverage
         return monte_carlo_coverage(
             test_statistic=self.test_statistic,
             calibration_model=self.calibration_model,

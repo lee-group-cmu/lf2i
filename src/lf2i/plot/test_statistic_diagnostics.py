@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 
-from lf2i.utils.other_methods import monte_carlo_critical_values
+from lf2i.diagnostics.monte_carlo_methods import monte_carlo_critical_values
 from lf2i.simulator import Simulator
 from lf2i.test_statistics import TestStatistic
 from lf2i.utils.miscellanea import to_torch_if_np, to_np_if_torch
