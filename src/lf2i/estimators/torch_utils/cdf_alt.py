@@ -436,19 +436,20 @@ class QuantileOperatorCDFEstimator:
                     theta_batch.shape[0], self.n_levels, device=self._device
                 )
                 predicted = self.model_(theta_batch, tau, standardized=True)
-                loss = pinball_loss(stat_batch, predicted, tau) + self.lambda_spectral * spectral_penalty()
+                pinball = pinball_loss(stat_batch, predicted, tau)
+                loss = pinball + self.lambda_spectral * spectral_penalty()
 
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                running += loss.item() * theta_batch.shape[0]
+                running += pinball.item() * theta_batch.shape[0]
 
             train_history.append(running / train_idx.numel())
 
             self.model_.eval()
             with torch.no_grad():
                 tau_val = self.model_.tau_min + (self.model_.tau_max - self.model_.tau_min) * torch.rand(
-                    theta_val.shape[0], 128, device=self._device
+                    theta_val.shape[0], self.n_levels, device=self._device
                 )
                 val_loss = pinball_loss(
                     stat_val_std, self.model_(theta_val, tau_val, standardized=True), tau_val
