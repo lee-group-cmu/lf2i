@@ -442,7 +442,19 @@ def preprocess_odds_maximization(
         parameter_expanded = nominal_params_clone.unsqueeze(1).expand(1, batch_size, param_dim)  # shape (1, batch_size, param_dim)
         estimator_inputs = torch.cat([parameter_expanded, sample], dim=-1).float()  # shape (1, batch_size, param_dim + data_dim)
     else:
-        pass
+        # Scikit-Learn or XGBoost models: expects 2D input, shape (batch_size, param_dim + data_dim)
+        sample = to_np_if_torch(sample) if isinstance(sample, torch.Tensor) else np.asarray(sample)
+        sample = sample.reshape(batch_size, data_dim)
+
+        nominal_params_np = to_np_if_torch(nominal_params).copy()
+        nominal_params_np[opt_param_index] = to_np_if_torch(opt_param) if isinstance(opt_param, torch.Tensor) else opt_param
+        nominal_params_np = nominal_params_np.reshape(1, param_dim)
+
+        if parameter_space_bounds is not None:
+            nominal_params_np = preprocess_normalize_parameters(nominal_params_np, parameter_space_bounds)
+
+        parameter_expanded = np.repeat(nominal_params_np, repeats=batch_size, axis=0)  # shape (batch_size, param_dim)
+        estimator_inputs = np.hstack((parameter_expanded, sample))  # shape (batch_size, param_dim + data_dim)
 
     return estimator_inputs
 

@@ -280,6 +280,8 @@ class ACORE(TestStatistic):
         argmax: bool = False,
     ) -> float:
         assert fixed_poi.shape[0] in [0, self.poi_dim], f"fixed_poi should be either empty or have the same number of dimensions as the number of POIs, got {fixed_poi.shape[0]} and {self.poi_dim} respectively"
+        if isinstance(fixed_poi, np.ndarray):
+            fixed_poi = torch.from_numpy(fixed_poi)
 
         if self.optimizer == 'nelder_mead':
             if fixed_poi.shape[0] > 0:

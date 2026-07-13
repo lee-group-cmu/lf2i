@@ -103,25 +103,28 @@ class GaussianMixtureLocation(Simulator):
         )
         return torch.distributions.MixtureSameFamily(mix, torch.distributions.Independent(comp, 1))
 
-    def _simulate(self, params: torch.Tensor) -> torch.Tensor:
-        """Draw `batch_size` observations for each row of `params`.
+    def __call__(self, param: torch.Tensor, batch_size: Optional[int] = None) -> torch.Tensor:
+        """Draw `batch_size` observations for each row of `param`.
 
         Parameters
         ----------
-        params : torch.Tensor
+        param : torch.Tensor
             Shape (size, poi_dim).
+        batch_size : Optional[int], optional
+            Number of observations to draw for each row of `param`. Defaults to `self.batch_size`.
 
         Returns
         -------
         torch.Tensor
             Shape (size, batch_size, data_dim).
         """
-        size = params.shape[0]
+        batch_size = batch_size or self.batch_size
+        size = param.shape[0]
         # Draw mixture component index per (param, observation) pair
-        idx = Categorical(probs=self.mixture_weights).sample(sample_shape=(size, self.batch_size))  # (size, batch_size)
+        idx = Categorical(probs=self.mixture_weights).sample(sample_shape=(size, batch_size))  # (size, batch_size)
         scale = self.mixture_scales[idx]  # (size, batch_size)
 
-        loc = params.unsqueeze(1).expand(size, self.batch_size, self.poi_dim)  # (size, batch_size, poi_dim)
+        loc = param.unsqueeze(1).expand(size, batch_size, self.poi_dim)  # (size, batch_size, poi_dim)
         scale = scale.unsqueeze(-1).expand_as(loc)  # (size, batch_size, poi_dim)
 
         return Normal(loc=loc, scale=scale).sample()  # (size, batch_size, poi_dim)
@@ -132,13 +135,11 @@ class GaussianMixtureLocation(Simulator):
                 f"Only one of ['likelihood', 'prediction', 'posterior'] is supported, got {estimation_method}"
             )
         params = self.prior.sample(sample_shape=(size,)).reshape(size, self.poi_dim)
-        samples = self._simulate(params)
-        return params, samples  # (size, poi_dim), (size, batch_size, data_dim)
+        return params, self(param=params)  # (size, poi_dim), (size, batch_size, data_dim)
 
     def simulate_for_critical_values(self, size: int) -> Tuple[torch.Tensor, torch.Tensor]:
         params = self.qr_prior.sample(sample_shape=(size,)).reshape(size, self.poi_dim)
-        samples = self._simulate(params)
-        return params, samples
+        return params, self(param=params)
 
     def simulate_for_diagnostics(self, size: int) -> Tuple[torch.Tensor, torch.Tensor]:
         return self.simulate_for_critical_values(size)
