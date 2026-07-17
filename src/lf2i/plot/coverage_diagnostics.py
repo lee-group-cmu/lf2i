@@ -120,10 +120,10 @@ def coverage_probability_plot(
                 cbar = fig.colorbar(contour_filled, format='%1.2f')
                 standard_ticks = np.round(np.linspace(vmin_vmax[0], vmin_vmax[1], num=6), 1)
                 all_ticks = np.unique(np.sort(np.append(standard_ticks[:-1], confidence_level * 100)))
-                tick_labels = [f"{label:.0f}\%" for label in all_ticks]
+                tick_labels = [f"{label:.0f}%" for label in all_ticks]
                 for i, label in enumerate(all_ticks):
                     if abs(label - confidence_level*100) <= 1e-6:
-                        tick_labels[i] = r"$\mathbf{{{label}}}$\textbf{{\%}}".format(label=int(label))
+                        tick_labels[i] = r"$\mathbf{{{label}}}$%".format(label=int(label))
                 cbar.ax.yaxis.set_ticks(all_ticks)
                 cbar.ax.set_yticklabels(tick_labels, fontsize=30)
                 cbar.ax.axhline(y=confidence_level*100, xmin=0, xmax=1, color="black", linestyle="--", linewidth=2.5)
@@ -182,7 +182,7 @@ def coverage_probability_plot(
 
         if custom_ax is None:
             # handle formatting within function passing custom ax. Used only for `param_dim == 2`
-            cbar.set_label('Estimated Coverage', fontsize=40, labelpad=10)
+            cbar.set_label('Estimated Coverage', fontsize=30, labelpad=10)
             cbar.ax.tick_params(labelsize=30)
             simplefilter(action="ignore", category=UserWarning)
         
@@ -199,10 +199,10 @@ def coverage_probability_plot(
                     ax.set_zlabel(params_labels[2], fontsize=25, rotation=180, labelpad=3)
             if xlims is not None:
                 ax.set_xticks(np.linspace(xlims[0], xlims[1], 5))
-                ax.set_xticklabels(np.linspace(xlims[0], xlims[1], 5), fontsize=30)
+                ax.set_xticklabels([f'{x:.1f}' for x in np.linspace(xlims[0], xlims[1], 5)], fontsize=30)
             if ylims is not None:
                 ax.set_yticks(np.linspace(ylims[0], ylims[1], 5))
-                ax.set_yticklabels(np.linspace(ylims[0], ylims[1], 5), fontsize=30)
+                ax.set_yticklabels([f'{y:.1f}' for y in np.linspace(ylims[0], ylims[1], 5)], fontsize=30)
             ax.tick_params(labelsize=30)
 
     if title is not None:
