@@ -298,16 +298,16 @@ class LF2I:
                 verbose=verbose,
             )
             if return_point_estimate:
-                point_estimates = self._construct_point_estimates(p_values=p_values, evaluation_grid=evaluation_grid, n_obs=n_obs)
+                point_estimates = self._construct_point_estimates(p_values=p_values, evaluation_grid=evaluation_grid, n_obs=n_obs, test_statistics_x=test_statistics_x)
                 return result, point_estimates
             return result
 
         elif region_form == 'point_estimates':
-            return self._construct_point_estimates(p_values=p_values, evaluation_grid=evaluation_grid, n_obs=n_obs)
+            return self._construct_point_estimates(p_values=p_values, evaluation_grid=evaluation_grid, n_obs=n_obs, test_statistics_x=test_statistics_x)
 
         elif region_form == 'intervals':
             cl = confidence_level if isinstance(confidence_level, float) else confidence_level[0]
-            pe = self._construct_point_estimates(p_values=p_values, evaluation_grid=evaluation_grid, n_obs=n_obs)
+            pe = self._construct_point_estimates(p_values=p_values, evaluation_grid=evaluation_grid, n_obs=n_obs, test_statistics_x=test_statistics_x)
             return self._construct_confidence_intervals(
                 x=x,
                 point_estimates=pe,
@@ -320,7 +320,7 @@ class LF2I:
 
         elif region_form == 'curves':
             cl = confidence_level if isinstance(confidence_level, float) else confidence_level[0]
-            pe = self._construct_point_estimates(p_values=p_values, evaluation_grid=evaluation_grid, n_obs=n_obs)
+            pe = self._construct_point_estimates(p_values=p_values, evaluation_grid=evaluation_grid, n_obs=n_obs, test_statistics_x=test_statistics_x)
             return self._construct_confidence_curves(
                 x=x,
                 point_estimates=pe,
@@ -369,8 +369,20 @@ class LF2I:
         p_values: np.ndarray,
         evaluation_grid: Union[np.ndarray, torch.Tensor],
         n_obs: int,
+        test_statistics_x: Optional[np.ndarray] = None,
     ) -> np.ndarray:
-        return compute_point_estimates(p_values=p_values, evaluation_grid=evaluation_grid, n_obs=n_obs)
+        ts_scalar = None
+        if test_statistics_x is not None:
+            ts_arr = np.asarray(test_statistics_x)
+            # Reduce to scalar per (obs, grid) pair — take first column if multi-dim
+            ts_scalar = ts_arr.reshape(n_obs, -1)[:, 0].reshape(-1) if ts_arr.ndim > 1 else ts_arr.reshape(-1)
+        return compute_point_estimates(
+            p_values=p_values,
+            evaluation_grid=evaluation_grid,
+            n_obs=n_obs,
+            test_statistic=ts_scalar,
+            acceptance_region=self.test_statistic.acceptance_region if ts_scalar is not None else None,
+        )
 
     def _construct_confidence_intervals(
         self,

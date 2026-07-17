@@ -79,6 +79,8 @@ def compute_point_estimates(
     p_values: np.ndarray,
     evaluation_grid: np.ndarray,
     n_obs: int,
+    test_statistic: Optional[np.ndarray] = None,
+    acceptance_region: Optional[str] = None,
 ) -> np.ndarray:
     """Compute Focal point estimates as argmax of p-values over the evaluation grid.
 
@@ -90,6 +92,12 @@ def compute_point_estimates(
         Parameter grid used during Neyman inversion.
     n_obs : int
         Number of observations.
+    test_statistic : np.ndarray, optional, shape (n_obs * grid_size,) or (n_obs, grid_size)
+        Test statistic values at each (observation, grid point) pair. When provided
+        together with `acceptance_region`, ties in the maximum p-value are broken by
+        the test statistic: higher values win for ``'right'``, lower for ``'left'``.
+    acceptance_region : str, optional
+        ``'left'`` or ``'right'``. Required when `test_statistic` is provided.
 
     Returns
     -------
@@ -99,7 +107,18 @@ def compute_point_estimates(
     evaluation_grid_np = to_np_if_torch(evaluation_grid)
     grid_size = len(evaluation_grid_np)
     p_values_matrix = np.asarray(p_values).reshape(n_obs, grid_size)
-    pe_idx = np.argmax(p_values_matrix, axis=1)
+
+    if test_statistic is not None and acceptance_region is not None:
+        ts_matrix = np.asarray(test_statistic).reshape(n_obs, grid_size)
+        # lexsort: last key is primary (p-value), first key breaks ties (ts)
+        ts_tiebreak = ts_matrix if acceptance_region == 'right' else -ts_matrix
+        pe_idx = np.array([
+            np.lexsort((ts_tiebreak[i], p_values_matrix[i]))[-1]
+            for i in range(n_obs)
+        ])
+    else:
+        pe_idx = np.argmax(p_values_matrix, axis=1)
+
     return evaluation_grid_np[pe_idx]
 
 
