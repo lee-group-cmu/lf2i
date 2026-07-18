@@ -262,7 +262,7 @@ def monte_carlo_pvalue_diagnostics(
     test_statistic: TestStatistic,
     calibration_model,
     simulator: Simulator,
-    evaluation_grid: np.ndarray,
+    evaluation_grid: Union[torch.Tensor, np.ndarray],
     monte_carlo_size: int = 500,
     pinball_levels: Sequence[float] = None,
 ):
@@ -283,6 +283,7 @@ def monte_carlo_pvalue_diagnostics(
     if pinball_levels is None:
         pinball_levels = np.linspace(0.05, 0.95, 19)
 
+    evaluation_grid = to_torch_if_np(evaluation_grid)
     n_grid = evaluation_grid.shape[0]
     M = monte_carlo_size
 

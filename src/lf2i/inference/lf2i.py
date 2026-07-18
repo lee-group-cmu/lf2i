@@ -64,6 +64,8 @@ class LF2I:
         else:
             raise ValueError(f"Expected one of `acore`, `bff`, `waldo`, `posterior`, or an instance of a custom `lf2i.test_statistics._base.TestStatistic`, got {test_statistic}")
         self.calibration_model = {}
+        self.recalibrate_p_values = False
+        self.parameters_calib = None
 
     # ------------------------------------------------------------------
     # Public: inference
@@ -374,8 +376,13 @@ class LF2I:
         ts_scalar = None
         if test_statistics_x is not None:
             ts_arr = np.asarray(test_statistics_x)
-            # Reduce to scalar per (obs, grid) pair — take first column if multi-dim
-            ts_scalar = ts_arr.reshape(n_obs, -1)[:, 0].reshape(-1) if ts_arr.ndim > 1 else ts_arr.reshape(-1)
+            grid_size = len(to_np_if_torch(evaluation_grid))
+            # Reduce to scalar per (obs, grid) pair — take first component if there's an extra trailing dim
+            ts_scalar = (
+                ts_arr.reshape(n_obs, grid_size, -1)[..., 0].reshape(-1)
+                if ts_arr.ndim > 2
+                else ts_arr.reshape(n_obs, grid_size).reshape(-1)
+            )
         return compute_point_estimates(
             p_values=p_values,
             evaluation_grid=evaluation_grid,
@@ -394,6 +401,9 @@ class LF2I:
         evaluation_grid: Optional[Union[np.ndarray, torch.Tensor]] = None,
         slice_dims: Optional[Sequence[int]] = None,
     ) -> np.ndarray:
+        if self.recalibrate_p_values and self.parameters_calib is None:
+            raise ValueError("Cannot construct confidence intervals with recalibrated p-values without a holdout calibration set.")
+
         calib_dict_key, alpha = self._resolve_calib_key_and_alpha(confidence_level)
         return compute_confidence_intervals(
             test_statistic_obj=self.test_statistic,
@@ -421,6 +431,9 @@ class LF2I:
         evaluation_grid: Optional[Union[np.ndarray, torch.Tensor]] = None,
         slice_dims: Optional[Sequence[int]] = None,
     ) -> Tuple:
+        if self.recalibrate_p_values and self.parameters_calib is None:
+            raise ValueError("Cannot construct confidence intervals with recalibrated p-values without a holdout calibration set.")
+
         calib_dict_key, alpha = self._resolve_calib_key_and_alpha(confidence_level)
         return compute_confidence_curves(
             test_statistic_obj=self.test_statistic,
