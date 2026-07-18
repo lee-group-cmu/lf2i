@@ -370,7 +370,10 @@ def _compute_curves_slice(
     test_statistic_obj, calibration_model, calib_dict_key, x_np, point_estimates,
     alpha, pv_col, param_dim, grid_size, grid_bounds, eg_np, slice_dims, nonrect_eval_grid,
 ):
-    """Slice-dims path: evaluate a product grid over selected dimensions."""
+    """Slice-dims path: evaluate a product grid over selected dimensions.
+
+    Note: If multiple observations, `slice_grid_out` is from obs 0 only.
+    """
     n_obs = point_estimates.shape[0]
     non_slice_dims = [k for k in range(param_dim) if k not in slice_dims]
     _knn_k = max(50, int(0.05 * len(eg_np))) if eg_np is not None else None

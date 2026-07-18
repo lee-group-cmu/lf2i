@@ -625,6 +625,8 @@ def plot_parameter_intervals(
         Axis labels; falls back to ``θ_0, θ_1, …`` if not supplied.
     colors : sequence, optional
         One colour per region; defaults to a rainbow palette.
+
+        Note: Point estimates are displayed in the first colour in the list.
     region_names : sequence of str, optional
         Legend labels for the regions.
     parameter_space_bounds : dict, optional
@@ -777,7 +779,7 @@ def plot_parameter_intervals(
         ax.set_xlabel(param_names[d], fontsize=12, labelpad=4)
         ax.tick_params(axis='x', labelsize=10)
 
-    star_patch = mlines.Line2D([], [], color=color, marker='*', linestyle='None',
+    star_patch = mlines.Line2D([], [], color=colors[0], marker='*', linestyle='None',
                                markersize=10, label='Focal point')
     if star_patch not in legend_handles:
         legend_handles.append(star_patch)

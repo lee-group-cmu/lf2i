@@ -164,6 +164,10 @@ class LF2I:
         self.test_statistic.verbose = verbose
         self.recalibrate_p_values = recalibrate_p_values or False
 
+        # --- reshape x to (n_obs, param_dim) if needed ---
+        if x.ndim == 1:
+            x = x.reshape(1, -1)
+
         # --- train test statistic ---
         if not self.test_statistic._check_is_trained():
             if verbose:
@@ -173,7 +177,8 @@ class LF2I:
             self.test_statistic.estimate(*T)
 
         # --- train calibration model ---
-        if calibration_model is not None and isinstance(calibration_model, dict):
+        calibration_model_is_prebuilt = isinstance(calibration_model, dict)
+        if calibration_model is not None and calibration_model_is_prebuilt:
             self.calibration_model = calibration_model
             if T_prime is not None:
                 self.parameters_calib, self.samples_calib = T_prime[0], T_prime[1]
@@ -208,6 +213,14 @@ class LF2I:
             self.holdout_parameters_calib, self.holdout_samples_calib, self.holdout_test_statistics_calib = None, None, None
 
         calib_dict_key = f'{confidence_level:.2f}' if isinstance(confidence_level, float) else 'multiple_levels'
+        if calibration_model_is_prebuilt and (calib_dict_key not in self.calibration_model or retrain_calibration):
+            raise KeyError(
+                f"calibration_model was passed as a pre-built dict, but it has no entry for "
+                f"confidence level key '{calib_dict_key}' (available keys: {list(self.calibration_model.keys())}) "
+                f"or retrain_calibration=True was requested. A pre-built dict cannot be used as a training "
+                f"algorithm identifier; pass a dict that already contains this key, or pass calibration_model "
+                f"as a str/algorithm instance to train a new calibration model."
+            )
         if (calib_dict_key not in self.calibration_model) or retrain_calibration:
             if verbose:
                 print('\nRetraining calibration...')
@@ -350,6 +363,10 @@ class LF2I:
         alpha_list: List[float],
         verbose: bool = False,
     ) -> Union[List[np.ndarray], List[List[np.ndarray]]]:
+        if critical_values is not None:
+            assert critical_values.size == len(to_np_if_torch(evaluation_grid)) * len(alpha_list), \
+                f"critical_values has {critical_values.size} elements, expected {len(to_np_if_torch(evaluation_grid)) * len(alpha_list)} (grid_size x n_levels)"
+
         confidence_regions = []
         for idx, a in enumerate(alpha_list):
             if verbose:

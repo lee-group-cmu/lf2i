@@ -128,6 +128,14 @@ def preprocess_confidence_curves(
         if eg_np is not None:
             grid_bounds = np.stack([eg_np.min(axis=0), eg_np.max(axis=0)], axis=1)
         else:
+            if (
+                evaluation_grid is None and 
+                grid_bounds is None and
+                parameters_calib is None
+            ):
+                raise ValueError(
+                    "At least one of evaluation_grid, grid_bounds, or parameters_calib must be provided."
+                )
             params_np = to_np_if_torch(parameters_calib)
             params_np = np.asarray(params_np, dtype=float)
             if params_np.ndim == 1:
