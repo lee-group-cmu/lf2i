@@ -187,7 +187,7 @@ class LearnerRegression(Learner):
         X: torch.Tensor
     ) -> torch.Tensor:
         self.model.eval()
-        return self.model(X.to(self.device)).cpu().detach()
+        return self.model(X.float().to(self.device)).cpu().detach()
 
 
 class LearnerClassification(Learner):
