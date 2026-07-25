@@ -1,5 +1,4 @@
 import gc
-import warnings
 from typing import Optional, Union, Dict, List, Tuple, Any, Sequence
 
 import numpy as np
@@ -9,12 +8,7 @@ from lf2i.simulator import Simulator
 from lf2i.test_statistics import TestStatistic, ACORE, BFF, Waldo, Posterior
 from lf2i.calibration.critical_values import train_qr_algorithm
 from lf2i.calibration.p_values import estimate_rejection_proba
-from lf2i.confidence_regions.neyman_inversion import (
-    compute_confidence_regions,
-    compute_point_estimates,
-    compute_confidence_curves,
-    compute_confidence_intervals,
-)
+from lf2i.confidence_regions.neyman_inversion import compute_confidence_regions
 from lf2i.diagnostics.coverage_probability import (
     estimate_coverage_proba,
     compute_indicators_lf2i,
@@ -31,8 +25,7 @@ class LF2I:
     This allows to quickly construct confidence regions for parameters of interest in an SBI setting leveraging an arbitrary estimator
         - of the *likelihood*, using for example the ACORE or BFF test statistics (https://arxiv.org/pdf/2002.10399.pdf, https://arxiv.org/abs/2107.03920);
         - of the *posterior*, using for example the Waldo test statistic (https://arxiv.org/abs/2205.15680);
-        - of point estimates, i.e. a general *prediction* algorithm, using again the WALDO test statistic.
-    Alternatively, one can define a custom `TestStatistic` appropriate for the problem at hand.
+        Alternatively, one can define a custom `TestStatistic` appropriate for the problem at hand.
 
     NOTE: although this entry point contains all the main LF2I functionalities, using the single implemented components (test statistics, critical values, neyman inversion)
     provides a bit more flexibility and allows to control every single hyper-parameter.
@@ -87,11 +80,6 @@ class LF2I:
         num_augment: int = 5,
         retrain_calibration: bool = False,
         recalibrate_p_values: bool = False,
-        region_form: str = 'full',
-        oat_grid_size: int = 200,
-        oat_grid_bounds: Optional[np.ndarray] = None,
-        oat_slice_dims: Optional[Sequence[int]] = None,
-        return_point_estimate: bool = False,
         verbose: bool = True,
     ) -> Union[List[np.ndarray], Dict[str, List[np.ndarray]]]:
         """Estimate test statistic and critical values, and construct confidence sets for all observations in `x`.
@@ -127,39 +115,14 @@ class LF2I:
             Whether to retrain the calibration model, by default False.
         recalibrate_p_values: bool, optional
             Whether to hold out part of the calibration set to recalibrate p-value thresholds, by default False.
-        region_form : str, optional
-            Output form. One of:
-            - ``'full'`` (default): full Neyman-inversion confidence regions;
-            - ``'point_estimates'``: Focal point estimates only (argmax of p-values);
-            - ``'intervals'``: 1D OAT confidence intervals (requires ``calibration_method='p-values'``);
-            - ``'curves'``: 1D OAT p-value curves (requires ``calibration_method='p-values'``).
-        oat_grid_size : int, optional
-            Number of sweep points per dimension for OAT-based region forms. Default 200.
-        oat_grid_bounds : np.ndarray, shape (param_dim, 2), optional
-            Per-dimension sweep bounds for OAT region forms. Derived from ``evaluation_grid`` if None.
-        oat_slice_dims : sequence of int, optional
-            Dimensions to vary jointly in the OAT sweep. None → classic one-at-a-time.
-        return_point_estimate : bool, optional
-            If True, also return Focal point estimates alongside full confidence regions.
-            Only supported with ``calibration_method='p-values'``. Deprecated in favour of
-            ``region_form='point_estimates'``.
         verbose: bool, optional
             Whether to print checkpoints and progress bars, by default True.
 
         Returns
         -------
-        Depends on ``region_form``:
-            - ``'full'``: ``List[np.ndarray]`` or ``List[List[np.ndarray]]`` (multiple levels).
-              If ``return_point_estimate=True``, returns ``(confidence_regions, point_estimates)``.
-            - ``'point_estimates'``: ``np.ndarray``, shape ``(n_obs, param_dim)``.
-            - ``'intervals'``: ``np.ndarray``, shape ``(n_obs, param_dim, 2)``.
-            - ``'curves'``: tuple ``(intervals, pvalues, grid)``.
+        List[np.ndarray] or List[List[np.ndarray]] for multiple confidence levels.
         """
         assert calibration_method in ['critical-values', 'p-values']
-        if return_point_estimate and calibration_method != 'p-values':
-            raise ValueError("return_point_estimate=True is only supported with calibration_method='p-values'")
-        if region_form in ('point_estimates', 'intervals', 'curves') and calibration_method != 'p-values':
-            raise ValueError(f"region_form='{region_form}' requires calibration_method='p-values'")
 
         self.test_statistic.verbose = verbose
         self.recalibrate_p_values = recalibrate_p_values or False
@@ -275,9 +238,6 @@ class LF2I:
                 X=preprocess_predict_p_values('confidence_sets', test_statistics_x, evaluation_grid, self.calibration_model[calib_dict_key])
             )[:, _pv_col]
 
-        # --- point estimates (argmax of p-values) ---
-        n_obs = len(x) if hasattr(x, '__len__') else 1
-
         # --- recalibrate alpha ---
         alpha_list = [1 - confidence_level] if isinstance(confidence_level, float) else [1 - cl for cl in confidence_level]
         if (
@@ -301,53 +261,15 @@ class LF2I:
         else:
             self.holdout_p_values = None
 
-        # --- dispatch to the requested region form ---
-        if region_form == 'full':
-            result = self._construct_confidence_regions(
-                calibration_method=calibration_method,
-                test_statistics_x=test_statistics_x,
-                evaluation_grid=evaluation_grid,
-                critical_values=critical_values,
-                p_values=p_values,
-                alpha_list=alpha_list,
-                verbose=verbose,
-            )
-            if return_point_estimate:
-                point_estimates = self._construct_point_estimates(p_values=p_values, evaluation_grid=evaluation_grid, n_obs=n_obs, test_statistics_x=test_statistics_x)
-                return result, point_estimates
-            return result
-
-        elif region_form == 'point_estimates':
-            return self._construct_point_estimates(p_values=p_values, evaluation_grid=evaluation_grid, n_obs=n_obs, test_statistics_x=test_statistics_x)
-
-        elif region_form == 'intervals':
-            cl = confidence_level if isinstance(confidence_level, float) else confidence_level[0]
-            pe = self._construct_point_estimates(p_values=p_values, evaluation_grid=evaluation_grid, n_obs=n_obs, test_statistics_x=test_statistics_x)
-            return self._construct_confidence_intervals(
-                x=x,
-                point_estimates=pe,
-                confidence_level=cl,
-                grid_size=oat_grid_size,
-                grid_bounds=oat_grid_bounds,
-                evaluation_grid=evaluation_grid,
-                slice_dims=oat_slice_dims,
-            )
-
-        elif region_form == 'curves':
-            cl = confidence_level if isinstance(confidence_level, float) else confidence_level[0]
-            pe = self._construct_point_estimates(p_values=p_values, evaluation_grid=evaluation_grid, n_obs=n_obs, test_statistics_x=test_statistics_x)
-            return self._construct_confidence_curves(
-                x=x,
-                point_estimates=pe,
-                confidence_level=cl,
-                grid_size=oat_grid_size,
-                grid_bounds=oat_grid_bounds,
-                evaluation_grid=evaluation_grid,
-                slice_dims=oat_slice_dims,
-            )
-
-        else:
-            raise ValueError(f"Unknown region_form '{region_form}'. Expected one of 'full', 'point_estimates', 'intervals', 'curves'.")
+        return self._construct_confidence_regions(
+            calibration_method=calibration_method,
+            test_statistics_x=test_statistics_x,
+            evaluation_grid=evaluation_grid,
+            critical_values=critical_values,
+            p_values=p_values,
+            alpha_list=alpha_list,
+            verbose=verbose,
+        )
 
     # ------------------------------------------------------------------
     # Private: inference dispatch helpers
@@ -383,104 +305,6 @@ class LF2I:
             ))
         return confidence_regions if len(alpha_list) > 1 else confidence_regions[0]
 
-    def _construct_point_estimates(
-        self,
-        p_values: np.ndarray,
-        evaluation_grid: Union[np.ndarray, torch.Tensor],
-        n_obs: int,
-        test_statistics_x: Optional[np.ndarray] = None,
-    ) -> np.ndarray:
-        ts_scalar = None
-        if test_statistics_x is not None:
-            ts_arr = np.asarray(test_statistics_x)
-            grid_size = len(to_np_if_torch(evaluation_grid))
-            # Reduce to scalar per (obs, grid) pair — take first component if there's an extra trailing dim
-            ts_scalar = (
-                ts_arr.reshape(n_obs, grid_size, -1)[..., 0].reshape(-1)
-                if ts_arr.ndim > 2
-                else ts_arr.reshape(n_obs, grid_size).reshape(-1)
-            )
-        return compute_point_estimates(
-            p_values=p_values,
-            evaluation_grid=evaluation_grid,
-            n_obs=n_obs,
-            test_statistic=ts_scalar,
-            acceptance_region=self.test_statistic.acceptance_region if ts_scalar is not None else None,
-        )
-
-    def _construct_confidence_intervals(
-        self,
-        x: Union[np.ndarray, torch.Tensor],
-        point_estimates: np.ndarray,
-        confidence_level: float,
-        grid_size: int = 200,
-        grid_bounds: Optional[np.ndarray] = None,
-        evaluation_grid: Optional[Union[np.ndarray, torch.Tensor]] = None,
-        slice_dims: Optional[Sequence[int]] = None,
-    ) -> np.ndarray:
-        if self.recalibrate_p_values and self.parameters_calib is None:
-            raise ValueError("Cannot construct confidence intervals with recalibrated p-values without a holdout calibration set.")
-
-        calib_dict_key, alpha = self._resolve_calib_key_and_alpha(confidence_level)
-        return compute_confidence_intervals(
-            test_statistic_obj=self.test_statistic,
-            calibration_model=self.calibration_model,
-            calib_dict_key=calib_dict_key,
-            x=x,
-            point_estimates=point_estimates,
-            alpha=alpha,
-            acceptance_region=self.test_statistic.acceptance_region,
-            param_dim=self.test_statistic.param_dim,
-            parameters_calib=self.parameters_calib,
-            grid_size=grid_size,
-            grid_bounds=grid_bounds,
-            evaluation_grid=evaluation_grid,
-            slice_dims=slice_dims,
-        )
-
-    def _construct_confidence_curves(
-        self,
-        x: Union[np.ndarray, torch.Tensor],
-        point_estimates: np.ndarray,
-        confidence_level: float,
-        grid_size: int = 200,
-        grid_bounds: Optional[np.ndarray] = None,
-        evaluation_grid: Optional[Union[np.ndarray, torch.Tensor]] = None,
-        slice_dims: Optional[Sequence[int]] = None,
-    ) -> Tuple:
-        if self.recalibrate_p_values and self.parameters_calib is None:
-            raise ValueError("Cannot construct confidence intervals with recalibrated p-values without a holdout calibration set.")
-
-        calib_dict_key, alpha = self._resolve_calib_key_and_alpha(confidence_level)
-        return compute_confidence_curves(
-            test_statistic_obj=self.test_statistic,
-            calibration_model=self.calibration_model,
-            calib_dict_key=calib_dict_key,
-            x=x,
-            point_estimates=point_estimates,
-            alpha=alpha,
-            acceptance_region=self.test_statistic.acceptance_region,
-            param_dim=self.test_statistic.param_dim,
-            parameters_calib=self.parameters_calib,
-            grid_size=grid_size,
-            grid_bounds=grid_bounds,
-            evaluation_grid=evaluation_grid,
-            slice_dims=slice_dims,
-        )
-
-    def _resolve_calib_key_and_alpha(self, confidence_level: float) -> Tuple[str, float]:
-        """Return (calib_dict_key, alpha) for a scalar confidence level."""
-        calib_dict_key = f'{confidence_level:.2f}'
-        if calib_dict_key not in self.calibration_model:
-            calib_dict_key = 'multiple_levels'
-        alpha = 1.0 - confidence_level
-        if (
-            self.recalibrate_p_values
-            and hasattr(self, 'holdout_p_values')
-            and self.holdout_p_values is not None
-        ):
-            alpha = float(np.quantile(self.holdout_p_values, alpha))
-        return calib_dict_key, alpha
 
     # ------------------------------------------------------------------
     # Public: coverage
@@ -1065,59 +889,3 @@ class LF2I:
             return evaluation_grid_np, sizes[cls[0]]
         return evaluation_grid_np, sizes
 
-    # ------------------------------------------------------------------
-    # Public: OAT intervals (deprecated)
-    # ------------------------------------------------------------------
-
-    def oat_intervals(
-        self,
-        x: Union[np.ndarray, torch.Tensor],
-        point_estimates: np.ndarray,
-        confidence_level: float,
-        calibration_method: str = 'p-values',
-        grid_size: int = 200,
-        grid_bounds: Optional[np.ndarray] = None,
-        evaluation_grid: Optional[Union[np.ndarray, torch.Tensor]] = None,
-        return_confidence_curve: bool = False,
-        slice_dims: Optional[Sequence[int]] = None,
-    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray, np.ndarray], List[np.ndarray], Tuple[List[np.ndarray], np.ndarray, np.ndarray]]:
-        """Compute OAT 1D intervals or multi-dimensional slices of the p-value function.
-
-        .. deprecated::
-            ``oat_intervals`` will be removed in a future release.
-            Use ``inference(region_form='intervals')`` or ``inference(region_form='curves')``
-            instead, or call :func:`lf2i.confidence_regions.neyman_inversion.compute_confidence_intervals`
-            / :func:`~compute_confidence_curves` directly.
-        """
-        warnings.warn(
-            "LF2I.oat_intervals() is deprecated and will be removed in a future release. "
-            "Use LF2I.inference(region_form='intervals') or inference(region_form='curves') "
-            "instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if calibration_method != 'p-values':
-            raise ValueError("oat_intervals only supports calibration_method='p-values'")
-        if not self.calibration_model:
-            raise RuntimeError("Calibration model not found. Call inference() before oat_intervals().")
-
-        if return_confidence_curve:
-            return self._construct_confidence_curves(
-                x=x,
-                point_estimates=point_estimates,
-                confidence_level=confidence_level,
-                grid_size=grid_size,
-                grid_bounds=grid_bounds,
-                evaluation_grid=evaluation_grid,
-                slice_dims=slice_dims,
-            )
-        else:
-            return self._construct_confidence_intervals(
-                x=x,
-                point_estimates=point_estimates,
-                confidence_level=confidence_level,
-                grid_size=grid_size,
-                grid_bounds=grid_bounds,
-                evaluation_grid=evaluation_grid,
-                slice_dims=slice_dims,
-            )

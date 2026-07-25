@@ -11,23 +11,3 @@ from lf2i.estimators.torch_utils.cdf import (
     SigmoidCDF,
     BetaNetwork,
 )
-from lf2i.estimators.torch_utils.cdf_alt import QuantileOperatorCDFEstimator
-
-# ── FlexCode-based implementations (optional: requires flexcode) ──────────────
-try:
-    from lf2i.estimators.flexcode_utils.cdf import FlexCodeCDFEstimator
-    from lf2i.estimators.flexcode_utils.two_stage_cdf import TwoStageCalibrationModel
-    HAVE_FLEXCODE = True
-except ImportError:
-    HAVE_FLEXCODE = False
-
-# ── NGBoost-based implementations (optional: requires ngboost) ────────────────
-try:
-    from lf2i.estimators.ngboost_utils.cdf import NGBoostCDFEstimator
-    from lf2i.estimators.ngboost_utils.two_stage_cdf import TwoStageCalibrationModel as NGBoostTwoStageCalibrationModel
-    from lf2i.estimators.ngboost_utils.distns.gamma_loc import GammaLoc, GammaLocLogScore
-    from lf2i.estimators.ngboost_utils.distns.kumaraswamy_mixture import Kumaraswamy
-    from lf2i.estimators.ngboost_utils.distns.histogram import Histogram20
-    HAVE_NGBOOST = True
-except ImportError:
-    HAVE_NGBOOST = False
