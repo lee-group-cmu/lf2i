@@ -12,22 +12,25 @@ REQUIRES_PYTHON = ">=3.9.0, <3.12"
 
 REQUIRED = [
     "alphashape",
+    "catboost>=1.2.8",
     "click",
     "descartes",
+    "joblib",
     "matplotlib>=3.6.0",
-    "numpy",
-    "rpy2>=3.5.4",
-    "sbi>=0.19.2",
-    "scikit-learn",
-    "scipy",
+    "numpy>=1.26.4",
+    "scikit-learn>=1.5.2",
+    "scipy>=1.11.4",
     "seaborn>=0.12.1",
     "torch>=1.12.1",
     "tqdm",
-    "xgboost>=1.6.2",
-    "joblib"
+    "xgboost>=1.6.2"
 ]
 
 EXTRAS = {
+    "examples": [
+        "sbi==0.25.0",
+        "dill"
+    ],
     "dev": [
         "aquirdturtle-collapsible-headings",
         "ipykernel",
@@ -37,7 +40,8 @@ EXTRAS = {
         "nbsphinx",
         "pytest",
         "sphinx",
-        "sphinx-mdinclude"
+        "sphinx-mdinclude",
+        "alphashape"
     ]
 }
 
@@ -71,6 +75,5 @@ setup(
     extras_require=EXTRAS,
     license="MIT",
     entry_points=ENTRY_POINTS,
-    package_data={'': ['*.r', '*.R']},
     include_package_data=True
 )

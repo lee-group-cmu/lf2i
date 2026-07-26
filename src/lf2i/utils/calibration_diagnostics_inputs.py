@@ -1,22 +1,51 @@
-from typing import Union, Tuple, Any, Sequence, Iterator
+from typing import Union, Tuple, Any, Sequence, Iterator, Optional
 import warnings
 
 import itertools
 import numpy as np
 import torch
-from sklearn.base import BaseEstimator
-from xgboost.sklearn import XGBModel
+
+from lf2i.utils.miscellanea import check_for_nans, check_for_infs, find_nans_and_infs, to_np_if_torch
+from lf2i.utils.confidence_regions import preprocess_neyman_inversion  # re-exported for backward compat
 
 
 def preprocess_train_quantile_regression(
     test_statistics: Union[np.ndarray, torch.Tensor],
     parameters: Union[np.ndarray, torch.Tensor],
-    param_dim: int
+    param_dim: int,
+    estimator: Any
 ) -> Tuple[Union[np.ndarray, torch.Tensor]]:
-    if isinstance(test_statistics, torch.Tensor):
-        test_statistics = test_statistics.numpy()
-    if isinstance(parameters, torch.Tensor):
-        parameters = parameters.numpy()
+    try:
+        check_for_nans(test_statistics)
+        check_for_infs(test_statistics)
+        check_for_nans(parameters)
+        check_for_infs(parameters)
+        drop_nans_and_infs = False
+    except ValueError as e:
+        warnings.warn(f"An error occurred while checking for NaNs and Infs: {e}")
+        drop_nans_and_infs = True
+    except:
+        raise ValueError("An error occurred while checking for NaNs and Infs")
+
+    if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
+        # PyTorch models
+        if isinstance(test_statistics, np.ndarray):
+            test_statistics = torch.from_numpy(test_statistics)
+        if isinstance(parameters, np.ndarray):
+            parameters = torch.from_numpy(parameters)
+    else:
+        # numpy-based models
+        if isinstance(test_statistics, torch.Tensor):
+            test_statistics = to_np_if_torch(test_statistics)
+        if isinstance(parameters, torch.Tensor):
+            parameters = to_np_if_torch(parameters)
+
+    if drop_nans_and_infs:
+        nans_and_infs = find_nans_and_infs(test_statistics) | find_nans_and_infs(parameters)
+        assert len(nans_and_infs) - sum(nans_and_infs) >= 2, "There are at least 2 finite values in the input"
+        test_statistics = test_statistics[~nans_and_infs]
+        parameters = parameters[~nans_and_infs]
+
     return test_statistics.reshape(-1, ), parameters.reshape(-1, param_dim)
 
 
@@ -25,27 +54,70 @@ def preprocess_predict_quantile_regression(
     estimator: Any,
     param_dim: int
 ) -> Union[np.ndarray, torch.Tensor]:
-    if isinstance(estimator, torch.nn.Module):
+    check_for_nans(parameters)
+    
+    if isinstance(estimator, torch.nn.Module) or (hasattr(estimator, 'model') and isinstance(estimator.model, torch.nn.Module)):
         # PyTorch models
         if isinstance(parameters, np.ndarray):
             parameters = torch.from_numpy(parameters)
-    if isinstance(estimator, (BaseEstimator, XGBModel)):
-        # Scikit-Learn or XGBoost models
+    else:
+        # numpy-based models
         if isinstance(parameters, torch.Tensor):
-            parameters = parameters.numpy()
+            parameters = to_np_if_torch(parameters)
     return parameters.reshape(-1, param_dim)
 
 
-def preprocess_neyman_inversion(
-    test_statistic: np.ndarray,
-    critical_values: np.ndarray,
-    parameter_grid: Union[np.ndarray, torch.Tensor],
-    param_dim: int
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    if isinstance(parameter_grid, torch.Tensor):
-        parameter_grid = parameter_grid.numpy()
-    parameter_grid = parameter_grid.reshape(-1, param_dim)
-    return test_statistic.reshape(-1, parameter_grid.shape[0]), critical_values.reshape(1, parameter_grid.shape[0]), parameter_grid
+def preprocess_fit_p_values(
+    inp: Union[np.ndarray, torch.Tensor],
+    rejection_probs_model: Any
+) -> Union[np.ndarray, torch.Tensor]:
+    check_for_nans(inp)
+    if isinstance(rejection_probs_model, torch.nn.Module) or (hasattr(rejection_probs_model, 'model') and isinstance(rejection_probs_model.model, torch.nn.Module)):
+        # PyTorch models
+        if isinstance(inp, np.ndarray):
+            inp = torch.from_numpy(inp)
+        if inp.ndim == 1:
+            inp = inp.unsqueeze(1)
+    else:  # assume anything else works with numpy arrays
+        # Scikit-Learn, XGBoost, CatBoost, etc...
+        if isinstance(inp, torch.Tensor):
+            inp = to_np_if_torch(inp)
+        if inp.ndim == 1:
+            inp = np.expand_dims(inp, axis=1)
+    return inp
+
+
+def preprocess_predict_p_values(
+    mode: str,
+    test_stats: Union[np.ndarray, torch.Tensor],
+    poi: Union[np.ndarray, torch.Tensor],
+    rejection_probs_model: Any
+) -> Union[np.ndarray, torch.Tensor]:
+    check_for_nans(test_stats)
+    check_for_nans(poi)
+    if isinstance(rejection_probs_model, torch.nn.Module) or (hasattr(rejection_probs_model, 'model') and isinstance(rejection_probs_model.model, torch.nn.Module)):
+        # PyTorch models
+        if isinstance(test_stats, np.ndarray):
+            test_stats = torch.from_numpy(test_stats)
+        if isinstance(poi, np.ndarray):
+            poi = torch.from_numpy(poi)
+        if poi.ndim == 1:
+            poi = poi.unsqueeze(1)
+        if mode == 'confidence_sets':
+            poi = torch.tile(poi, dims=(test_stats.reshape(-1, poi.shape[0]).shape[0], 1))
+        stacked_inp = torch.hstack((test_stats.reshape(-1, 1), poi))
+    else:  # assume anything else works with numpy arrays
+        # Scikit-Learn, XGBoost, CatBoost, etc...
+        if isinstance(test_stats, torch.Tensor):
+            test_stats = to_np_if_torch(test_stats)
+        if isinstance(poi, torch.Tensor):
+            poi = to_np_if_torch(poi)
+        if poi.ndim == 1:
+            poi = np.expand_dims(poi, axis=1)
+        if mode == 'confidence_sets':
+            poi = np.tile(poi, reps=(test_stats.reshape(-1, poi.shape[0]).shape[0], 1))
+        stacked_inp = np.hstack((test_stats.reshape(-1, 1), poi))
+    return stacked_inp
 
 
 def preprocess_diagnostics(
@@ -54,24 +126,46 @@ def preprocess_diagnostics(
     new_parameters: Union[np.ndarray, torch.Tensor, None],
     param_dim: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    check_for_nans(indicators)
+    check_for_nans(parameters)
+    if new_parameters is not None:
+        check_for_nans(new_parameters)
     if isinstance(indicators, torch.Tensor):
-        indicators = indicators.numpy()
+        indicators = to_np_if_torch(indicators)
     if isinstance(parameters, torch.Tensor):
-        parameters = parameters.numpy()
+        parameters = to_np_if_torch(parameters)
     if isinstance(new_parameters, torch.Tensor):
-        new_parameters = new_parameters.numpy()
+        new_parameters = to_np_if_torch(new_parameters)
     if new_parameters is not None:
         new_parameters = new_parameters.reshape(-1, param_dim)
     return indicators.reshape(-1, ), parameters.reshape(-1, param_dim), new_parameters
 
 
 def preprocess_indicators_lf2i(
-    test_statistics: np.ndarray,
-    critical_values: np.ndarray,
-    parameters: np.ndarray,
+    test_statistics: Union[np.ndarray, torch.Tensor],
+    critical_values: Optional[Union[np.ndarray, torch.Tensor]],
+    p_values: Optional[Union[np.ndarray, torch.Tensor]],
+    parameters: Union[np.ndarray, torch.Tensor],
     param_dim: int
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    return test_statistics.reshape(-1, ), critical_values.reshape(-1, ), parameters.reshape(-1, param_dim)
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    check_for_nans(test_statistics)
+    if critical_values is not None:
+        check_for_nans(critical_values)
+    if p_values is not None:
+        check_for_nans(p_values)
+    check_for_nans(parameters)
+    test_statistics = to_np_if_torch(test_statistics)
+    if critical_values is not None:
+        critical_values = to_np_if_torch(critical_values)
+    if p_values is not None:
+        p_values = to_np_if_torch(p_values)
+    parameters = to_np_if_torch(parameters)
+    return (
+        test_statistics.reshape(-1, ),
+        critical_values.reshape(-1, ) if critical_values is not None else None,
+        p_values.reshape(-1, ) if p_values is not None else None,
+        parameters.reshape(-1, param_dim)
+    )
 
 
 def preprocess_indicators_posterior(
@@ -82,11 +176,17 @@ def preprocess_indicators_posterior(
     batch_size: int,
     posterior: Union[Any, Sequence[Any]]
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Iterator[Any]]:
+    check_for_nans(parameters)
+    check_for_nans(samples)
+    check_for_nans(parameter_grid)
     if isinstance(posterior, Sequence):
         posterior = iter(posterior)
     else:
         posterior = itertools.cycle([posterior])
-    return parameters.reshape(-1, param_dim), samples.reshape(parameters.shape[0], batch_size, -1), parameter_grid.reshape(-1, param_dim), posterior
+    if samples.ndim == 1:
+        assert batch_size == 1
+        samples = samples.reshape(-1, 1)
+    return parameters.reshape(-1, param_dim), samples, parameter_grid.reshape(-1, param_dim), posterior
 
 
 def preprocess_indicators_prediction(
@@ -94,10 +194,12 @@ def preprocess_indicators_prediction(
     samples: Union[np.ndarray, torch.Tensor],
     param_dim: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    check_for_nans(parameters)
+    check_for_nans(samples)
     if isinstance(parameters, torch.Tensor):
-        parameters = parameters.numpy()
+        parameters = to_np_if_torch(parameters)
     if isinstance(samples, torch.Tensor):
-        samples = samples.numpy()
+        samples = to_np_if_torch(samples)
     if (len(samples.shape) == 3) and (samples.shape[1] > 1):
         warnings.warn(f"You provided a simulated set with single-sample size = {samples.shape[1]}. This dimension will be flattened to compute indicators. Is this the desired behaviour?")
     return parameters.reshape(-1, param_dim), samples.reshape(-1, samples.shape[-1])

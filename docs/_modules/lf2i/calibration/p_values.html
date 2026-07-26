@@ -1,0 +1,564 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
+
+    <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
+        <title>lf2i.calibration.p_values - LF2I 0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">LF2I 0.4.1 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  <span class="sidebar-brand-text">LF2I 0.4.1 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/1_quantile_regression_construction.html">Quantile Regression Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/2_confidence_distribution_construction.html">Confidence Distribution Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/2_confidence_distribution_construction.html#ESTIMATED-COVERAGE">ESTIMATED COVERAGE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/3_waldo_critical_values_construction.html">Waldo Critical Values Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/4_waldo_posterior_pvalue_construction.html">Waldo Posterior P-value Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/5_pvalue_function_diagnostics.html">P-value Function Diagnostics</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/lf2i.html">lf2i package</a><input aria-label="Toggle navigation of lf2i package" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.calibration.html">lf2i.calibration package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.confidence_regions.html">lf2i.confidence_regions package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.diagnostics.html">lf2i.diagnostics package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../api/lf2i.estimators.html">lf2i.estimators package</a><input aria-label="Toggle navigation of lf2i.estimators package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/lf2i.estimators.torch_utils.html">lf2i.estimators.torch_utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.inference.html">lf2i.inference package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.plot.html">lf2i.plot package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.simulator.html">lf2i.simulator package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.test_statistics.html">lf2i.test_statistics package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.utils.html">lf2i.utils package</a></li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for lf2i.calibration.p_values</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.utils.calibration_diagnostics_inputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">preprocess_fit_p_values</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.utils.miscellanea</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_np_if_torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.estimators.base_cdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">AbstractCDFEstimator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.estimators.base_probabilistic_classifier</span><span class="w"> </span><span class="kn">import</span> <span class="n">AbstractProbabilisticClassifier</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.estimators.torch_utils.cdf</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParametricCDFEstimator</span>
+
+
+<div class="viewcode-block" id="estimate_rejection_proba">
+<a class="viewcode-back" href="../../../api/lf2i.calibration.html#lf2i.calibration.p_values.estimate_rejection_proba">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">estimate_rejection_proba</span><span class="p">(</span>
+    <span class="n">test_statistics</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+    <span class="n">parameters</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+    <span class="n">algorithm</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">algorithm_kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{},</span>
+    <span class="n">augment_kwargs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">acceptance_region</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fit a calibration model to estimate rejection probabilities (p-values).</span>
+
+<span class="sd">    Handles augmentation internally: CDF estimators receive raw ``(T, θ)`` pairs</span>
+<span class="sd">    and model ``p(T | θ)`` directly; probabilistic classifiers receive augmented</span>
+<span class="sd">    ``(τ, θ)`` pairs with ``1[T ≤ τ]`` labels produced by</span>
+<span class="sd">    :func:`augment_calibration_set`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    test_statistics : array-like of shape (N,)</span>
+<span class="sd">        Test statistics ``T_i`` evaluated at the i-th calibration parameter</span>
+<span class="sd">        ``θ_i`` and corresponding sample ``x_i ~ F_{θ_i}``.</span>
+<span class="sd">    parameters : array-like of shape (N,) or (N, d)</span>
+<span class="sd">        Parameters of interest ``θ_i`` for each calibration sample.</span>
+<span class="sd">        Any width ``d ≥ 1`` is accepted; 1-D input is promoted to ``(N, 1)``.</span>
+<span class="sd">    algorithm : str or AbstractCDFEstimator or AbstractProbabilisticClassifier</span>
+<span class="sd">        - ``&#39;nn&#39;``: constructs a default :class:`ParametricCDFEstimator`.</span>
+<span class="sd">          Pass ``algorithm_kwargs`` to override any constructor argument.</span>
+<span class="sd">        - **CDF estimator** (``fit(X)`` with no ``y`` argument): receives</span>
+<span class="sd">          ``(T, θ)`` stacked as ``X`` and learns ``p(T | θ)`` directly.</span>
+<span class="sd">          ``augment_kwargs`` are ignored for this branch.</span>
+<span class="sd">        - **Probabilistic classifier** (``fit(X, y)``): receives augmented</span>
+<span class="sd">          ``(τ, θ)`` inputs and ``1[T ≤ τ]`` labels produced internally by</span>
+<span class="sd">          :func:`augment_calibration_set`.</span>
+<span class="sd">    algorithm_kwargs : dict, optional</span>
+<span class="sd">        Keyword arguments forwarded to the constructor when ``algorithm=&#39;nn&#39;``.</span>
+<span class="sd">        Ignored for pre-instantiated estimators.</span>
+<span class="sd">    augment_kwargs : dict, optional</span>
+<span class="sd">        Forwarded to :func:`augment_calibration_set` for probabilistic</span>
+<span class="sd">        classifiers.  Recognised keys (with defaults):</span>
+
+<span class="sd">        - ``num_augment`` (int, default 1): cutoffs resampled per observation.</span>
+<span class="sd">        - ``conditional_resampling`` (bool, default True): resample from</span>
+<span class="sd">          ``p(τ | θ)`` rather than the marginal.</span>
+<span class="sd">        - ``min_points_per_bin`` (int, default 50): minimum bin occupancy for</span>
+<span class="sd">          conditional resampling.</span>
+
+<span class="sd">        Silently ignored (with a verbose note) when ``algorithm`` is a CDF</span>
+<span class="sd">        estimator.</span>
+<span class="sd">    acceptance_region : str, optional</span>
+<span class="sd">        **Deprecated and ignored.**  Directionality is the caller&#39;s</span>
+<span class="sd">        responsibility.  Passing a value emits a :class:`DeprecationWarning`.</span>
+<span class="sd">    verbose : bool, default True</span>
+<span class="sd">        Print a one-line summary of the preprocessing performed.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Any</span>
+<span class="sd">        The fitted ``algorithm`` object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">algorithm</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">algorithm</span> <span class="o">==</span> <span class="s1">&#39;nn&#39;</span><span class="p">:</span>
+            <span class="n">algorithm</span> <span class="o">=</span> <span class="n">ParametricCDFEstimator</span><span class="p">(</span><span class="o">**</span><span class="n">algorithm_kwargs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Only &#39;nn&#39; or a custom algorithm instance are currently supported, got &#39;</span><span class="si">{</span><span class="n">algorithm</span><span class="si">}</span><span class="s2">&#39;.&quot;</span>
+            <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">acceptance_region</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;The `acceptance_region` argument to `estimate_rejection_proba` is deprecated and &quot;</span>
+            <span class="s2">&quot;will be removed in a future version. Directionality is now handled by the caller &quot;</span>
+            <span class="s2">&quot;(e.g. LF2I.inference). The argument is ignored.&quot;</span><span class="p">,</span>
+            <span class="ne">DeprecationWarning</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">algorithm</span><span class="p">,</span> <span class="p">(</span><span class="n">AbstractCDFEstimator</span><span class="p">,</span> <span class="n">AbstractProbabilisticClassifier</span><span class="p">)),</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;algorithm must implement AbstractCDFEstimator or AbstractProbabilisticClassifier, &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">algorithm</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Normalise to numpy</span>
+    <span class="n">test_statistics</span> <span class="o">=</span> <span class="n">to_np_if_torch</span><span class="p">(</span><span class="n">test_statistics</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">parameters</span> <span class="o">=</span> <span class="n">to_np_if_torch</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">parameters</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">parameters</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_statistics</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameters</span><span class="p">),</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;test_statistics and parameters must have the same number of rows, &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">test_statistics</span><span class="p">)</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="s1">&#39;y&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">algorithm</span><span class="o">.</span><span class="n">fit</span><span class="p">)</span><span class="o">.</span><span class="n">parameters</span><span class="p">:</span>
+        <span class="c1"># CDF estimator: learn p(T | θ) directly from raw (T, θ) pairs</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="n">augment_kwargs</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  [calibration] CDF estimator — augment_kwargs ignored.&quot;</span><span class="p">)</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">preprocess_fit_p_values</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">test_statistics</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">],</span> <span class="n">parameters</span><span class="p">]),</span> <span class="n">algorithm</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  [calibration] CDF estimator: fitting on </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span><span class="si">}</span><span class="s2"> raw (T, θ) pairs.&quot;</span><span class="p">)</span>
+        <span class="n">algorithm</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">inputs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Probabilistic classifier: augment calibration set first</span>
+        <span class="n">_kw</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;num_augment&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s1">&#39;conditional_resampling&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;min_points_per_bin&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">augment_kwargs</span><span class="p">:</span>
+            <span class="n">_kw</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">augment_kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="n">n</span><span class="p">,</span> <span class="n">m</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_statistics</span><span class="p">),</span> <span class="n">_kw</span><span class="p">[</span><span class="s1">&#39;num_augment&#39;</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;  [calibration] Classifier: augmenting </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> pairs &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;× </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s2"> cutoffs → </span><span class="si">{</span><span class="n">n</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">m</span><span class="si">}</span><span class="s2"> rows &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(conditional_resampling=</span><span class="si">{</span><span class="n">_kw</span><span class="p">[</span><span class="s1">&#39;conditional_resampling&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">).&quot;</span>
+            <span class="p">)</span>
+        <span class="n">inputs</span><span class="p">,</span> <span class="n">rejection_indicators</span> <span class="o">=</span> <span class="n">augment_calibration_set</span><span class="p">(</span>
+            <span class="n">test_statistics</span><span class="o">=</span><span class="n">test_statistics</span><span class="p">,</span>
+            <span class="n">poi</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">_kw</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">preprocess_fit_p_values</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">algorithm</span><span class="p">)</span>
+        <span class="n">rejection_indicators</span> <span class="o">=</span> <span class="n">preprocess_fit_p_values</span><span class="p">(</span><span class="n">rejection_indicators</span><span class="p">,</span> <span class="n">algorithm</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,)</span>
+        <span class="n">algorithm</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">rejection_indicators</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">algorithm</span></div>
+
+
+<div class="viewcode-block" id="augment_calibration_set">
+<a class="viewcode-back" href="../../../api/lf2i.calibration.html#lf2i.calibration.p_values.augment_calibration_set">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">augment_calibration_set</span><span class="p">(</span>
+    <span class="n">test_statistics</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+    <span class="n">poi</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+    <span class="n">num_augment</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">conditional_resampling</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">min_points_per_bin</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Augment the calibration set by resampling cutoffs from the empirical distribution of the test statistics.</span>
+<span class="sd">    This allows to estimate p-values that are amortized with respect to all levels :math:`\alpha`.</span>
+
+<span class="sd">    The rejection indicator is always defined as :math:`\\mathbb{1}[T \\le \\tau]`, so the trained</span>
+<span class="sd">    classifier estimates the CDF :math:`F(\\tau \\mid \\theta) = P(T \\le \\tau \\mid \\theta)`.</span>
+<span class="sd">    This is monotone increasing and produces ``predict_proba`` output with columns ``[1-CDF, CDF]``.</span>
+<span class="sd">    Directional p-value selection (based on the test statistic&#39;s acceptance region) is the</span>
+<span class="sd">    responsibility of the caller (e.g. :class:`lf2i.inference.lf2i.LF2I`).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    test_statistics : Union[np.ndarray, torch.Tensor]</span>
+<span class="sd">        The i-th element is the test statistics evaluated on the i-th element of `poi` (i.e., :math:`\theta_i`) and on :math:`x \sim F_{\theta_i}`.</span>
+<span class="sd">    poi : Union[np.ndarray, torch.Tensor]</span>
+<span class="sd">        Parameters of interest in the calibration set.</span>
+<span class="sd">    num_augment : int</span>
+<span class="sd">        Number of cutoffs to resample for each value in `test_statistics`. The augmented calibration set will be of size `num_augment` :math:`\times B^\prime`,</span>
+<span class="sd">        where :math:`B^\prime` is the size of the original calibration set.</span>
+<span class="sd">    conditional_resampling: bool, optional</span>
+<span class="sd">        Whether to re-sample cutoffs for augmentation from :math:`p(\tau \mid \theta)` or from the marginal :math:`p(\tau)`. Default is True.</span>
+<span class="sd">        Conditional sampling should yield better estimates of p-values since it is designed to better represent the tails of each conditional distribution, but</span>
+<span class="sd">        it could be impractical with a high-dimensional parameter.</span>
+<span class="sd">    min_points_per_bin : int, optional</span>
+<span class="sd">        Minimum number of points required per bin for constructing the POI bins. The POI space will</span>
+<span class="sd">        be divided into bins such that each bin contains at least this number of points. Default is 50.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Tuple[np.ndarray, np.ndarray]</span>
+<span class="sd">        Augmented inputs (cutoffs and POIs) and outputs (CDF indicators) to estimate amortized p-values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">assert</span> <span class="n">test_statistics</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">poi</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;Shape mismatch between test statistics and POIs&#39;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">test_statistics</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+        <span class="n">test_statistics</span> <span class="o">=</span> <span class="n">to_np_if_torch</span><span class="p">(</span><span class="n">test_statistics</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">poi</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+        <span class="n">poi</span> <span class="o">=</span> <span class="n">to_np_if_torch</span><span class="p">(</span><span class="n">poi</span><span class="p">)</span>
+    
+    <span class="c1"># sample cutoffs from empirical distribution and repeat poi/ts to match size</span>
+    <span class="k">if</span> <span class="n">poi</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">poi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">poi</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">rep_poi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">poi</span><span class="p">,</span> <span class="n">repeats</span><span class="o">=</span><span class="n">num_augment</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">conditional_resampling</span><span class="p">:</span>
+        <span class="n">resampled_cutoffs</span> <span class="o">=</span> <span class="n">conditional_sampling</span><span class="p">(</span><span class="n">poi</span><span class="p">,</span> <span class="n">test_statistics</span><span class="p">,</span> <span class="n">num_augment</span><span class="p">,</span> <span class="n">min_points_per_bin</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">resampled_cutoffs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">test_statistics</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="n">num_augment</span><span class="o">*</span><span class="n">poi</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">rep_test_statistics</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">test_statistics</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">),</span> <span class="n">repeats</span><span class="o">=</span><span class="n">num_augment</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c1"># CDF direction: class=1 means T &lt;= cutoff, so P(class=1 | cutoff, θ) = F(cutoff | θ)</span>
+    <span class="n">rejection_indicators</span> <span class="o">=</span> <span class="p">(</span><span class="n">rep_test_statistics</span> <span class="o">&lt;=</span> <span class="n">resampled_cutoffs</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">)</span>
+    <span class="k">assert</span> <span class="n">resampled_cutoffs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">rep_test_statistics</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">rejection_indicators</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">rep_poi</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">num_augment</span><span class="o">*</span><span class="n">poi</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    
+    <span class="n">shuffle_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">permutation</span><span class="p">(</span><span class="n">num_augment</span> <span class="o">*</span> <span class="n">poi</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">resampled_cutoffs</span><span class="p">,</span> <span class="n">rep_poi</span><span class="p">))[</span><span class="n">shuffle_idx</span><span class="p">,</span> <span class="p">:],</span> <span class="n">rejection_indicators</span><span class="p">[</span><span class="n">shuffle_idx</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="conditional_sampling">
+<a class="viewcode-back" href="../../../api/lf2i.calibration.html#lf2i.calibration.p_values.conditional_sampling">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">conditional_sampling</span><span class="p">(</span>
+    <span class="n">poi</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">test_statistics</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">num_augment</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> 
+    <span class="n">min_points_per_bin</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform conditional sampling of test statistics based on the parameters of interest (POI). </span>
+<span class="sd">    This method divides the POI space into multidimensional bins, associates each bin with the </span>
+<span class="sd">    corresponding test statistics, and resamples conditionally from the empirical distribution </span>
+<span class="sd">    of test statistics within each bin.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    poi : np.ndarray</span>
+<span class="sd">        A 2D array where each row represents a parameter of interest (POI) and each column corresponds </span>
+<span class="sd">        to a dimension in the parameter space. Shape: (num_samples, num_dimensions).</span>
+<span class="sd">    test_statistics : np.ndarray</span>
+<span class="sd">        A 1D array of test statistics evaluated for each parameter of interest. Shape: (num_samples,).</span>
+<span class="sd">    num_augment : int</span>
+<span class="sd">        Number of samples to draw from the conditional distribution of test statistics for each POI bin.</span>
+<span class="sd">    min_points_per_bin : int, optional</span>
+<span class="sd">        Minimum number of points required per bin for constructing the POI bins. The POI space will </span>
+<span class="sd">        be divided into bins such that each bin contains at least this number of points. Default is 50.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        A 2D array of resampled test statistics. Shape: (num_samples, num_augment), where `num_samples` </span>
+<span class="sd">        corresponds to the number of rows in `poi`.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    AssertionError</span>
+<span class="sd">        If bin assignments fail or there is no data available for a specific bin.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Define bins for each dimension of POI</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">equal_size_bin_edges</span><span class="p">(</span><span class="n">poi_onedim</span><span class="p">,</span> <span class="n">min_points_per_bin</span><span class="p">):</span>
+        <span class="n">n_bins</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">poi_onedim</span><span class="p">)</span> <span class="o">//</span> <span class="n">min_points_per_bin</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">poi_onedim</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">n_bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>  <span class="c1"># there are n_bins+1 edges</span>
+    <span class="n">poi_bin_edges</span> <span class="o">=</span> <span class="p">[</span><span class="n">equal_size_bin_edges</span><span class="p">(</span><span class="n">poi</span><span class="p">[:,</span> <span class="n">dim</span><span class="p">],</span> <span class="n">min_points_per_bin</span><span class="o">=</span><span class="n">min_points_per_bin</span><span class="p">)</span> <span class="k">for</span> <span class="n">dim</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">poi</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+
+    <span class="c1"># Assign each poi to a multidimensional bin</span>
+    <span class="n">poi_bin_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">poi</span><span class="p">[:,</span> <span class="n">dim</span><span class="p">],</span> <span class="n">poi_bin_edges</span><span class="p">[</span><span class="n">dim</span><span class="p">],</span> <span class="n">right</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">dim</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">poi</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">poi_bin_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">poi_bin_indices</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">poi_bin_edges</span><span class="p">[</span><span class="n">dim</span><span class="p">])</span> <span class="o">-</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">dim</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">poi</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])])</span>  <span class="c1"># Clip to valid ranges</span>
+    <span class="k">assert</span> <span class="p">(</span><span class="n">poi_bin_indices</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">poi_bin_indices</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">poi_bin_edges</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span> <span class="s2">&quot;Bin assignment failed&quot;</span>  <span class="c1"># Ensure no alignment issues</span>
+    
+    <span class="c1"># Vectorized sampling from p(ts|poi)</span>
+    <span class="n">unique_bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">poi_bin_indices</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">samples</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">bin_idx</span> <span class="ow">in</span> <span class="n">unique_bins</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">poi_bin_indices</span> <span class="o">==</span> <span class="n">bin_idx</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">ts_in_bin</span> <span class="o">=</span> <span class="n">test_statistics</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">ts_in_bin</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;No data available for b in bin </span><span class="si">{</span><span class="n">bin_idx</span><span class="si">}</span><span class="s2">.&quot;</span>
+        <span class="n">samples</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">ts_in_bin</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">num_augment</span> <span class="o">*</span> <span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">poi</span><span class="p">),</span> <span class="n">num_augment</span><span class="p">)</span></div>
+
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2026, lee-group-cmu
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            <div class="icons">
+              <a class="muted-link " href="https://github.com/lee-group-cmu/lf2i" aria-label="GitHub">
+                <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+            </a>
+              
+            </div>
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=c87aa342"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    </body>
+</html>
