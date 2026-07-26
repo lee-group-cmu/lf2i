@@ -93,8 +93,10 @@ class ACORE(TestStatistic):
     ) -> None:
         r"""Train the estimator for odds (i.e. likelihood up to a normalization constant).
         The training dataset should contain two classes:
-            - label 1, with pairs :math:`(\theta, X)` where :math:`X \sim p(\cdot;\theta)` is drawn from the likelihood/simulator.
-            - label 0, with pairs :math:`(\theta, X)` where :math:`X \sim G` is drawn from a dominating reference distribution (e.g., empirical marginal).
+
+        - label 1, with pairs :math:`(\theta, X)` where :math:`X \sim p(\cdot;\theta)` is drawn from the likelihood/simulator.
+        - label 0, with pairs :math:`(\theta, X)` where :math:`X \sim G` is drawn from a dominating reference distribution (e.g., empirical marginal).
+
         To goal is to train a classifier that is able to distinguish whether a sample comes from the likelihood or not.
         See https://arxiv.org/abs/2107.03920 for a more detailed explanation.
 
@@ -128,8 +130,9 @@ class ACORE(TestStatistic):
     ) -> np.ndarray:
         r"""Evaluate the ACORE test statistic over the given parameters and samples.
         Behaviour differs depending on mode:
-            - 'critical_values' and 'diagnostics' compute ACORE once for each pair :math:`(\theta, X)`.
-            - 'confidence_sets' computes ACORE over all pairs given by the cartesian product of `parameters` (the parameter grid to construct confidence sets) and `samples`.
+
+        - 'critical_values' and 'diagnostics' compute ACORE once for each pair :math:`(\theta, X)`.
+        - 'confidence_sets' computes ACORE over all pairs given by the cartesian product of `parameters` (the parameter grid to construct confidence sets) and `samples`.
 
         Parameters
         ----------

@@ -1,4 +1,0 @@
-.. toctree::
-   :maxdepth: 4
-
-.. mdinclude:: waldo_posterior_2Dgaussian_mean.md

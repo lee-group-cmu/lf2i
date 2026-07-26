@@ -80,10 +80,11 @@ class BFF(TestStatistic):
         r"""Train the estimator for odds (i.e. likelihood up to a normalization constant).
         
         The training dataset is created by:
-            - label 1: pairs :math:`(\theta, X)` where :math:`X \sim p(\cdot;\theta)` 
-            from the true joint distribution (original matched pairs).
-            - label 0: pairs :math:`(\theta', X)` where :math:`\theta'` is a permuted 
-            parameter vector, ensuring no overlap with the positive class pairs.
+
+        - label 1: pairs :math:`(\theta, X)` where :math:`X \sim p(\cdot;\theta)`
+          from the true joint distribution (original matched pairs).
+        - label 0: pairs :math:`(\theta', X)` where :math:`\theta'` is a permuted
+          parameter vector, ensuring no overlap with the positive class pairs.
         
         This creates a classifier that distinguishes true parameter-sample pairs from 
         mismatched pairs, effectively learning the likelihood ratio.
@@ -110,10 +111,11 @@ class BFF(TestStatistic):
         mode: str,
         param_space_bounds: Optional[List[Tuple[float]]] = None
     ) -> np.ndarray:
-        r"""Evaluate the BFF test statistic over the given parameters and samples. 
-        Behaviour differs depending on mode: 
-            - 'critical_values' and 'diagnostics' compute BFF once for each pair :math:`(\theta, X)`.
-            - 'confidence_sets' computes BFF over all pairs given by the cartesian product of `parameters` (the parameter grid to construct confidence sets) and `samples`. 
+        r"""Evaluate the BFF test statistic over the given parameters and samples.
+        Behaviour differs depending on mode:
+
+        - 'critical_values' and 'diagnostics' compute BFF once for each pair :math:`(\theta, X)`.
+        - 'confidence_sets' computes BFF over all pairs given by the cartesian product of `parameters` (the parameter grid to construct confidence sets) and `samples`.
 
         Parameters
         ----------

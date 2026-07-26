@@ -1,8 +1,0 @@
-Waldo
-====
-
-.. toctree::
-   :maxdepth: 4
-
-   waldo_posterior
-   waldo_prediction

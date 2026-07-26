@@ -30,11 +30,11 @@ class QuantileWeightedCRPSLoss(nn.Module):
     The weight function controls which quantile levels the fit prioritises.
     Built-in options (via `weight_fn`):
 
-        'uniform'   : w(α) = 1  — standard unweighted CRPS / pinball
-        'gaussian'  : w(α) ∝ N(α; center, bandwidth²) — smooth emphasis
-                      around a target α level
-        'beta'      : w(α) ∝ Beta(α; a, b) — flexible skewed weighting
-        callable    : any user-supplied function w(alpha_grid) → Tensor
+    - ``'uniform'``: w(α) = 1 — standard unweighted CRPS / pinball
+    - ``'gaussian'``: w(α) ∝ N(α; center, bandwidth²) — smooth emphasis around
+      a target α level
+    - ``'beta'``: w(α) ∝ Beta(α; a, b) — flexible skewed weighting
+    - callable: any user-supplied function w(alpha_grid) → Tensor
 
     Parameters
     ----------

@@ -10,7 +10,9 @@ class GaussianMixtureLocation(Simulator):
     """Gaussian mixture simulator for inference of a location parameter.
 
     The likelihood is a two-component Gaussian mixture:
+
         X | theta ~ w_0 * N(theta, sigma_0^2 I) + w_1 * N(theta, sigma_1^2 I)
+
     where the mixture weights and component scales are fixed.
 
     The prior over theta is an isotropic Gaussian: theta ~ N(prior_loc, prior_cov * I).

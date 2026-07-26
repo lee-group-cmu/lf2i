@@ -27,6 +27,7 @@ catboost_info/
 /build
 /dist/
 /docs_build/
+/_build/
 
 playground/
 TODOs.txt

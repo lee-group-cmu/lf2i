@@ -11,8 +11,9 @@ class OnOff(Simulator):
 
     Parameter of interest is signal strength mu. Nuisance is background scaling factor nu.
     In addition, the following are treated as fixed hyperparameters:
-        - Nominally expected signal and background counts s and b.
-        - Relationship in measurement time between the two processes tau.
+
+    - Nominally expected signal and background counts s and b.
+    - Relationship in measurement time between the two processes tau.
 
     Parameters
     ----------

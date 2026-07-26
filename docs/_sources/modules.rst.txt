@@ -1,7 +1,0 @@
-lf2i
-====
-
-.. toctree::
-   :maxdepth: 4
-
-   lf2i

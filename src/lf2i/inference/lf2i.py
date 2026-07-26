@@ -24,8 +24,10 @@ class LF2I:
     """
     High-level entry point to do inference with LF2I (https://arxiv.org/abs/2107.03920).
     This allows to quickly construct confidence regions for parameters of interest in an SBI setting leveraging an arbitrary estimator
-        - of the *likelihood*, using for example the ACORE or BFF test statistics (https://arxiv.org/pdf/2002.10399.pdf, https://arxiv.org/abs/2107.03920);
-        - of the *posterior*, using for example the Posterior (10.1088/2632-2153/ae67cd) or Waldo test statistic (https://arxiv.org/abs/2205.15680);
+
+    - of the *likelihood*, using for example the ACORE or BFF test statistics (https://arxiv.org/pdf/2002.10399.pdf, https://arxiv.org/abs/2107.03920);
+    - of the *posterior*, using for example the Posterior (10.1088/2632-2153/ae67cd) or Waldo test statistic (https://arxiv.org/abs/2205.15680);
+
     Alternatively, one can define a custom `TestStatistic` appropriate for the problem at hand.
 
     NOTE: although this entry point contains all the main LF2I functionalities, using the single implemented components (test statistics, critical values, neyman inversion)
@@ -338,7 +340,8 @@ class LF2I:
 
         Dispatches to :meth:`_estimated_coverage` (ML-based estimator) or
         :meth:`_exact_coverage` (Monte Carlo), depending on ``exact`` and whether a
-        simulator is available.
+        simulator is available. Only parameters specific to this dispatch are documented
+        below; for all other parameters, see :meth:`diagnostics`.
 
         Parameters
         ----------
@@ -350,7 +353,6 @@ class LF2I:
             MC draws per grid point for ``_exact_coverage``. Default 500.
         parameter_grid : torch.Tensor, optional
             Dense parameter grid for ``region_type='posterior'`` exact coverage.
-        For all other parameters, see :meth:`diagnostics`.
         """
         if exact is None:
             exact = simulator is not None and (indicators is None)

@@ -324,14 +324,14 @@ def calibration_cdf_panel(
 ) -> None:
     """Three-panel diagnostic figure combining a calibration score heatmap with CDF comparisons.
 
-    Panels
-    ------
-    Left          : calibration score heatmap (from :func:`calibration_score_plot`).
-    Middle/Right  : CDF comparisons. When ``query_points`` is None (default), these
-                    show the worst-match theta (highest ``score_key``) and best-match
-                    theta (lowest ``score_key``). When ``query_points`` is provided,
-                    one panel is produced per query point and the points are indexed
-                    on the score heatmap.
+    Panels:
+
+    - Left: calibration score heatmap (from :func:`calibration_score_plot`).
+    - Middle/Right: CDF comparisons. When ``query_points`` is None (default),
+      these show the worst-match theta (highest ``score_key``) and best-match
+      theta (lowest ``score_key``). When ``query_points`` is provided, one
+      panel is produced per query point and the points are indexed on the
+      score heatmap.
 
     Parameters
     ----------

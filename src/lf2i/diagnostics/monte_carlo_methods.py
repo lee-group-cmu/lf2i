@@ -271,9 +271,11 @@ def monte_carlo_pvalue_diagnostics(
     and compare the calibration model's predicted CDF to the empirical CDF.
 
     Returns a dict with per-theta arrays:
-      'mse'              – mean((p_hat_(i) - u_i)^2) over sorted samples
-      'crps'             – integral (F_hat - F_emp)^2 dt via trapezoid rule at sample points
-      'pinball_<alpha>'  – pinball loss L_alpha(u_i, p_hat_i) for each alpha in pinball_levels
+
+    - ``mse``: mean((p_hat_(i) - u_i)^2) over sorted samples
+    - ``crps``: integral (F_hat - F_emp)^2 dt via trapezoid rule at sample points
+    - ``pinball_<alpha>``: pinball loss L_alpha(u_i, p_hat_i) for each alpha in pinball_levels
+
     where u_i = (i - 0.5) / M is the midpoint empirical CDF estimate.
     """
     from lf2i.utils.calibration_diagnostics_inputs import (

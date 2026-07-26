@@ -1,34 +1,34 @@
 <!doctype html>
 <html class="no-js" lang="en" data-content_root="../../../">
-  <head><meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html"><link rel="search" title="Search" href="../../../search.html">
 
-    <!-- Generated with Sphinx 7.2.6 and Furo 2023.09.10 -->
-        <title>lf2i.inference.lf2i - LF2I 0.3.1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=80d5e7a1" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=135e06be" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=36a5483c" />
+    <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
+        <title>lf2i.inference.lf2i - LF2I 0.4.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     
     
 
 
 <style>
   body {
-    --color-code-background: #f8f8f8;
-  --color-code-foreground: black;
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
   
   }
   @media not print {
     body[data-theme="dark"] {
-      --color-code-background: #0d1117;
-  --color-code-foreground: #e6edf3;
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
-        --color-code-background: #0d1117;
-  --color-code-foreground: #e6edf3;
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
   
       }
     }
@@ -67,7 +67,7 @@
   <symbol id="svg-sun" viewBox="0 0 24 24">
     <title>Light mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
       <circle cx="12" cy="12" r="5"></circle>
       <line x1="12" y1="1" x2="12" y2="3"></line>
       <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -82,34 +82,73 @@
   <symbol id="svg-moon" viewBox="0 0 24 24">
     <title>Dark mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
       <path stroke="none" d="M0 0h24v24H0z" fill="none" />
       <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
     </svg>
   </symbol>
-  <symbol id="svg-sun-half" viewBox="0 0 24 24">
-    <title>Auto light/dark mode</title>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
-      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M13 12h5" />
-      <path d="M13 15h4" />
-      <path d="M13 18h1" />
-      <path d="M13 9h4" />
-      <path d="M13 6h1" />
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
     </svg>
   </symbol>
 </svg>
 
-<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
-<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
-<label class="overlay sidebar-overlay" for="__navigation">
-  <div class="visually-hidden">Hide navigation sidebar</div>
-</label>
-<label class="overlay toc-overlay" for="__toc">
-  <div class="visually-hidden">Hide table of contents sidebar</div>
-</label>
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
 
 
 
@@ -117,25 +156,23 @@
   <header class="mobile-header">
     <div class="header-left">
       <label class="nav-overlay-icon" for="__navigation">
-        <div class="visually-hidden">Toggle site navigation sidebar</div>
-        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">LF2I 0.3.1 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">LF2I 0.4.1 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
-        <button class="theme-toggle">
-          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
-          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
           <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
       <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
-        <div class="visually-hidden">Toggle table of contents sidebar</div>
-        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
       </label>
     </div>
   </header>
@@ -144,8 +181,7 @@
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
-  
-  <span class="sidebar-brand-text">LF2I 0.3.1 documentation</span>
+  <span class="sidebar-brand-text">LF2I 0.4.1 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -153,28 +189,47 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+  <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials/waldo/index.html">Waldo</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of Waldo</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_posterior.html">Confidence Regions from Posterior Estimators</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tutorials/waldo/waldo_prediction.html">Confidence Regions from Prediction Algorithms</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../tutorials.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/1_quantile_regression_construction.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/1_quantile_regression_construction.html#SIMULATE">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/1_quantile_regression_construction.html#CONFIDENCE-SET-via-ACORE">CONFIDENCE SET via ACORE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/1_quantile_regression_construction.html#CONFIDENCE-SET-via-BFF-(implicit-nuisance-marginalization)">CONFIDENCE SET via BFF (implicit nuisance marginalization)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/1_quantile_regression_construction.html#COMPARISON">COMPARISON</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/1_quantile_regression_construction.html#EXACT-COVERAGE">EXACT COVERAGE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/1_quantile_regression_construction.html#EXACT-COVERAGE-OVER-(mu,-nu)">EXACT COVERAGE OVER (mu, nu)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/2_confidence_distribution_construction.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/2_confidence_distribution_construction.html#DATA-GENERATION">DATA GENERATION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/2_confidence_distribution_construction.html#A-FREQUENTIST-CONFIDENCE-PROCEDURE">A FREQUENTIST CONFIDENCE PROCEDURE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/3_waldo_critical_values_construction.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/3_waldo_critical_values_construction.html#SIMULATE">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/3_waldo_critical_values_construction.html#CONFIDENCE-SET-by-leveraging-a-POSTERIOR-ESTIMATOR">CONFIDENCE SET by leveraging a POSTERIOR ESTIMATOR</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/3_waldo_critical_values_construction.html#LOCAL-COVERAGE">LOCAL COVERAGE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/4_waldo_posterior_pvalue_construction.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/4_waldo_posterior_pvalue_construction.html#SIMULATE">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/4_waldo_posterior_pvalue_construction.html#CONFIDENCE-SET-via-Posterior-+-p-values">CONFIDENCE SET via Posterior + p-values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/4_waldo_posterior_pvalue_construction.html#CONFIDENCE-SET-via-Waldo-(posterior-based)-+-p-values">CONFIDENCE SET via Waldo (posterior-based) + p-values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/4_waldo_posterior_pvalue_construction.html#COMPARISON">COMPARISON</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/5_pvalue_function_diagnostics.html">INTRO &amp; SETTINGS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/5_pvalue_function_diagnostics.html#SIMULATE">SIMULATE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/5_pvalue_function_diagnostics.html#FIT-THE-P-VALUE-FUNCTION">FIT THE P-VALUE FUNCTION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../examples/5_pvalue_function_diagnostics.html#DIAGNOSE-THE-FIT">DIAGNOSE THE FIT</a></li>
 </ul>
 </li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">API docs</span></p>
-<ul>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../../modules.html">lf2i</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of lf2i</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../../../lf2i.html">lf2i package</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of lf2i package</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../lf2i.inference.html">lf2i.inference package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../lf2i.test_statistics.html">lf2i.test_statistics package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../lf2i.critical_values.html">lf2i.critical_values package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../lf2i.confidence_regions.html">lf2i.confidence_regions package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../lf2i.diagnostics.html">lf2i.diagnostics package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../lf2i.simulator.html">lf2i.simulator package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../lf2i.plot.html">lf2i.plot package</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../lf2i.utils.html">lf2i.utils package</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../api/lf2i.html">lf2i package</a><input aria-label="Toggle navigation of lf2i package" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.calibration.html">lf2i.calibration package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.confidence_regions.html">lf2i.confidence_regions package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.diagnostics.html">lf2i.diagnostics package</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../api/lf2i.estimators.html">lf2i.estimators package</a><input aria-label="Toggle navigation of lf2i.estimators package" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../api/lf2i.estimators.torch_utils.html">lf2i.estimators.torch_utils package</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.inference.html">lf2i.inference package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.plot.html">lf2i.plot package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.simulator.html">lf2i.simulator package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.test_statistics.html">lf2i.test_statistics package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../api/lf2i.utils.html">lf2i.utils package</a></li>
 </ul>
 </li>
 </ul>
@@ -197,49 +252,51 @@
         </a>
         <div class="content-icon-container">
           <div class="theme-toggle-container theme-toggle-content">
-            <button class="theme-toggle">
-              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
-              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
               <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
           <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
-            <div class="visually-hidden">Toggle table of contents sidebar</div>
-            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
           </label>
         </div>
-        <article role="main">
+        <article role="main" id="furo-main-content">
           <h1>Source code for lf2i.inference.lf2i</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Any</span>
-<span class="kn">import</span> <span class="nn">warnings</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Sequence</span>
 
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 
-<span class="kn">from</span> <span class="nn">lf2i.simulator</span> <span class="kn">import</span> <span class="n">Simulator</span>
-<span class="kn">from</span> <span class="nn">lf2i.test_statistics</span> <span class="kn">import</span> <span class="n">TestStatistic</span><span class="p">,</span> <span class="n">ACORE</span><span class="p">,</span> <span class="n">BFF</span><span class="p">,</span> <span class="n">Waldo</span>
-<span class="kn">from</span> <span class="nn">lf2i.critical_values.quantile_regression</span> <span class="kn">import</span> <span class="n">train_qr_algorithm</span>
-<span class="kn">from</span> <span class="nn">lf2i.confidence_regions.neyman_inversion</span> <span class="kn">import</span> <span class="n">compute_confidence_regions</span>
-<span class="kn">from</span> <span class="nn">lf2i.diagnostics.diagnostics</span> <span class="kn">import</span> <span class="p">(</span>
-    <span class="n">estimate_coverage_proba</span><span class="p">,</span> 
-    <span class="n">compute_indicators_lf2i</span><span class="p">,</span> 
-    <span class="n">compute_indicators_posterior</span><span class="p">,</span> 
-    <span class="n">compute_indicators_prediction</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">Simulator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.test_statistics</span><span class="w"> </span><span class="kn">import</span> <span class="n">TestStatistic</span><span class="p">,</span> <span class="n">ACORE</span><span class="p">,</span> <span class="n">BFF</span><span class="p">,</span> <span class="n">Waldo</span><span class="p">,</span> <span class="n">Posterior</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.calibration.critical_values</span><span class="w"> </span><span class="kn">import</span> <span class="n">train_qr_algorithm</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.calibration.p_values</span><span class="w"> </span><span class="kn">import</span> <span class="n">estimate_rejection_proba</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.confidence_regions.neyman_inversion</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_confidence_regions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.diagnostics.coverage_probability</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">estimate_coverage_proba</span><span class="p">,</span>
+    <span class="n">compute_indicators_lf2i</span><span class="p">,</span>
+    <span class="n">compute_indicators_posterior</span><span class="p">,</span>
+    <span class="n">compute_indicators_prediction</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span> <span class="nn">lf2i.utils.calibration_diagnostics_inputs</span> <span class="kn">import</span> <span class="n">preprocess_predict_quantile_regression</span>
-<span class="kn">from</span> <span class="nn">lf2i.utils.miscellanea</span> <span class="kn">import</span> <span class="n">to_np_if_torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.utils.calibration_diagnostics_inputs</span><span class="w"> </span><span class="kn">import</span> <span class="n">preprocess_predict_quantile_regression</span><span class="p">,</span> <span class="n">preprocess_predict_p_values</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.utils.miscellanea</span><span class="w"> </span><span class="kn">import</span> <span class="n">to_np_if_torch</span><span class="p">,</span> <span class="n">to_torch_if_np</span><span class="p">,</span> <span class="n">to_np_if_pd</span>
 
 
 <div class="viewcode-block" id="LF2I">
-<a class="viewcode-back" href="../../../lf2i.inference.html#lf2i.inference.LF2I">[docs]</a>
-<span class="k">class</span> <span class="nc">LF2I</span><span class="p">:</span>
+<a class="viewcode-back" href="../../../api/lf2i.inference.html#lf2i.inference.LF2I">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LF2I</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    High-level entry point to do inference with LF2I (https://arxiv.org/abs/2107.03920). </span>
+<span class="sd">    High-level entry point to do inference with LF2I (https://arxiv.org/abs/2107.03920).</span>
 <span class="sd">    This allows to quickly construct confidence regions for parameters of interest in an SBI setting leveraging an arbitrary estimator</span>
-<span class="sd">        - of the *likelihood*, using for example the ACORE or BFF test statistics (https://arxiv.org/pdf/2002.10399.pdf, https://arxiv.org/abs/2107.03920);</span>
-<span class="sd">        - of the *posterior*, using for example the Waldo test statistic (https://arxiv.org/abs/2205.15680);</span>
-<span class="sd">        - of point estimates, i.e. a general *prediction* algorithm, using again the WALDO test statistic.</span>
+
+<span class="sd">    - of the *likelihood*, using for example the ACORE or BFF test statistics (https://arxiv.org/pdf/2002.10399.pdf, https://arxiv.org/abs/2107.03920);</span>
+<span class="sd">    - of the *posterior*, using for example the Posterior (10.1088/2632-2153/ae67cd) or Waldo test statistic (https://arxiv.org/abs/2205.15680);</span>
+
 <span class="sd">    Alternatively, one can define a custom `TestStatistic` appropriate for the problem at hand.</span>
 
 <span class="sd">    NOTE: although this entry point contains all the main LF2I functionalities, using the single implemented components (test statistics, critical values, neyman inversion)</span>
@@ -253,249 +310,872 @@
 <span class="sd">        Arguments specific to the chosen test statistic if one of `acore`, `bff`, `waldo`. See the dedicated documentation for each of them in lf2i/test_statistics/</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">test_statistic</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">TestStatistic</span><span class="p">],</span>
         <span class="o">**</span><span class="n">test_statistic_kwargs</span><span class="p">:</span> <span class="n">Any</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-    
+
         <span class="k">if</span> <span class="n">test_statistic</span> <span class="o">==</span> <span class="s1">&#39;acore&#39;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span> <span class="o">=</span> <span class="n">ACORE</span><span class="p">(</span><span class="o">**</span><span class="n">test_statistic_kwargs</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">test_statistic</span> <span class="o">==</span> <span class="s1">&#39;bff&#39;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span> <span class="o">=</span> <span class="n">BFF</span><span class="p">(</span><span class="o">**</span><span class="n">test_statistic_kwargs</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">test_statistic</span> <span class="o">==</span> <span class="s1">&#39;waldo&#39;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span> <span class="o">=</span> <span class="n">Waldo</span><span class="p">(</span><span class="o">**</span><span class="n">test_statistic_kwargs</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">test_statistic</span> <span class="o">==</span> <span class="s1">&#39;posterior&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span> <span class="o">=</span> <span class="n">Posterior</span><span class="p">(</span><span class="o">**</span><span class="n">test_statistic_kwargs</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">test_statistic</span><span class="p">,</span> <span class="n">TestStatistic</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span> <span class="o">=</span> <span class="n">test_statistic</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expected one of `acore`, `bff`, `waldo` or an instance of a custom `lf2i.test_statistics._base.TestStatistic`, got </span><span class="si">{</span><span class="n">test_statistic</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">quantile_regressor</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expected one of `acore`, `bff`, `waldo`, `posterior`, or an instance of a custom `lf2i.test_statistics._base.TestStatistic`, got </span><span class="si">{</span><span class="n">test_statistic</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">recalibrate_p_values</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Public: inference</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
 
 <div class="viewcode-block" id="LF2I.inference">
-<a class="viewcode-back" href="../../../lf2i.inference.html#lf2i.inference.LF2I.inference">[docs]</a>
-    <span class="k">def</span> <span class="nf">inference</span><span class="p">(</span>
+<a class="viewcode-back" href="../../../api/lf2i.inference.html#lf2i.inference.LF2I.inference">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">inference</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">x</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
         <span class="n">evaluation_grid</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
-        <span class="n">confidence_level</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-        <span class="n">quantile_regressor</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;gb&#39;</span><span class="p">,</span>
-        <span class="n">quantile_regressor_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
+        <span class="n">confidence_level</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]],</span>
+        <span class="n">calibration_method</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">calibration_model</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;cat-gb&#39;</span><span class="p">,</span>
+        <span class="n">calibration_model_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
         <span class="n">T</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">T_prime</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">simulator</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Simulator</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">b</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> 
-        <span class="n">b_prime</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> 
-        <span class="n">re_estimate_test_statistics</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">re_estimate_critical_values</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Estimate test statistic and critical values, and construct a confidence region for all observations in `x`.</span>
+        <span class="n">b</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">b_prime</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">num_augment</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">retrain_calibration</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">recalibrate_p_values</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Estimate test statistic and critical values, and construct confidence sets for all observations in `x`.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        x : Union[np.ndarray, torch.Tensor]</span>
 <span class="sd">            Observed sample(s).</span>
 <span class="sd">        evaluation_grid: Union[np.ndarray, torch.Tensor]</span>
-<span class="sd">            Grid of points over the parameter space over which to invert hypothesis tests and construct the confidence regions. </span>
+<span class="sd">            Grid of points over the parameter space over which to invert hypothesis tests.</span>
 <span class="sd">            Each confidence set will be a subset of this grid.</span>
-<span class="sd">        confidence_level : float</span>
-<span class="sd">            Desired confidence level, must be in (0, 1).</span>
-<span class="sd">        quantile_regressor : Union[str, Any], optional</span>
-<span class="sd">            If `str`, it is an identifier for the quantile regressor to use, by default &#39;gb&#39;.</span>
-<span class="sd">            If `Any`, must be a quantile regressor with `.fit(X=..., y=...)` and `.predict(X=...)` methods.</span>
-<span class="sd">            Currently available: [&#39;gb&#39;, &#39;nn&#39;]</span>
-<span class="sd">        quantile_regressor_kwargs : Dict, optional</span>
-<span class="sd">            Settings for the chosen quantile regressor, by default {}</span>
+<span class="sd">        confidence_level : Union[float, Sequence[float]]</span>
+<span class="sd">            Desired confidence level(s), must be in :math:`(0, 1)`.</span>
+<span class="sd">        calibration_method : str</span>
+<span class="sd">            Either `critical-values` (via quantile regression) or `p-values` (via monotonic probabilistic classification).</span>
+<span class="sd">        calibration_model : Union[str, Any], optional</span>
+<span class="sd">            If `str`, identifier for the calibration model, by default &#39;cat-gb&#39;.</span>
+<span class="sd">        calibration_model_kwargs : Dict, optional</span>
+<span class="sd">            Settings for the chosen calibration model, by default {}.</span>
 <span class="sd">        T: Tuple[Union[np.ndarray, torch.Tensor]], optional</span>
-<span class="sd">            Simulated dataset to train the estimator for the test statistic. Must adhere to the following specifications:</span>
-<span class="sd">                - if using `ACORE` or `BFF`, must be a tuple of arrays or tensors (Y, theta, X) in this order as described by Algorithm 3 in https://arxiv.org/abs/2107.03920.</span>
-<span class="sd">                - if using `Waldo`, must be a tuple of arrays or tensors (theta, X) in this order as described by Algorithm 1 in https://arxiv.org/pdf/2205.15680.pdf.</span>
-<span class="sd">                - if using a custom test statistic, then an arbitrary tuple of arrays of tensors is expected.</span>
-<span class="sd">            If not given, must supply a `simulator`.</span>
+<span class="sd">            Simulated dataset to train the test statistic estimator.</span>
 <span class="sd">        T_prime: Tuple[Union[np.ndarray, torch.Tensor]], optional</span>
-<span class="sd">            Simulated dataset to train the quantile regressor to estimate critical values. Must be a tuple of arrays or tensors (theta, X).</span>
-<span class="sd">            If not given, must supply a `simulator`.</span>
+<span class="sd">            Simulated dataset to train the calibration model.</span>
 <span class="sd">        simulator: Simulator, optional</span>
 <span class="sd">            If `T` and `T_prime` are not given, must pass an instance of `lf2i.simulator.Simulator`.</span>
 <span class="sd">        b : int, optional</span>
-<span class="sd">            Number of simulations used to estimate the test statistic. Used only if `simulator` is provided.</span>
+<span class="sd">            Number of simulations for the test statistic. Used only if `simulator` is provided.</span>
 <span class="sd">        b_prime : int, optional</span>
-<span class="sd">            Number of simulations used to estimate the critical values. Used only if `simulator` is provided.</span>
-<span class="sd">        re_estimate_test_statistics : bool, optional</span>
-<span class="sd">            Whether to re-estimate the test statistics if a previous call to `.infer()` was made, by default False.</span>
-<span class="sd">        re_estimate_critical_values : bool, optional</span>
-<span class="sd">            Whether to re-estimate the critical values if a previous call to `.infer()` was made, by default False.</span>
+<span class="sd">            Number of simulations for calibration. Used only if `simulator` is provided.</span>
+<span class="sd">        num_augment : int</span>
+<span class="sd">            If `calibration_method = &#39;p-values&#39;`, number of cutoffs to resample per value.</span>
+<span class="sd">        retrain_calibration: bool, optional</span>
+<span class="sd">            Whether to retrain the calibration model, by default False.</span>
+<span class="sd">        recalibrate_p_values: bool, optional</span>
+<span class="sd">            Whether to hold out part of the calibration set to recalibrate p-value thresholds, by default False.</span>
+<span class="sd">        verbose: bool, optional</span>
+<span class="sd">            Whether to print checkpoints and progress bars, by default True.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        List[np.ndarray]</span>
-<span class="sd">            The `i`-th element is a confidence region for the `i`-th sample in `x`.</span>
+<span class="sd">        List[np.ndarray] or List[List[np.ndarray]] for multiple confidence levels.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">quantile_regressor</span> <span class="o">==</span> <span class="s1">&#39;gb&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">quantile_regressor_kwargs</span> <span class="o">==</span> <span class="p">{}):</span>
-            <span class="n">quantile_regressor_kwargs</span> <span class="o">=</span> <span class="p">{</span> <span class="c1"># random search over max depth and number of trees via 5-fold CV</span>
-                <span class="s1">&#39;cv&#39;</span><span class="p">:</span> <span class="p">{</span>
-                    <span class="s1">&#39;n_estimators&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">500</span><span class="p">,</span> <span class="mi">700</span><span class="p">,</span> <span class="mi">1000</span><span class="p">],</span>
-                    <span class="s1">&#39;max_depth&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span>
-                <span class="p">}</span>
-            <span class="p">}</span>  
+        <span class="k">assert</span> <span class="n">calibration_method</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;critical-values&#39;</span><span class="p">,</span> <span class="s1">&#39;p-values&#39;</span><span class="p">]</span>
 
-        <span class="c1"># estimate test statistics</span>
-        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">_check_is_trained</span><span class="p">())</span> <span class="ow">or</span> <span class="n">re_estimate_test_statistics</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Estimating test statistic ...&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">recalibrate_p_values</span> <span class="o">=</span> <span class="n">recalibrate_p_values</span> <span class="ow">or</span> <span class="kc">False</span>
+
+        <span class="c1"># --- reshape x to (n_obs, param_dim) if needed ---</span>
+        <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># --- train test statistic ---</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">_check_is_trained</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Estimating test statistic ...&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">simulator</span><span class="p">:</span>
                 <span class="n">T</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">simulate_for_test_statistic</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">b</span><span class="p">,</span> <span class="n">estimation_method</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">estimation_method</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span><span class="o">*</span><span class="n">T</span><span class="p">)</span>
-            
-        <span class="c1"># estimate critical values. Need to re-estimate critical values if test statistic is re-estimated because evaluated test statistic changes</span>
-        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quantile_regressor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">re_estimate_critical_values</span> <span class="ow">or</span> <span class="n">re_estimate_test_statistics</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Estimating critical values ...&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># --- train calibration model ---</span>
+        <span class="n">calibration_model_is_prebuilt</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">calibration_model</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">calibration_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">calibration_model_is_prebuilt</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span> <span class="o">=</span> <span class="n">calibration_model</span>
+            <span class="k">if</span> <span class="n">T_prime</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples_calib</span> <span class="o">=</span> <span class="n">T_prime</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">T_prime</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">test_statistics_calib</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples_calib</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;critical_values&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Calibration ...&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">simulator</span><span class="p">:</span>
-                <span class="n">parameters_cv</span><span class="p">,</span> <span class="n">samples_cv</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">simulate_for_critical_values</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">b_prime</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples_calib</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">simulate_for_critical_values</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">b_prime</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">parameters_cv</span><span class="p">,</span> <span class="n">samples_cv</span> <span class="o">=</span> <span class="n">T_prime</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">T_prime</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-            <span class="n">test_statistics_cv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">parameters_cv</span><span class="p">,</span> <span class="n">samples_cv</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;critical_values&#39;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">quantile_regressor</span> <span class="o">=</span> <span class="n">train_qr_algorithm</span><span class="p">(</span>
-                <span class="n">test_statistics</span><span class="o">=</span><span class="n">test_statistics_cv</span><span class="p">,</span>
-                <span class="n">parameters</span><span class="o">=</span><span class="n">parameters_cv</span><span class="p">,</span>
-                <span class="n">algorithm</span><span class="o">=</span><span class="n">quantile_regressor</span><span class="p">,</span>
-                <span class="n">algorithm_kwargs</span><span class="o">=</span><span class="n">quantile_regressor_kwargs</span><span class="p">,</span>
-                <span class="n">alpha</span><span class="o">=</span><span class="n">confidence_level</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">acceptance_region</span> <span class="o">==</span> <span class="s1">&#39;left&#39;</span> <span class="k">else</span> <span class="mi">1</span><span class="o">-</span><span class="n">confidence_level</span><span class="p">,</span>
-                <span class="n">param_dim</span><span class="o">=</span><span class="n">parameters_cv</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples_calib</span> <span class="o">=</span> <span class="n">T_prime</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">T_prime</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">test_statistics_calib</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples_calib</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;critical_values&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Calibration already complete&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># --- optional p-value recalibration holdout ---</span>
+        <span class="k">if</span> <span class="n">calibration_method</span> <span class="o">==</span> <span class="s1">&#39;p-values&#39;</span> <span class="ow">and</span> <span class="n">recalibrate_p_values</span><span class="p">:</span>
+            <span class="n">holdout_set_size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="p">)</span> <span class="o">//</span> <span class="mi">10</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">holdout_parameters_calib</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">holdout_samples_calib</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">holdout_test_statistics_calib</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="p">[</span><span class="o">-</span><span class="n">holdout_set_size</span><span class="p">:],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">samples_calib</span><span class="p">[</span><span class="o">-</span><span class="n">holdout_set_size</span><span class="p">:],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">test_statistics_calib</span><span class="p">[</span><span class="o">-</span><span class="n">holdout_set_size</span><span class="p">:],</span>
             <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples_calib</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistics_calib</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="p">[:</span><span class="o">-</span><span class="n">holdout_set_size</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">samples_calib</span><span class="p">[:</span><span class="o">-</span><span class="n">holdout_set_size</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">test_statistics_calib</span><span class="p">[:</span><span class="o">-</span><span class="n">holdout_set_size</span><span class="p">],</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">holdout_parameters_calib</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">holdout_samples_calib</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">holdout_test_statistics_calib</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
 
-        <span class="c1"># construct confidence_regions</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Constructing confidence regions ...&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">calib_dict_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">confidence_level</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">confidence_level</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="k">else</span> <span class="s1">&#39;multiple_levels&#39;</span>
+        <span class="k">if</span> <span class="n">calibration_model_is_prebuilt</span> <span class="ow">and</span> <span class="p">(</span><span class="n">calib_dict_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span> <span class="ow">or</span> <span class="n">retrain_calibration</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;calibration_model was passed as a pre-built dict, but it has no entry for &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;confidence level key &#39;</span><span class="si">{</span><span class="n">calib_dict_key</span><span class="si">}</span><span class="s2">&#39; (available keys: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">) &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;or retrain_calibration=True was requested. A pre-built dict cannot be used as a training &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;algorithm identifier; pass a dict that already contains this key, or pass calibration_model &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;as a str/algorithm instance to train a new calibration model.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">calib_dict_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">)</span> <span class="ow">or</span> <span class="n">retrain_calibration</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Retraining calibration...&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">calibration_model</span> <span class="o">==</span> <span class="s1">&#39;cat-gb&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">calibration_model_kwargs</span> <span class="o">==</span> <span class="p">{}):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model_kwargs</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;cv&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;iterations&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">500</span><span class="p">,</span> <span class="mi">700</span><span class="p">,</span> <span class="mi">1000</span><span class="p">],</span> <span class="s1">&#39;depth&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">10</span><span class="p">]},</span>
+                    <span class="s1">&#39;n_iter&#39;</span><span class="p">:</span> <span class="mi">25</span>
+                <span class="p">}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model_kwargs</span> <span class="o">=</span> <span class="n">calibration_model_kwargs</span>
+
+            <span class="k">if</span> <span class="n">calibration_method</span> <span class="o">==</span> <span class="s1">&#39;critical-values&#39;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">confidence_level</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+                    <span class="n">alpha</span> <span class="o">=</span> <span class="n">confidence_level</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">acceptance_region</span> <span class="o">==</span> <span class="s1">&#39;left&#39;</span> <span class="k">else</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">confidence_level</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">alpha</span> <span class="o">=</span> <span class="p">[</span><span class="n">cl</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">acceptance_region</span> <span class="o">==</span> <span class="s1">&#39;left&#39;</span> <span class="k">else</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">cl</span> <span class="k">for</span> <span class="n">cl</span> <span class="ow">in</span> <span class="n">confidence_level</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">[</span><span class="n">calib_dict_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">train_qr_algorithm</span><span class="p">(</span>
+                    <span class="n">test_statistics</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistics_calib</span><span class="p">,</span>
+                    <span class="n">parameters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="p">,</span>
+                    <span class="n">algorithm</span><span class="o">=</span><span class="n">calibration_model</span><span class="p">,</span>
+                    <span class="n">algorithm_kwargs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_model_kwargs</span><span class="p">,</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
+                    <span class="n">param_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">1</span><span class="p">,</span>
+                    <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+                    <span class="n">n_jobs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">n_jobs</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="p">,</span> <span class="s1">&#39;n_jobs&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">[</span><span class="n">calib_dict_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">estimate_rejection_proba</span><span class="p">(</span>
+                    <span class="n">test_statistics</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistics_calib</span><span class="p">,</span>
+                    <span class="n">parameters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="p">,</span>
+                    <span class="n">algorithm</span><span class="o">=</span><span class="n">calibration_model</span><span class="p">,</span>
+                    <span class="n">augment_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;num_augment&#39;</span><span class="p">:</span> <span class="n">num_augment</span><span class="p">},</span>
+                    <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="c1"># --- evaluate test statistics over evaluation_grid ---</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Constructing confidence sets ...&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">test_statistics_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">evaluation_grid</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;confidence_sets&#39;</span><span class="p">)</span>
-        <span class="n">confidence_regions</span> <span class="o">=</span> <span class="n">compute_confidence_regions</span><span class="p">(</span>
-            <span class="n">test_statistic</span><span class="o">=</span><span class="n">test_statistics_x</span><span class="p">,</span>
-            <span class="n">critical_values</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">quantile_regressor</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">preprocess_predict_quantile_regression</span><span class="p">(</span><span class="n">evaluation_grid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantile_regressor</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">poi_dim</span><span class="p">)),</span>
-            <span class="n">parameter_grid</span><span class="o">=</span><span class="n">to_np_if_torch</span><span class="p">(</span><span class="n">evaluation_grid</span><span class="p">),</span>
-            <span class="n">acceptance_region</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">acceptance_region</span><span class="p">,</span>
-            <span class="n">poi_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">poi_dim</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="n">confidence_regions</span></div>
+
+        <span class="k">if</span> <span class="n">calibration_method</span> <span class="o">==</span> <span class="s1">&#39;critical-values&#39;</span><span class="p">:</span>
+            <span class="n">critical_values</span> <span class="o">=</span> <span class="n">to_np_if_pd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">[</span><span class="n">calib_dict_key</span><span class="p">]</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
+                <span class="n">preprocess_predict_quantile_regression</span><span class="p">(</span><span class="n">evaluation_grid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">[</span><span class="n">calib_dict_key</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">param_dim</span><span class="p">)</span>
+            <span class="p">))</span>
+            <span class="n">p_values</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Computing p-values...&#39;</span><span class="p">)</span>
+            <span class="n">critical_values</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">_pv_col</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">acceptance_region</span> <span class="o">==</span> <span class="s1">&#39;left&#39;</span> <span class="k">else</span> <span class="mi">1</span>
+            <span class="n">p_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">[</span><span class="n">calib_dict_key</span><span class="p">]</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span>
+                <span class="n">X</span><span class="o">=</span><span class="n">preprocess_predict_p_values</span><span class="p">(</span><span class="s1">&#39;confidence_sets&#39;</span><span class="p">,</span> <span class="n">test_statistics_x</span><span class="p">,</span> <span class="n">evaluation_grid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">[</span><span class="n">calib_dict_key</span><span class="p">])</span>
+            <span class="p">)[:,</span> <span class="n">_pv_col</span><span class="p">]</span>
+
+        <span class="c1"># --- recalibrate alpha ---</span>
+        <span class="n">alpha_list</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span> <span class="o">-</span> <span class="n">confidence_level</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">confidence_level</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="k">else</span> <span class="p">[</span><span class="mi">1</span> <span class="o">-</span> <span class="n">cl</span> <span class="k">for</span> <span class="n">cl</span> <span class="ow">in</span> <span class="n">confidence_level</span><span class="p">]</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">holdout_parameters_calib</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">holdout_test_statistics_calib</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">holdout_samples_calib</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="n">calibration_method</span> <span class="o">==</span> <span class="s1">&#39;p-values&#39;</span>
+        <span class="p">):</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Re-calibrating p-values on holdout set ...&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">holdout_p_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">[</span><span class="n">calib_dict_key</span><span class="p">]</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span>
+                <span class="n">X</span><span class="o">=</span><span class="n">preprocess_predict_p_values</span><span class="p">(</span><span class="s1">&#39;holdout_calibration&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">holdout_test_statistics_calib</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">holdout_parameters_calib</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">[</span><span class="n">calib_dict_key</span><span class="p">])</span>
+            <span class="p">)[:,</span> <span class="n">_pv_col</span><span class="p">]</span>
+            <span class="n">alpha_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">holdout_p_values</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">alpha_list</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">cl</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">confidence_level</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">confidence_level</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="k">else</span> <span class="n">confidence_level</span><span class="p">,</span>
+                    <span class="n">alpha_list</span><span class="p">,</span>
+                <span class="p">):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Original alpha: </span><span class="si">{</span><span class="mi">1</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">cl</span><span class="si">}</span><span class="s1">, Re-calibrated alpha: </span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">holdout_p_values</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_construct_confidence_regions</span><span class="p">(</span>
+            <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span><span class="p">,</span>
+            <span class="n">test_statistics_x</span><span class="o">=</span><span class="n">test_statistics_x</span><span class="p">,</span>
+            <span class="n">evaluation_grid</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="p">,</span>
+            <span class="n">critical_values</span><span class="o">=</span><span class="n">critical_values</span><span class="p">,</span>
+            <span class="n">p_values</span><span class="o">=</span><span class="n">p_values</span><span class="p">,</span>
+            <span class="n">alpha_list</span><span class="o">=</span><span class="n">alpha_list</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+        <span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="LF2I.diagnostics">
-<a class="viewcode-back" href="../../../lf2i.inference.html#lf2i.inference.LF2I.diagnostics">[docs]</a>
-    <span class="k">def</span> <span class="nf">diagnostics</span><span class="p">(</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Private: inference dispatch helpers</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_construct_confidence_regions</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">calibration_method</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">test_statistics_x</span><span class="p">,</span>
+        <span class="n">evaluation_grid</span><span class="p">,</span>
+        <span class="n">critical_values</span><span class="p">,</span>
+        <span class="n">p_values</span><span class="p">,</span>
+        <span class="n">alpha_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]]:</span>
+        <span class="k">if</span> <span class="n">critical_values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">critical_values</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">to_np_if_torch</span><span class="p">(</span><span class="n">evaluation_grid</span><span class="p">))</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">alpha_list</span><span class="p">),</span> \
+                <span class="sa">f</span><span class="s2">&quot;critical_values has </span><span class="si">{</span><span class="n">critical_values</span><span class="o">.</span><span class="n">size</span><span class="si">}</span><span class="s2"> elements, expected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">to_np_if_torch</span><span class="p">(</span><span class="n">evaluation_grid</span><span class="p">))</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">alpha_list</span><span class="p">)</span><span class="si">}</span><span class="s2"> (grid_size x n_levels)&quot;</span>
+
+        <span class="n">confidence_regions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">alpha_list</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Creating set </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s1">...&#39;</span><span class="p">)</span>
+            <span class="n">confidence_regions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">compute_confidence_regions</span><span class="p">(</span>
+                <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span><span class="p">,</span>
+                <span class="n">test_statistic</span><span class="o">=</span><span class="n">test_statistics_x</span><span class="p">,</span>
+                <span class="n">parameter_grid</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="p">,</span>
+                <span class="n">critical_values</span><span class="o">=</span><span class="n">critical_values</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">alpha_list</span><span class="p">))[:,</span> <span class="n">idx</span><span class="p">]</span> <span class="k">if</span> <span class="n">critical_values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">p_values</span><span class="o">=</span><span class="n">p_values</span><span class="p">,</span>
+                <span class="n">alpha</span><span class="o">=</span><span class="n">a</span><span class="p">,</span>
+                <span class="n">acceptance_region</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">acceptance_region</span><span class="p">,</span>
+                <span class="n">poi_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">param_dim</span><span class="p">,</span>
+            <span class="p">))</span>
+        <span class="k">return</span> <span class="n">confidence_regions</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">alpha_list</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">confidence_regions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Public: coverage</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="LF2I.coverage">
+<a class="viewcode-back" href="../../../api/lf2i.inference.html#lf2i.inference.LF2I.coverage">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">coverage</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">region_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">coverage_estimator</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;splines&#39;</span><span class="p">,</span>
+        <span class="n">confidence_level</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">calibration_method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">coverage_estimator</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;cat-gb&#39;</span><span class="p">,</span>
         <span class="n">coverage_estimator_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
         <span class="n">T_double_prime</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">simulator</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Simulator</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">b_double_prime</span> <span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">b_double_prime</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">new_parameters</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">indicators</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">parameters</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">posterior_estimator</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">evaluation_grid</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">confidence_level</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">num_p_levels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10_000</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Independent diagnostics check for the empirical coverage of a desired uncertainty quantification method across the whole parameter space.</span>
-<span class="sd">        It estimates the coverage probability at all parameter values and provides 2-sigma prediction intervals around these estimates.</span>
-<span class="sd">        </span>
-<span class="sd">        NOTE: this can be applied to *any* parameter region, even if it has not been constructed via LF2I.</span>
+        <span class="n">num_level_sets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10_000</span><span class="p">,</span>
+        <span class="n">n_jobs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">exact</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">monte_carlo_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
+        <span class="n">parameter_grid</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">posterior_kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Estimate or compute exactly the coverage probability of a confidence/credible region method.</span>
+
+<span class="sd">        Dispatches to :meth:`_estimated_coverage` (ML-based estimator) or</span>
+<span class="sd">        :meth:`_exact_coverage` (Monte Carlo), depending on ``exact`` and whether a</span>
+<span class="sd">        simulator is available. Only parameters specific to this dispatch are documented</span>
+<span class="sd">        below; for all other parameters, see :meth:`diagnostics`.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        region_type : Union[str, None]</span>
-<span class="sd">            Whether the parameter regions to be checked are confidence regions from </span>
-<span class="sd">                - LF2I (&#39;lf2i&#39;);</span>
-<span class="sd">                - credible regions from a posterior distribution (&#39;posterior&#39;);</span>
-<span class="sd">                - Gaussian prediction intervals centered around predictions (&#39;prediction&#39;). For this, `self.test_statistic` must be Waldo.</span>
-<span class="sd">            If none of the above, then must provide `indicators` and `parameters`.</span>
-<span class="sd">        coverage_estimator : str, optional</span>
-<span class="sd">            Probabilistic classifier to use to estimate coverage probabilities, by default &#39;splines&#39;</span>
-<span class="sd">        coverage_estimator_kwargs : Dict, optional</span>
-<span class="sd">            Settings for the probabilistic classifier, by default {}</span>
-<span class="sd">        T_double_prime: Tuple[Union[np.ndarray, torch.Tensor]], optional</span>
-<span class="sd">            Simulated dataset to learn the coverage probability via probabilistic classification. Must be a tuple of arrays or tensors (theta, X).</span>
-<span class="sd">            If not given, must supply a `simulator`.</span>
-<span class="sd">        simulator: Simulator, optional</span>
-<span class="sd">            If `T_double_prime` is not given, must pass an instance of `lf2i.simulator.Simulator`.</span>
-<span class="sd">        b_double_prime : int, optional</span>
-<span class="sd">            Number of simulations used to estimate the coverage probability across the parameter space. Used only if `simulator` is provided.</span>
-<span class="sd">        new_parameters : Optional[np.ndarray], optional</span>
-<span class="sd">            If provided, coverage probabilities are estimated conditional on these parameters, by default None.</span>
-<span class="sd">            If `None`, parameters simulated uniformly over the parameter space are used.</span>
-<span class="sd">        indicators : Optional[np.ndarray], optional</span>
-<span class="sd">            Pre-computed indicators (0-1) that mark whether the corresponding value in `parameters` is included or not in the target parameter region, by default None</span>
-<span class="sd">        parameters : Optional[np.ndarray], optional</span>
-<span class="sd">            Array of parameters for which the corresponding `indicators` have been pre-computed, by default None</span>
-<span class="sd">        posterior_estimator: Any, optional</span>
-<span class="sd">            If `region_type == posterior` and `indicators` are not provided, then a trained posterior estimator which implements the `log_prob(...)` method must be given.</span>
-<span class="sd">        evaluation_grid: Union[np.ndarray, torch.Tensor]</span>
-<span class="sd">            If `region_type in [`posterior`, `prediction`]` and `indicators` are not provided, grid of points over the parameter space over which to construct a </span>
-<span class="sd">            high-posterior-density credible region or a Gaussian interval centered around predictions.</span>
-<span class="sd">        confidence_level : float</span>
-<span class="sd">            If `region_type in [`posterior`, `prediction`]` and `indicators` are not provided, must give the confidence level to construct credible regions or </span>
-<span class="sd">            prediction intervals and compute indicators. If `region_type == `lf2i`, this information is already embedded in `self.quantile_regressor`. Must be in (0, 1).</span>
-<span class="sd">        num_p_levels: int, optional</span>
-<span class="sd">            If `region_type == posterior` and `indicators` are not provided, number of level sets to consider to construct the high-posterior-density credible region, by default 100_000.</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        Tuple[Any, np.ndarray, np.ndarray, np.ndarray, np.ndarray]</span>
-<span class="sd">            Diagnostics estimator, Evaluated parameters and estimated conditional coverage probabilities (mean, upper 2-sigma bound, lower 2-sigma bound)</span>
-
-<span class="sd">        Raises</span>
-<span class="sd">        ------</span>
-<span class="sd">        ValueError</span>
-<span class="sd">            If `region_type` is not among those supported and `indicators is None`</span>
+<span class="sd">        exact : bool, optional</span>
+<span class="sd">            If True, use Monte Carlo exact coverage (requires ``simulator``).</span>
+<span class="sd">            If False, use the ML estimator (requires ``T_double_prime`` or ``simulator``).</span>
+<span class="sd">            If None (default), use MC when a ``simulator`` is provided, otherwise estimated.</span>
+<span class="sd">        monte_carlo_size : int, optional</span>
+<span class="sd">            MC draws per grid point for ``_exact_coverage``. Default 500.</span>
+<span class="sd">        parameter_grid : torch.Tensor, optional</span>
+<span class="sd">            Dense parameter grid for ``region_type=&#39;posterior&#39;`` exact coverage.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">exact</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">exact</span> <span class="o">=</span> <span class="n">simulator</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">indicators</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">exact</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exact_coverage</span><span class="p">(</span>
+                <span class="n">region_type</span><span class="o">=</span><span class="n">region_type</span><span class="p">,</span>
+                <span class="n">confidence_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
+                <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span><span class="p">,</span>
+                <span class="n">simulator</span><span class="o">=</span><span class="n">simulator</span><span class="p">,</span>
+                <span class="n">evaluation_grid</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="p">,</span>
+                <span class="n">monte_carlo_size</span><span class="o">=</span><span class="n">monte_carlo_size</span><span class="p">,</span>
+                <span class="n">posterior_estimator</span><span class="o">=</span><span class="n">posterior_estimator</span><span class="p">,</span>
+                <span class="n">parameter_grid</span><span class="o">=</span><span class="n">parameter_grid</span><span class="p">,</span>
+                <span class="n">num_level_sets</span><span class="o">=</span><span class="n">num_level_sets</span><span class="p">,</span>
+                <span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">posterior_kwargs</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimated_coverage</span><span class="p">(</span>
+                <span class="n">region_type</span><span class="o">=</span><span class="n">region_type</span><span class="p">,</span>
+                <span class="n">confidence_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
+                <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span><span class="p">,</span>
+                <span class="n">coverage_estimator</span><span class="o">=</span><span class="n">coverage_estimator</span><span class="p">,</span>
+                <span class="n">coverage_estimator_kwargs</span><span class="o">=</span><span class="n">coverage_estimator_kwargs</span><span class="p">,</span>
+                <span class="n">T_double_prime</span><span class="o">=</span><span class="n">T_double_prime</span><span class="p">,</span>
+                <span class="n">simulator</span><span class="o">=</span><span class="n">simulator</span><span class="p">,</span>
+                <span class="n">b_double_prime</span><span class="o">=</span><span class="n">b_double_prime</span><span class="p">,</span>
+                <span class="n">new_parameters</span><span class="o">=</span><span class="n">new_parameters</span><span class="p">,</span>
+                <span class="n">indicators</span><span class="o">=</span><span class="n">indicators</span><span class="p">,</span>
+                <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
+                <span class="n">posterior_estimator</span><span class="o">=</span><span class="n">posterior_estimator</span><span class="p">,</span>
+                <span class="n">evaluation_grid</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="p">,</span>
+                <span class="n">num_level_sets</span><span class="o">=</span><span class="n">num_level_sets</span><span class="p">,</span>
+                <span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span>
+                <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">posterior_kwargs</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_estimated_coverage</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">region_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">confidence_level</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">calibration_method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">coverage_estimator</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;cat-gb&#39;</span><span class="p">,</span>
+        <span class="n">coverage_estimator_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
+        <span class="n">T_double_prime</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">simulator</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Simulator</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">b_double_prime</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">new_parameters</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">indicators</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">posterior_estimator</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">evaluation_grid</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">num_level_sets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10_000</span><span class="p">,</span>
+        <span class="n">n_jobs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">posterior_kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ML-based coverage estimator across the parameter space.</span>
+
+<span class="sd">        Independent diagnostics check via probabilistic classification.</span>
+<span class="sd">        Can be applied to *any* parameter region, even if not constructed via LF2I.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sizes</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">region_type</span> <span class="o">==</span> <span class="s1">&#39;lf2i&#39;</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">calibration_method</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;critical-values&#39;</span><span class="p">,</span> <span class="s1">&#39;p-values&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+
         <span class="k">if</span> <span class="n">indicators</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">simulator</span><span class="p">:</span>
                 <span class="n">parameters</span><span class="p">,</span> <span class="n">samples</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">simulate_for_diagnostics</span><span class="p">(</span><span class="n">size</span><span class="o">=</span><span class="n">b_double_prime</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">parameters</span><span class="p">,</span> <span class="n">samples</span> <span class="o">=</span> <span class="n">T_double_prime</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">T_double_prime</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        
+
             <span class="k">if</span> <span class="n">region_type</span> <span class="o">==</span> <span class="s1">&#39;lf2i&#39;</span><span class="p">:</span>
+                <span class="n">calib_dict_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">confidence_level</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">if</span> <span class="s1">&#39;multiple_levels&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span> <span class="k">else</span> <span class="s1">&#39;multiple_levels&#39;</span>
+                <span class="n">test_statistics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">samples</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;diagnostics&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">calibration_method</span> <span class="o">==</span> <span class="s1">&#39;critical-values&#39;</span><span class="p">:</span>
+                    <span class="n">critical_values</span> <span class="o">=</span> <span class="n">to_np_if_torch</span><span class="p">(</span><span class="n">to_np_if_pd</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">[</span><span class="n">calib_dict_key</span><span class="p">]</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
+                        <span class="n">preprocess_predict_quantile_regression</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">[</span><span class="n">calib_dict_key</span><span class="p">],</span> <span class="n">parameters</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">parameters</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="p">)))</span>
+                    <span class="n">p_values</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="k">if</span> <span class="n">calib_dict_key</span> <span class="o">==</span> <span class="s1">&#39;multiple_levels&#39;</span><span class="p">:</span>
+                        <span class="n">idx_cl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span>
+                            <span class="n">confidence_level</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">[</span><span class="s1">&#39;multiple_levels&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">estimator</span><span class="o">.</span><span class="n">get_params</span><span class="p">()[</span><span class="s1">&#39;loss_function&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">))</span>
+                        <span class="p">))</span>
+                        <span class="n">critical_values</span> <span class="o">=</span> <span class="n">critical_values</span><span class="p">[:,</span> <span class="n">idx_cl</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">critical_values</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="n">_pv_col</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">acceptance_region</span> <span class="o">==</span> <span class="s1">&#39;left&#39;</span> <span class="k">else</span> <span class="mi">1</span>
+                    <span class="n">p_values</span> <span class="o">=</span> <span class="n">to_np_if_torch</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">[</span><span class="n">calib_dict_key</span><span class="p">]</span><span class="o">.</span><span class="n">predict_proba</span><span class="p">(</span>
+                        <span class="n">X</span><span class="o">=</span><span class="n">preprocess_predict_p_values</span><span class="p">(</span><span class="s1">&#39;diagnostics&#39;</span><span class="p">,</span> <span class="n">test_statistics</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">[</span><span class="n">calib_dict_key</span><span class="p">])</span>
+                    <span class="p">)[:,</span> <span class="n">_pv_col</span><span class="p">])</span>
+
+                <span class="k">if</span> <span class="n">calibration_method</span> <span class="o">==</span> <span class="s1">&#39;p-values&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">recalibrate_p_values</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">holdout_parameters_calib</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">holdout_test_statistics_calib</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">holdout_samples_calib</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Re-calibrating p-values on holdout set ...&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">alpha</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">holdout_p_values</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">confidence_level</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Original alpha: </span><span class="si">{</span><span class="mi">1</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">confidence_level</span><span class="si">}</span><span class="s1">, Re-calibrated alpha: </span><span class="si">{</span><span class="n">alpha</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">alpha</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">confidence_level</span>
+
                 <span class="n">indicators</span> <span class="o">=</span> <span class="n">compute_indicators_lf2i</span><span class="p">(</span>
-                    <span class="n">test_statistics</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="n">samples</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;diagnostics&#39;</span><span class="p">),</span>
-                    <span class="n">critical_values</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">quantile_regressor</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X</span><span class="o">=</span><span class="n">preprocess_predict_quantile_regression</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantile_regressor</span><span class="p">,</span> <span class="n">parameters</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])),</span>
+                    <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span><span class="p">,</span>
+                    <span class="n">test_statistics</span><span class="o">=</span><span class="n">test_statistics</span><span class="p">,</span>
                     <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
+                    <span class="n">critical_values</span><span class="o">=</span><span class="n">critical_values</span><span class="p">,</span>
+                    <span class="n">p_values</span><span class="o">=</span><span class="n">p_values</span><span class="p">,</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
                     <span class="n">acceptance_region</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">acceptance_region</span><span class="p">,</span>
-                    <span class="n">param_dim</span><span class="o">=</span><span class="n">parameters</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">param_dim</span><span class="o">=</span><span class="n">parameters</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">parameters</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">1</span><span class="p">,</span>
                 <span class="p">)</span>
+
             <span class="k">elif</span> <span class="n">region_type</span> <span class="o">==</span> <span class="s1">&#39;posterior&#39;</span><span class="p">:</span>
-                <span class="n">indicators</span> <span class="o">=</span> <span class="n">compute_indicators_posterior</span><span class="p">(</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">posterior_kwargs</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="p">,</span> <span class="s1">&#39;posterior_kwargs&#39;</span><span class="p">):</span>
+                        <span class="n">posterior_kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">posterior_kwargs</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">posterior_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">indicators</span><span class="p">,</span> <span class="n">sizes</span> <span class="o">=</span> <span class="n">compute_indicators_posterior</span><span class="p">(</span>
                     <span class="n">posterior</span><span class="o">=</span><span class="n">posterior_estimator</span><span class="p">,</span>
-                    <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>  <span class="c1"># TODO: what if we want to do diagnostics against both POIs and nuisances?</span>
+                    <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
                     <span class="n">samples</span><span class="o">=</span><span class="n">samples</span><span class="p">,</span>
-                    <span class="n">parameter_grid</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="p">,</span>
-                    <span class="n">confidence_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
-                    <span class="n">param_dim</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="n">parameter_grid</span><span class="o">=</span><span class="n">to_torch_if_np</span><span class="p">(</span><span class="n">evaluation_grid</span><span class="p">),</span>
+                    <span class="n">credible_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
+                    <span class="n">param_dim</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">evaluation_grid</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">1</span><span class="p">,</span>
                     <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">batch_size</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="p">,</span> <span class="s2">&quot;batch_size&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="mi">1</span><span class="p">,</span>
-                    <span class="n">num_p_levels</span><span class="o">=</span><span class="n">num_p_levels</span>
+                    <span class="n">num_level_sets</span><span class="o">=</span><span class="n">num_level_sets</span><span class="p">,</span>
+                    <span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span>
+                    <span class="n">return_size</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="o">**</span><span class="n">posterior_kwargs</span><span class="p">,</span>
                 <span class="p">)</span>
+
             <span class="k">elif</span> <span class="n">region_type</span> <span class="o">==</span> <span class="s1">&#39;prediction&#39;</span><span class="p">:</span>
                 <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="p">,</span> <span class="n">Waldo</span><span class="p">),</span> \
-                        <span class="s2">&quot;Test statistic is not an instance of `Waldo`. You must provide `indicators` and `parameters` to diagnose prediction sets.&quot;</span>
+                    <span class="s2">&quot;Test statistic is not an instance of `Waldo`. You must provide `indicators` and `parameters` to diagnose prediction sets.&quot;</span>
                 <span class="n">indicators</span> <span class="o">=</span> <span class="n">compute_indicators_prediction</span><span class="p">(</span>
                     <span class="n">test_statistic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="p">,</span>
-                    <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>  <span class="c1"># TODO: what if we want to do diagnostics against both POIs and nuisances?</span>
+                    <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
                     <span class="n">samples</span><span class="o">=</span><span class="n">samples</span><span class="p">,</span>
                     <span class="n">confidence_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
-                    <span class="n">param_dim</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">param_dim</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">evaluation_grid</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">1</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<span class="w">                    </span><span class="sd">&quot;&quot;&quot;If the parameter regions you want to diagnose are not from LF2I, nor they are posterior credible regions or\n </span>
-<span class="sd">                    gaussian prediction intervals, then you must provide `indicators` and `parameters`&quot;&quot;&quot;</span>
+                    <span class="s2">&quot;If the parameter regions you want to diagnose are not from LF2I, nor they are posterior credible regions or</span><span class="se">\n</span><span class="s2"> &quot;</span>
+                    <span class="s2">&quot;gaussian prediction intervals, then you must provide `indicators` and `parameters`&quot;</span>
                 <span class="p">)</span>
-        
+
         <span class="n">diagnostics_estimator</span><span class="p">,</span> <span class="n">out_parameters</span><span class="p">,</span> <span class="n">mean_proba</span><span class="p">,</span> <span class="n">upper_proba</span><span class="p">,</span> <span class="n">lower_proba</span> <span class="o">=</span> <span class="n">estimate_coverage_proba</span><span class="p">(</span>
             <span class="n">indicators</span><span class="o">=</span><span class="n">indicators</span><span class="p">,</span>
             <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
             <span class="n">estimator</span><span class="o">=</span><span class="n">coverage_estimator</span><span class="p">,</span>
             <span class="n">estimator_kwargs</span><span class="o">=</span><span class="n">coverage_estimator_kwargs</span><span class="p">,</span>
-            <span class="n">param_dim</span><span class="o">=</span><span class="n">parameters</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-            <span class="n">new_parameters</span><span class="o">=</span><span class="n">new_parameters</span>
+            <span class="n">param_dim</span><span class="o">=</span><span class="n">parameters</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">parameters</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="n">new_parameters</span><span class="o">=</span><span class="n">new_parameters</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">diagnostics_estimator</span><span class="p">,</span> <span class="n">out_parameters</span><span class="p">,</span> <span class="n">mean_proba</span><span class="p">,</span> <span class="n">upper_proba</span><span class="p">,</span> <span class="n">lower_proba</span></div>
-</div>
+
+        <span class="k">if</span> <span class="n">region_type</span> <span class="o">==</span> <span class="s1">&#39;posterior&#39;</span> <span class="ow">and</span> <span class="n">sizes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">diagnostics_estimator</span><span class="p">,</span> <span class="n">out_parameters</span><span class="p">,</span> <span class="n">mean_proba</span><span class="p">,</span> <span class="n">upper_proba</span><span class="p">,</span> <span class="n">lower_proba</span><span class="p">,</span> <span class="n">sizes</span>
+        <span class="k">return</span> <span class="n">diagnostics_estimator</span><span class="p">,</span> <span class="n">out_parameters</span><span class="p">,</span> <span class="n">mean_proba</span><span class="p">,</span> <span class="n">upper_proba</span><span class="p">,</span> <span class="n">lower_proba</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_exact_coverage</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">region_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">confidence_level</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]],</span>
+        <span class="n">calibration_method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">simulator</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Simulator</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">evaluation_grid</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">monte_carlo_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
+        <span class="n">posterior_estimator</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">parameter_grid</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">num_level_sets</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10_000</span><span class="p">,</span>
+        <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">posterior_kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Monte Carlo exact coverage at each point of ``evaluation_grid``.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        simulator : Simulator</span>
+<span class="sd">            lf2i Simulator used to draw samples.</span>
+<span class="sd">        evaluation_grid : np.ndarray, shape (n_grid, param_dim)</span>
+<span class="sd">            Grid of parameter values at which to evaluate coverage.</span>
+<span class="sd">        confidence_level : Union[float, Sequence[float]]</span>
+<span class="sd">            Nominal confidence level(s), each in (0, 1).</span>
+<span class="sd">        calibration_method : str, optional</span>
+<span class="sd">            Either &#39;critical-values&#39; or &#39;p-values&#39;. Required when ``region_type=&#39;lf2i&#39;``.</span>
+<span class="sd">        monte_carlo_size : int, optional</span>
+<span class="sd">            Number of MC draws per grid point. Default 500.</span>
+<span class="sd">        region_type : str, optional</span>
+<span class="sd">            ``&#39;lf2i&#39;`` uses the calibration model; ``&#39;posterior&#39;`` evaluates HPD credible</span>
+<span class="sd">            region coverage.</span>
+<span class="sd">        posterior_estimator : optional</span>
+<span class="sd">            Trained posterior with a ``log_prob`` method. Required when ``region_type=&#39;posterior&#39;``.</span>
+<span class="sd">        parameter_grid : torch.Tensor, optional</span>
+<span class="sd">            Dense grid for HPD approximation. Required when ``region_type=&#39;posterior&#39;``.</span>
+<span class="sd">        num_level_sets : int, optional</span>
+<span class="sd">            HPD binary-search resolution. Default 10_000.</span>
+<span class="sd">        n_jobs : int, optional</span>
+<span class="sd">            Joblib parallelism for HPD computation. Default -2.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Tuple[np.ndarray, np.ndarray]</span>
+<span class="sd">            ``(evaluation_grid, coverage_per_grid_point)`` if ``confidence_level`` is scalar.</span>
+<span class="sd">        Tuple[np.ndarray, Dict[float, np.ndarray]]</span>
+<span class="sd">            ``(evaluation_grid, {cl: coverage_per_grid_point, ...})`` if a sequence.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">region_type</span> <span class="o">==</span> <span class="s1">&#39;posterior&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">posterior_estimator</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">parameter_grid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;region_type=&#39;posterior&#39; requires both `posterior_estimator` and `parameter_grid`.&quot;</span>
+                <span class="p">)</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.diagnostics.monte_carlo_methods</span><span class="w"> </span><span class="kn">import</span> <span class="n">monte_carlo_coverage_posterior</span>
+            <span class="k">return</span> <span class="n">monte_carlo_coverage_posterior</span><span class="p">(</span>
+                <span class="n">posterior_estimator</span><span class="o">=</span><span class="n">posterior_estimator</span><span class="p">,</span>
+                <span class="n">simulator</span><span class="o">=</span><span class="n">simulator</span><span class="p">,</span>
+                <span class="n">evaluation_grid</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="p">,</span>
+                <span class="n">credible_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
+                <span class="n">parameter_grid</span><span class="o">=</span><span class="n">parameter_grid</span><span class="p">,</span>
+                <span class="n">monte_carlo_size</span><span class="o">=</span><span class="n">monte_carlo_size</span><span class="p">,</span>
+                <span class="n">num_level_sets</span><span class="o">=</span><span class="n">num_level_sets</span><span class="p">,</span>
+                <span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">posterior_kwargs</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">calibration_method</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;`calibration_method` is required when region_type=&#39;lf2i&#39;.&quot;</span><span class="p">)</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">lf2i.diagnostics.monte_carlo_methods</span><span class="w"> </span><span class="kn">import</span> <span class="n">monte_carlo_coverage</span>
+        <span class="k">return</span> <span class="n">monte_carlo_coverage</span><span class="p">(</span>
+            <span class="n">test_statistic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="p">,</span>
+            <span class="n">calibration_model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">,</span>
+            <span class="n">simulator</span><span class="o">=</span><span class="n">simulator</span><span class="p">,</span>
+            <span class="n">evaluation_grid</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="p">,</span>
+            <span class="n">confidence_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
+            <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span><span class="p">,</span>
+            <span class="n">monte_carlo_size</span><span class="o">=</span><span class="n">monte_carlo_size</span><span class="p">,</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="LF2I.diagnostics">
+<a class="viewcode-back" href="../../../api/lf2i.inference.html#lf2i.inference.LF2I.diagnostics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">diagnostics</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">region_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">confidence_level</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">calibration_method</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">coverage_estimator</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;cat-gb&#39;</span><span class="p">,</span>
+        <span class="n">coverage_estimator_kwargs</span><span class="p">:</span> <span class="n">Dict</span> <span class="o">=</span> <span class="p">{},</span>
+        <span class="n">T_double_prime</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">simulator</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Simulator</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">b_double_prime</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">new_parameters</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">indicators</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">posterior_estimator</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">evaluation_grid</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">num_level_sets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10_000</span><span class="p">,</span>
+        <span class="n">n_jobs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">posterior_kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ML-based coverage diagnostics. Deprecated alias for :meth:`_estimated_coverage`.</span>
+
+<span class="sd">        .. deprecated::</span>
+<span class="sd">            ``diagnostics`` will be removed in a future release.  Use :meth:`coverage` instead.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;LF2I.diagnostics() is deprecated and will be removed in a future release. &quot;</span>
+            <span class="s2">&quot;Use LF2I.coverage() instead.&quot;</span><span class="p">,</span>
+            <span class="ne">DeprecationWarning</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimated_coverage</span><span class="p">(</span>
+            <span class="n">region_type</span><span class="o">=</span><span class="n">region_type</span><span class="p">,</span>
+            <span class="n">confidence_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
+            <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span><span class="p">,</span>
+            <span class="n">coverage_estimator</span><span class="o">=</span><span class="n">coverage_estimator</span><span class="p">,</span>
+            <span class="n">coverage_estimator_kwargs</span><span class="o">=</span><span class="n">coverage_estimator_kwargs</span><span class="p">,</span>
+            <span class="n">T_double_prime</span><span class="o">=</span><span class="n">T_double_prime</span><span class="p">,</span>
+            <span class="n">simulator</span><span class="o">=</span><span class="n">simulator</span><span class="p">,</span>
+            <span class="n">b_double_prime</span><span class="o">=</span><span class="n">b_double_prime</span><span class="p">,</span>
+            <span class="n">new_parameters</span><span class="o">=</span><span class="n">new_parameters</span><span class="p">,</span>
+            <span class="n">indicators</span><span class="o">=</span><span class="n">indicators</span><span class="p">,</span>
+            <span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span>
+            <span class="n">posterior_estimator</span><span class="o">=</span><span class="n">posterior_estimator</span><span class="p">,</span>
+            <span class="n">evaluation_grid</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="p">,</span>
+            <span class="n">num_level_sets</span><span class="o">=</span><span class="n">num_level_sets</span><span class="p">,</span>
+            <span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">posterior_kwargs</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LF2I.mc_diagnostics">
+<a class="viewcode-back" href="../../../api/lf2i.inference.html#lf2i.inference.LF2I.mc_diagnostics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mc_diagnostics</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">simulator</span><span class="p">,</span>
+        <span class="n">evaluation_grid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">confidence_level</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]],</span>
+        <span class="n">calibration_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">monte_carlo_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span><span class="p">,</span>
+        <span class="n">region_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;lf2i&#39;</span><span class="p">,</span>
+        <span class="n">posterior_estimator</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">parameter_grid</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">num_level_sets</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10_000</span><span class="p">,</span>
+        <span class="n">n_jobs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">posterior_kwargs</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;MC-exact coverage diagnostics. Deprecated alias for :meth:`_exact_coverage`.</span>
+
+<span class="sd">        .. deprecated::</span>
+<span class="sd">            ``mc_diagnostics`` will be removed in a future release.  Use :meth:`coverage` instead.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;LF2I.mc_diagnostics() is deprecated and will be removed in a future release. &quot;</span>
+            <span class="s2">&quot;Use LF2I.coverage(exact=True) instead.&quot;</span><span class="p">,</span>
+            <span class="ne">DeprecationWarning</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exact_coverage</span><span class="p">(</span>
+            <span class="n">region_type</span><span class="o">=</span><span class="n">region_type</span><span class="p">,</span>
+            <span class="n">confidence_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
+            <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span><span class="p">,</span>
+            <span class="n">simulator</span><span class="o">=</span><span class="n">simulator</span><span class="p">,</span>
+            <span class="n">evaluation_grid</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="p">,</span>
+            <span class="n">monte_carlo_size</span><span class="o">=</span><span class="n">monte_carlo_size</span><span class="p">,</span>
+            <span class="n">posterior_estimator</span><span class="o">=</span><span class="n">posterior_estimator</span><span class="p">,</span>
+            <span class="n">parameter_grid</span><span class="o">=</span><span class="n">parameter_grid</span><span class="p">,</span>
+            <span class="n">num_level_sets</span><span class="o">=</span><span class="n">num_level_sets</span><span class="p">,</span>
+            <span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">posterior_kwargs</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Public: power</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="LF2I.power">
+<a class="viewcode-back" href="../../../api/lf2i.inference.html#lf2i.inference.LF2I.power">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">power</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">evaluation_grid</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">confidence_level</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]],</span>
+        <span class="n">T_double_prime</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">simulator</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Simulator</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">calibration_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;critical-values&#39;</span><span class="p">,</span>
+        <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">monte_carlo_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="n">exact</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Estimate or compute exactly the power (expected confidence set size) of the LF2I procedure.</span>
+
+<span class="sd">        Dispatches to :meth:`_estimated_power` (regression-based) or :meth:`_exact_power`</span>
+<span class="sd">        (Monte Carlo), depending on ``exact`` and whether a simulator is available.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        evaluation_grid : Union[np.ndarray, torch.Tensor]</span>
+<span class="sd">            Grid of parameter values at which to evaluate power.</span>
+<span class="sd">        confidence_level : Union[float, Sequence[float]]</span>
+<span class="sd">            Nominal confidence level(s), each in (0, 1).</span>
+<span class="sd">        T_double_prime : Tuple, optional</span>
+<span class="sd">            Pre-simulated dataset ``(parameters, samples)`` for estimated power.</span>
+<span class="sd">        simulator : Simulator, optional</span>
+<span class="sd">            Required for exact (MC) power.</span>
+<span class="sd">        calibration_method : str, optional</span>
+<span class="sd">            ``&#39;critical-values&#39;`` or ``&#39;p-values&#39;``. Default ``&#39;critical-values&#39;``.</span>
+<span class="sd">        batch_size : int, optional</span>
+<span class="sd">            Batch size for estimated power. Default 1000.</span>
+<span class="sd">        monte_carlo_size : int, optional</span>
+<span class="sd">            MC draws per grid point for exact power. Default 100.</span>
+<span class="sd">        exact : bool, optional</span>
+<span class="sd">            If None (default), use MC when ``simulator`` is available, else estimated.</span>
+<span class="sd">        verbose : bool, optional</span>
+<span class="sd">            Whether to print progress. Default True.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        For estimated power: ``np.ndarray`` of confidence set sizes (length = n_samples in T_double_prime).</span>
+<span class="sd">        For exact power: ``(evaluation_grid, mean_size_per_grid_point)``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">exact</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">exact</span> <span class="o">=</span> <span class="n">simulator</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">exact</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exact_power</span><span class="p">(</span>
+                <span class="n">simulator</span><span class="o">=</span><span class="n">simulator</span><span class="p">,</span>
+                <span class="n">evaluation_grid</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="p">,</span>
+                <span class="n">confidence_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
+                <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span><span class="p">,</span>
+                <span class="n">monte_carlo_size</span><span class="o">=</span><span class="n">monte_carlo_size</span><span class="p">,</span>
+                <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimated_power</span><span class="p">(</span>
+                <span class="n">T_double_prime</span><span class="o">=</span><span class="n">T_double_prime</span><span class="p">,</span>
+                <span class="n">evaluation_grid</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="p">,</span>
+                <span class="n">confidence_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
+                <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span><span class="p">,</span>
+                <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+                <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_estimated_power</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">T_double_prime</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]],</span>
+        <span class="n">evaluation_grid</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">confidence_level</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]],</span>
+        <span class="n">calibration_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;critical-values&#39;</span><span class="p">,</span>
+        <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Regression-based power estimate: train a quantile regressor on confidence set sizes.</span>
+
+<span class="sd">        Runs inference in batches on ``T_double_prime`` samples, computes confidence set</span>
+<span class="sd">        sizes, then fits a quantile regressor predicting size from the true parameter.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Confidence set sizes for all samples in ``T_double_prime``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">b_double_prime_params</span><span class="p">,</span> <span class="n">b_double_prime_samples</span> <span class="o">=</span> <span class="n">T_double_prime</span>
+        <span class="n">n_samples</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">b_double_prime_samples</span><span class="p">)</span>
+        <span class="n">n_batches</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">n_samples</span> <span class="o">/</span> <span class="n">batch_size</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Processing </span><span class="si">{</span><span class="n">n_samples</span><span class="si">}</span><span class="s2"> samples in </span><span class="si">{</span><span class="n">n_batches</span><span class="si">}</span><span class="s2"> batches of size </span><span class="si">{</span><span class="n">batch_size</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">b_double_prime_sizes</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_batches</span><span class="p">):</span>
+            <span class="n">start_idx</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">batch_size</span>
+            <span class="n">end_idx</span> <span class="o">=</span> <span class="nb">min</span><span class="p">((</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">n_samples</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Batch </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_batches</span><span class="si">}</span><span class="s2">: samples </span><span class="si">{</span><span class="n">start_idx</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">end_idx</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="n">batch_samples</span> <span class="o">=</span> <span class="n">b_double_prime_samples</span><span class="p">[</span><span class="n">start_idx</span><span class="p">:</span><span class="n">end_idx</span><span class="p">]</span>
+
+            <span class="n">confidence_sets_batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inference</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">batch_samples</span><span class="p">,</span>
+                <span class="n">evaluation_grid</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="p">,</span>
+                <span class="n">confidence_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
+                <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span><span class="p">,</span>
+                <span class="n">calibration_model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">,</span>
+                <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">confidence_level</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">confidence_level</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">confidence_sets_batch</span> <span class="o">=</span> <span class="n">confidence_sets_batch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="n">batch_sizes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+                <span class="n">cs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">evaluation_grid</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">cs</span> <span class="ow">in</span> <span class="n">confidence_sets_batch</span>
+            <span class="p">])</span>
+            <span class="n">b_double_prime_sizes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">batch_sizes</span><span class="p">)</span>
+
+            <span class="k">del</span> <span class="n">confidence_sets_batch</span><span class="p">,</span> <span class="n">batch_samples</span><span class="p">,</span> <span class="n">batch_sizes</span>
+            <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+
+        <span class="n">b_double_prime_sizes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">b_double_prime_sizes</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Training power model on </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">b_double_prime_sizes</span><span class="p">)</span><span class="si">}</span><span class="s2"> samples...&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">power_model</span> <span class="o">=</span> <span class="n">train_qr_algorithm</span><span class="p">(</span>
+            <span class="n">test_statistics</span><span class="o">=</span><span class="n">b_double_prime_sizes</span><span class="p">,</span>
+            <span class="n">parameters</span><span class="o">=</span><span class="n">b_double_prime_params</span><span class="p">,</span>
+            <span class="n">algorithm</span><span class="o">=</span><span class="s1">&#39;cat-gb&#39;</span><span class="p">,</span>
+            <span class="n">algorithm_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;iterations&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s1">&#39;depth&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">},</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">param_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters_calib</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+            <span class="n">n_jobs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="o">.</span><span class="n">n_jobs</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_statistic</span><span class="p">,</span> <span class="s1">&#39;n_jobs&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">b_double_prime_sizes</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_exact_power</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">simulator</span><span class="p">:</span> <span class="n">Simulator</span><span class="p">,</span>
+        <span class="n">evaluation_grid</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">],</span>
+        <span class="n">confidence_level</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]],</span>
+        <span class="n">calibration_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;critical-values&#39;</span><span class="p">,</span>
+        <span class="n">monte_carlo_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;MC-exact power (expected confidence set size) at each evaluation grid point.</span>
+
+<span class="sd">        For each θ* in ``evaluation_grid``, draws ``monte_carlo_size`` samples from</span>
+<span class="sd">        f(x | θ*), computes confidence sets for each, and returns the mean fraction of</span>
+<span class="sd">        the grid covered.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Tuple[np.ndarray, np.ndarray]</span>
+<span class="sd">            ``(evaluation_grid_np, mean_size_per_grid_point)`` if ``confidence_level`` is scalar.</span>
+<span class="sd">        Tuple[np.ndarray, Dict[float, np.ndarray]]</span>
+<span class="sd">            ``(evaluation_grid_np, {cl: mean_size_per_grid_point, ...})`` if a sequence.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">evaluation_grid_np</span> <span class="o">=</span> <span class="n">to_np_if_torch</span><span class="p">(</span><span class="n">evaluation_grid</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">evaluation_grid_np</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">evaluation_grid_np</span> <span class="o">=</span> <span class="n">evaluation_grid_np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">n_grid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">evaluation_grid_np</span><span class="p">)</span>
+        <span class="n">param_dim</span> <span class="o">=</span> <span class="n">evaluation_grid_np</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">scalar_input</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">confidence_level</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+        <span class="bp">cls</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[</span><span class="n">confidence_level</span><span class="p">]</span> <span class="k">if</span> <span class="n">scalar_input</span> <span class="k">else</span> <span class="nb">list</span><span class="p">(</span><span class="n">confidence_level</span><span class="p">)</span>
+        <span class="n">sizes</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">cl</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_grid</span><span class="p">)</span> <span class="k">for</span> <span class="n">cl</span> <span class="ow">in</span> <span class="bp">cls</span><span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">theta_star</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">evaluation_grid_np</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">verbose</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">%</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_grid</span> <span class="o">//</span> <span class="mi">10</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;MC power: grid point </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">n_grid</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">theta_repeated</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">theta_star</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">param_dim</span><span class="p">),</span> <span class="p">(</span><span class="n">monte_carlo_size</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+            <span class="n">samples_mc</span> <span class="o">=</span> <span class="n">simulator</span><span class="p">(</span><span class="n">to_torch_if_np</span><span class="p">(</span><span class="n">theta_repeated</span><span class="p">))</span>
+
+            <span class="n">cs_batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inference</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">samples_mc</span><span class="p">,</span>
+                <span class="n">evaluation_grid</span><span class="o">=</span><span class="n">evaluation_grid</span><span class="p">,</span>
+                <span class="n">confidence_level</span><span class="o">=</span><span class="n">confidence_level</span><span class="p">,</span>
+                <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span><span class="p">,</span>
+                <span class="n">calibration_model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_model</span><span class="p">,</span>
+                <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">scalar_input</span><span class="p">:</span>
+                <span class="n">sizes</span><span class="p">[</span><span class="bp">cls</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">cs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">n_grid</span> <span class="k">for</span> <span class="n">cs</span> <span class="ow">in</span> <span class="n">cs_batch</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">cl</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+                    <span class="n">sizes</span><span class="p">[</span><span class="n">cl</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">cs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">n_grid</span> <span class="k">for</span> <span class="n">cs</span> <span class="ow">in</span> <span class="n">cs_batch</span><span class="p">[</span><span class="n">j</span><span class="p">]])</span>
+
+            <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">scalar_input</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">evaluation_grid_np</span><span class="p">,</span> <span class="n">sizes</span><span class="p">[</span><span class="bp">cls</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="k">return</span> <span class="n">evaluation_grid_np</span><span class="p">,</span> <span class="n">sizes</span></div>
+
 
 </pre></div>
         </article>
@@ -509,7 +1189,7 @@
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2023, Luca Masserano
+                Copyright &#169; 2026, lee-group-cmu
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             
@@ -536,10 +1216,10 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=4621528c"></script>
-    <script src="../../../_static/doctools.js?v=888ff710"></script>
-    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="../../../_static/scripts/furo.js?v=32e29ea5"></script>
+</div><script src="../../../_static/documentation_options.js?v=c87aa342"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     </body>
 </html>
