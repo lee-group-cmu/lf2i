@@ -27,7 +27,7 @@ def hpd_region(
 
     Parameters
     ----------
-    posterior : Union[AbstractNeuralPosterior, AbstractKDE, Distribution, AmortizedPosterior]
+    posterior : Union[AbstractNeuralPosterior, AbstractKDE, Distribution]
         The estimated posterior distribution from which to compute the HPD region. These types of objects are typically returned by the `sbi` and `bayesflow` software libraries:
         - `AbstractNeuralPosterior` from `sbi` methods involving underlying neural networks, e.g. `SNPE`, `FMPE`.
         - `AbstractKDE` from `sbi` methods involving kernel density estimation, e.g. `SBCABC`.

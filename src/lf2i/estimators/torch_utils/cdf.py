@@ -20,6 +20,7 @@ class BrierScoreLoss(nn.Module):
         mask = ~torch.eye(n, dtype=torch.bool, device=lambda_obs.device)
         return ((cdf_vals - indicators)**2)[mask].mean()
 
+
 class QuantileWeightedCRPSLoss(nn.Module):
     """
     Pinball loss integrated over α ∈ (0, 1) with a smooth weight function w(α):
@@ -208,6 +209,8 @@ class ParametricCDFEstimator:
         Default 'tanh'.
     loss : str
         Loss function. One of 'brier', 'weighted'. Default 'brier'.
+    cdf_model : str
+        Distributional assumption on local sampling distribution. Default 'sigmoid'.
     n_alpha : int
         Quadrature points for 'weighted'. Default 500.
     weight_fn : str or callable
@@ -223,6 +226,10 @@ class ParametricCDFEstimator:
         α parameter of Beta weight. Default 2.0.
     beta_b : float
         β parameter of Beta weight. Default 5.0.
+    normalize_ts : str
+        Whether the test statistic scale should be normalized, from none', 'mean-std', 'min-max', 'percentiles'. Default 'none'.
+    normalize_theta : str
+        Whether the parameter scale should be normalized, from none', 'mean-std', 'min-max'. Default 'none'.
     epochs : int
         Training epochs. Default 500.
     lr : float
@@ -250,7 +257,7 @@ class ParametricCDFEstimator:
         bandwidth:   float = 0.1,
         beta_a:      float = 2.0,
         beta_b:      float = 5.0,
-        # Normalization
+        # normalization
         normalize_ts:   str   = 'none',
         normalize_theta: str = 'none',
         # optimisation
@@ -413,7 +420,7 @@ class ParametricCDFEstimator:
         if self.loss == 'brier':
             criterion = BrierScoreLoss()
         else:
-            criterion = WeightedPinballLoss(
+            criterion = QuantileWeightedCRPSLoss(
                 n_alpha   = self.n_alpha,
                 weight_fn = self.weight_fn,
                 center    = self.center,

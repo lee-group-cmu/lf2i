@@ -40,6 +40,8 @@ def compute_confidence_regions(
         If `calibration_method = 'p-values`, used to decide whether the test rejects or not, otherwise ignored.
     poi_dim : int
         Dimensionality (number) of the parameter of interest.
+    return_indices : bool
+        Whether to return which rows (indices) of the evaluation grid correspond to points retained in the region. Default 'False'.
 
     Returns
     -------

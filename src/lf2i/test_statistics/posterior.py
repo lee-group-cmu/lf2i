@@ -13,6 +13,30 @@ from lf2i.test_statistics import TestStatistic
 
 
 class Posterior(TestStatistic):
+    """Implements the `Posterior` test statistic, i.e. the (log) posterior density :math:`\\log p(\\theta \\mid x)`
+    evaluated at a neural posterior estimator, as described in https://doi.org/10.1088/2632-2153/ae67cd.
+
+    Unlike `Waldo`'s `posterior` mode (which reduces the posterior to a conditional mean and variance via
+    Monte Carlo sampling), this test statistic uses the posterior density directly: large values indicate that
+    :math:`\\theta` is well-supported by the estimated posterior given `x`, so the acceptance region is `right`.
+
+    Parameters
+    ----------
+    poi_dim : int
+        Dimensionality (number) of the parameters of interest.
+    estimator : Union[str, Any]
+        Neural posterior estimator. Currently compatible with posterior objects implementing the interface of
+        `lf2i.estimators.base_posteriors.AbstractNeuralPosteriorTrainer` (e.g., estimators from the `sbi` library).
+        If `str`, must be one of the predefined estimators listed in `test_statistics/_estimators.py`.
+    estimator_kwargs : Dict, optional
+        Hyperparameters and settings for the posterior estimator, by default {}.
+    n_jobs : int, optional
+        Number of workers to use when evaluating the test statistic over multiple inputs, by default -2, which
+        uses all cores minus one. `n_jobs == -1` uses all cores. If `n_jobs < -1`, then `n_jobs = os.cpu_count()+1+n_jobs`.
+    **posterior_kwargs : Any
+        Additional keyword arguments forwarded to `estimator.log_prob(theta=..., x=..., **posterior_kwargs)` at
+        evaluation time.
+    """
 
     def __init__(
         self,
@@ -22,9 +46,6 @@ class Posterior(TestStatistic):
         n_jobs: int = -2,
         **posterior_kwargs
     ) -> None:
-        """
-        `estimator` currently compatible with posterior objects with interface of lf2i.estimators.base_posteriors.AbstractNeuralPosteriorTrainer.
-        """
         # Accept for high values, i.e. if posterior is very high
         super().__init__(acceptance_region='right', estimation_method='posterior')
         self.poi_dim = self.param_dim = poi_dim
@@ -34,20 +55,56 @@ class Posterior(TestStatistic):
 
     def estimate(
         self,
-        parameters: torch.Tensor, 
-        samples: torch.Tensor, 
+        parameters: torch.Tensor,
+        samples: torch.Tensor,
     ) -> None:
+        """Train the neural posterior estimator.
+
+        Parameters
+        ----------
+        parameters : torch.Tensor
+            Simulated parameters to be used for training.
+        samples : torch.Tensor
+            Simulated samples to be used for training.
+        """
         parameters, samples = preprocess_estimation_evaluation(parameters, samples, self.poi_dim)
         _ = self.estimator.append_simulations(parameters, samples).train()
         self.estimator = self.estimator.build_posterior()
         self._estimator_trained['posterior'] = True
-    
+
     def evaluate(
         self,
-        parameters: torch.Tensor, 
-        samples: torch.Tensor, 
+        parameters: torch.Tensor,
+        samples: torch.Tensor,
         mode: str
     ) -> np.ndarray:
+        """Evaluate the `Posterior` test statistic, i.e. :math:`\\log p(\\theta \\mid x)`, over the given
+        parameters and samples.
+
+        Behaviour differs depending on mode:
+            - 'critical_values' and 'diagnostics' evaluate the log-posterior once for each pair :math:`(\\theta, x)`.
+            - 'confidence_sets' evaluates the log-posterior over all pairs given by the cartesian product of
+              `parameters` (the parameter grid to construct confidence sets) and `samples`.
+
+        Parameters
+        ----------
+        parameters : torch.Tensor
+            Parameters over which to evaluate the test statistic.
+        samples : torch.Tensor
+            Samples over which to evaluate the test statistic.
+        mode : str
+            Either 'critical_values', 'confidence_sets', 'diagnostics'.
+
+        Returns
+        -------
+        np.ndarray
+            Log-posterior density evaluated over parameters and samples.
+
+        Raises
+        ------
+        ValueError
+            If `mode` is not among the pre-specified values.
+        """
         assert self._check_is_trained(), "Estimator is not trained"
         parameters, samples = preprocess_estimation_evaluation(parameters, samples, self.poi_dim)
                 
@@ -78,6 +135,34 @@ class Posterior(TestStatistic):
         
 
 class PosteriorPriorRatio(TestStatistic):
+    """Implements the `PosteriorPriorRatio` test statistic, i.e. the log-ratio of the estimated posterior
+    density to the prior density, :math:`\\log \\frac{p(\\theta \\mid x)}{p(\\theta)}`, evaluated at a neural
+    posterior estimator.
+
+    Large values indicate that the posterior places much more mass on :math:`\\theta` than the prior did, i.e.
+    that the data :math:`x` is highly informative about :math:`\\theta` relative to the prior; equivalently,
+    that the prior (denominator) is very low relative to the posterior (numerator). The acceptance region is
+    `right`.
+
+    Parameters
+    ----------
+    poi_dim : int
+        Dimensionality (number) of the parameters of interest.
+    prior : Union[torch.distributions.Distribution, Any]
+        Prior distribution over the parameters of interest. Must implement `log_prob(theta)`.
+    estimator : Union[str, Any]
+        Neural posterior estimator. Currently compatible with posterior objects implementing the interface of
+        `lf2i.estimators.base_posteriors.AbstractNeuralPosteriorTrainer` (e.g., estimators from the `sbi` library).
+        If `str`, must be one of the predefined estimators listed in `test_statistics/_estimators.py`.
+    estimator_kwargs : Dict, optional
+        Hyperparameters and settings for the posterior estimator, by default {}.
+    n_jobs : int, optional
+        Number of workers to use when evaluating the test statistic over multiple inputs, by default -2, which
+        uses all cores minus one. `n_jobs == -1` uses all cores. If `n_jobs < -1`, then `n_jobs = os.cpu_count()+1+n_jobs`.
+    **posterior_kwargs : Any
+        Additional keyword arguments forwarded to `estimator.log_prob(theta=..., x=..., **posterior_kwargs)` at
+        evaluation time.
+    """
 
     def __init__(
         self,
@@ -99,23 +184,59 @@ class PosteriorPriorRatio(TestStatistic):
 
     def estimate(
         self,
-        parameters: torch.Tensor, 
-        samples: torch.Tensor, 
+        parameters: torch.Tensor,
+        samples: torch.Tensor,
     ) -> None:
+        """Train the neural posterior estimator.
+
+        Parameters
+        ----------
+        parameters : torch.Tensor
+            Simulated parameters to be used for training.
+        samples : torch.Tensor
+            Simulated samples to be used for training.
+        """
         parameters, samples = preprocess_estimation_evaluation(parameters, samples, self.poi_dim)
         _ = self.estimator.append_simulations(parameters, samples).train()
         self.estimator = self.estimator.build_posterior()
         self._estimator_trained['posterior'] = True
-    
+
     def evaluate(
         self,
-        parameters: torch.Tensor, 
-        samples: torch.Tensor, 
+        parameters: torch.Tensor,
+        samples: torch.Tensor,
         mode: str
     ) -> np.ndarray:
+        """Evaluate the `PosteriorPriorRatio` test statistic, i.e. :math:`\\log \\frac{p(\\theta \\mid x)}{p(\\theta)}`,
+        over the given parameters and samples.
+
+        Behaviour differs depending on mode:
+            - 'critical_values' and 'diagnostics' evaluate the log-ratio once for each pair :math:`(\\theta, x)`.
+            - 'confidence_sets' evaluates the log-ratio over all pairs given by the cartesian product of
+              `parameters` (the parameter grid to construct confidence sets) and `samples`.
+
+        Parameters
+        ----------
+        parameters : torch.Tensor
+            Parameters over which to evaluate the test statistic.
+        samples : torch.Tensor
+            Samples over which to evaluate the test statistic.
+        mode : str
+            Either 'critical_values', 'confidence_sets', 'diagnostics'.
+
+        Returns
+        -------
+        np.ndarray
+            Log posterior-to-prior ratio evaluated over parameters and samples.
+
+        Raises
+        ------
+        ValueError
+            If `mode` is not among the pre-specified values.
+        """
         assert self._check_is_trained(), "Estimator is not trained"
         parameters, samples = preprocess_estimation_evaluation(parameters, samples, self.poi_dim)
-                
+
         if mode in ['critical_values', 'diagnostics']:
             def eval_one(idx):
                 with warnings.catch_warnings():
@@ -123,7 +244,7 @@ class PosteriorPriorRatio(TestStatistic):
                     ppr = torch.log(
                         torch.exp(self.estimator.log_prob(
                                 theta=parameters[idx, :], x=samples[idx, :], **self.posterior_kwargs
-                            ).double()).double() / 
+                            ).double()).double() /
                             torch.exp(self.prior.log_prob(parameters[idx, :]).double()).double()
                     )
                 return ppr.numpy()
@@ -149,6 +270,35 @@ class PosteriorPriorRatio(TestStatistic):
 
 
 class PriorPosteriorRatio(TestStatistic):
+    """Implements the `PriorPosteriorRatio` test statistic, i.e. the log-ratio of the prior density to the
+    estimated posterior density, :math:`\\log \\frac{p(\\theta)}{p(\\theta \\mid x)}`, evaluated at a neural
+    posterior estimator.
+
+    This is the negative of `PosteriorPriorRatio`'s statistic (:math:`\\log \\frac{p(\\theta)}{p(\\theta \\mid x)}
+    = -\\log \\frac{p(\\theta \\mid x)}{p(\\theta)}`), provided for workflows that require an acceptance region on
+    the `left` (small values accepted, i.e. when the posterior is high relative to the prior, or equivalently
+    when the prior is low relative to the posterior) rather than on the `right`, e.g. for consistency with
+    `Waldo`, which also uses `acceptance_region='left'`.
+
+    Parameters
+    ----------
+    poi_dim : int
+        Dimensionality (number) of the parameters of interest.
+    prior : Union[torch.distributions.Distribution, Any]
+        Prior distribution over the parameters of interest. Must implement `log_prob(theta)`.
+    estimator : Union[str, Any]
+        Neural posterior estimator. Currently compatible with posterior objects implementing the interface of
+        `lf2i.estimators.base_posteriors.AbstractNeuralPosteriorTrainer` (e.g., estimators from the `sbi` library).
+        If `str`, must be one of the predefined estimators listed in `test_statistics/_estimators.py`.
+    estimator_kwargs : Dict, optional
+        Hyperparameters and settings for the posterior estimator, by default {}.
+    n_jobs : int, optional
+        Number of workers to use when evaluating the test statistic over multiple inputs, by default -2, which
+        uses all cores minus one. `n_jobs == -1` uses all cores. If `n_jobs < -1`, then `n_jobs = os.cpu_count()+1+n_jobs`.
+    **posterior_kwargs : Any
+        Additional keyword arguments forwarded to `estimator.log_prob(theta=..., x=..., **posterior_kwargs)` at
+        evaluation time.
+    """
 
     def __init__(
         self,
@@ -170,23 +320,59 @@ class PriorPosteriorRatio(TestStatistic):
 
     def estimate(
         self,
-        parameters: torch.Tensor, 
-        samples: torch.Tensor, 
+        parameters: torch.Tensor,
+        samples: torch.Tensor,
     ) -> None:
+        """Train the neural posterior estimator.
+
+        Parameters
+        ----------
+        parameters : torch.Tensor
+            Simulated parameters to be used for training.
+        samples : torch.Tensor
+            Simulated samples to be used for training.
+        """
         parameters, samples = preprocess_estimation_evaluation(parameters, samples, self.poi_dim)
         _ = self.estimator.append_simulations(parameters, samples).train()
         self.estimator = self.estimator.build_posterior()
         self._estimator_trained['posterior'] = True
-    
+
     def evaluate(
         self,
-        parameters: torch.Tensor, 
-        samples: torch.Tensor, 
+        parameters: torch.Tensor,
+        samples: torch.Tensor,
         mode: str
     ) -> np.ndarray:
+        """Evaluate the `PriorPosteriorRatio` test statistic, i.e. :math:`\\log \\frac{p(\\theta)}{p(\\theta \\mid x)}`,
+        over the given parameters and samples.
+
+        Behaviour differs depending on mode:
+            - 'critical_values' and 'diagnostics' evaluate the log-ratio once for each pair :math:`(\\theta, x)`.
+            - 'confidence_sets' evaluates the log-ratio over all pairs given by the cartesian product of
+              `parameters` (the parameter grid to construct confidence sets) and `samples`.
+
+        Parameters
+        ----------
+        parameters : torch.Tensor
+            Parameters over which to evaluate the test statistic.
+        samples : torch.Tensor
+            Samples over which to evaluate the test statistic.
+        mode : str
+            Either 'critical_values', 'confidence_sets', 'diagnostics'.
+
+        Returns
+        -------
+        np.ndarray
+            Log prior-to-posterior ratio evaluated over parameters and samples.
+
+        Raises
+        ------
+        ValueError
+            If `mode` is not among the pre-specified values.
+        """
         assert self._check_is_trained(), "Estimator is not trained"
         parameters, samples = preprocess_estimation_evaluation(parameters, samples, self.poi_dim)
-                
+
         if mode in ['critical_values', 'diagnostics']:
             def eval_one(idx):
                 with warnings.catch_warnings():

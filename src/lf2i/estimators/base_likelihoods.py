@@ -23,10 +23,8 @@ class AbstractClassifier(Protocol):
 
         Parameters
         ----------
-        theta : Union[torch.Tensor, np.ndarray]
-            Parameter values at which to evaluate
-        x : Optional[Union[torch.Tensor, np.ndarray]]
-            Observed data (optional, some posteriors may have this pre-set)
+        X : Union[torch.Tensor, np.ndarray]
+            Observed test statistic values and parameter values at which to evaluate
 
         Returns
         -------
