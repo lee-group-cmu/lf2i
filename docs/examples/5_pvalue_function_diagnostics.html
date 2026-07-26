@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="lf2i package" href="../api/lf2i.html"><link rel="prev" title="INTRO &amp; SETTINGS" href="4_waldo_posterior_pvalue_construction.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="lf2i package" href="../api/lf2i.html"><link rel="prev" title="Waldo Posterior P-value Construction" href="4_waldo_posterior_pvalue_construction.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
-        <title>INTRO &amp; SETTINGS - LF2I 0.4.1 documentation</title>
+        <title>P-value Function Diagnostics - LF2I 0.4.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
@@ -173,7 +173,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
       </label>
     </div>
@@ -194,29 +194,12 @@
   <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../tutorials.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#CONFIDENCE-SET-via-ACORE">CONFIDENCE SET via ACORE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#CONFIDENCE-SET-via-BFF-(implicit-nuisance-marginalization)">CONFIDENCE SET via BFF (implicit nuisance marginalization)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#COMPARISON">COMPARISON</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#EXACT-COVERAGE">EXACT COVERAGE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#EXACT-COVERAGE-OVER-(mu,-nu)">EXACT COVERAGE OVER (mu, nu)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html#DATA-GENERATION">DATA GENERATION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html#A-FREQUENTIST-CONFIDENCE-PROCEDURE">A FREQUENTIST CONFIDENCE PROCEDURE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html#CONFIDENCE-SET-by-leveraging-a-POSTERIOR-ESTIMATOR">CONFIDENCE SET by leveraging a POSTERIOR ESTIMATOR</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html#LOCAL-COVERAGE">LOCAL COVERAGE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html#CONFIDENCE-SET-via-Posterior-+-p-values">CONFIDENCE SET via Posterior + p-values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html#CONFIDENCE-SET-via-Waldo-(posterior-based)-+-p-values">CONFIDENCE SET via Waldo (posterior-based) + p-values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html#COMPARISON">COMPARISON</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#FIT-THE-P-VALUE-FUNCTION">FIT THE P-VALUE FUNCTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#DIAGNOSE-THE-FIT">DIAGNOSE THE FIT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html">Quantile Regression Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html">Confidence Distribution Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html#ESTIMATED-COVERAGE">ESTIMATED COVERAGE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html">Waldo Critical Values Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html">Waldo Posterior P-value Construction</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">P-value Function Diagnostics</a></li>
 </ul>
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api/lf2i.html">lf2i package</a><input aria-label="Toggle navigation of lf2i package" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -267,7 +250,7 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
           </label>
         </div>
@@ -281,8 +264,10 @@
 </pre></div>
 </div>
 </div>
+<section id="P-value-Function-Diagnostics">
+<h1>P-value Function Diagnostics<a class="headerlink" href="#P-value-Function-Diagnostics" title="Link to this heading">¶</a></h1>
 <section id="INTRO-&amp;-SETTINGS">
-<h1>INTRO &amp; SETTINGS<a class="headerlink" href="#INTRO-&-SETTINGS" title="Link to this heading">¶</a></h1>
+<h2>INTRO &amp; SETTINGS<a class="headerlink" href="#INTRO-&-SETTINGS" title="Link to this heading">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">p-values</span></code> calibration method fits a monotonic probabilistic classifier that estimates the rejection probability <span class="math notranslate nohighlight">\(P(T \le \tau \mid \theta)\)</span> – i.e. a p-value/CDF function of the test statistic, conditional on <span class="math notranslate nohighlight">\(\theta\)</span>. Notebooks 2 and 4 use this fitted function to build confidence sets, but never ask <em>how good the fit itself is</em>.</p>
 <p>This notebook is about that second question: diagnosing the fit of the p-value function, independent of the confidence sets built from it. We reuse the same model as notebook 2 (<code class="docutils literal notranslate"><span class="pre">Posterior</span></code> + <code class="docutils literal notranslate"><span class="pre">calibration_method='p-values'</span></code> on <code class="docutils literal notranslate"><span class="pre">GaussianMean</span></code>) so the diagnostics here are directly comparable to that notebook’s construction.</p>
 <div class="nbinput nblast docutils container">
@@ -311,7 +296,7 @@
 </div>
 </section>
 <section id="SIMULATE">
-<h1>SIMULATE<a class="headerlink" href="#SIMULATE" title="Link to this heading">¶</a></h1>
+<h2>SIMULATE<a class="headerlink" href="#SIMULATE" title="Link to this heading">¶</a></h2>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
 </pre></div>
@@ -335,7 +320,7 @@
 </div>
 </section>
 <section id="FIT-THE-P-VALUE-FUNCTION">
-<h1>FIT THE P-VALUE FUNCTION<a class="headerlink" href="#FIT-THE-P-VALUE-FUNCTION" title="Link to this heading">¶</a></h1>
+<h2>FIT THE P-VALUE FUNCTION<a class="headerlink" href="#FIT-THE-P-VALUE-FUNCTION" title="Link to this heading">¶</a></h2>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
 </pre></div>
@@ -364,7 +349,7 @@
 </div>
 </section>
 <section id="DIAGNOSE-THE-FIT">
-<h1>DIAGNOSE THE FIT<a class="headerlink" href="#DIAGNOSE-THE-FIT" title="Link to this heading">¶</a></h1>
+<h2>DIAGNOSE THE FIT<a class="headerlink" href="#DIAGNOSE-THE-FIT" title="Link to this heading">¶</a></h2>
 <p>For each <span class="math notranslate nohighlight">\(\theta\)</span> on the evaluation grid, <code class="docutils literal notranslate"><span class="pre">monte_carlo_pvalue_diagnostics</span></code> draws fresh Monte Carlo samples, evaluates the test statistic, and compares the fitted p-value/CDF model’s predictions to the <em>empirical</em> CDF at that <span class="math notranslate nohighlight">\(\theta\)</span> – returning, per grid point, a normalized CRPS (0 = perfect fit, 1 = no better than ignoring <span class="math notranslate nohighlight">\(\theta\)</span> and using the marginal CDF) and pinball losses at a range of quantile levels.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
@@ -384,7 +369,7 @@
 </div>
 </div>
 <section id="Calibration-score-heatmap">
-<h2>Calibration score heatmap<a class="headerlink" href="#Calibration-score-heatmap" title="Link to this heading">¶</a></h2>
+<h3>Calibration score heatmap<a class="headerlink" href="#Calibration-score-heatmap" title="Link to this heading">¶</a></h3>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
 </pre></div>
@@ -403,7 +388,7 @@
 </div>
 </section>
 <section id="CDF-comparison-at-a-single-theta">
-<h2>CDF comparison at a single theta<a class="headerlink" href="#CDF-comparison-at-a-single-theta" title="Link to this heading">¶</a></h2>
+<h3>CDF comparison at a single theta<a class="headerlink" href="#CDF-comparison-at-a-single-theta" title="Link to this heading">¶</a></h3>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
 </pre></div>
@@ -423,7 +408,7 @@
 </div>
 </section>
 <section id="Combined-diagnostic-panel">
-<h2>Combined diagnostic panel<a class="headerlink" href="#Combined-diagnostic-panel" title="Link to this heading">¶</a></h2>
+<h3>Combined diagnostic panel<a class="headerlink" href="#Combined-diagnostic-panel" title="Link to this heading">¶</a></h3>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
 </pre></div>
@@ -443,6 +428,7 @@
 </pre></div>
 </div>
 </div>
+</section>
 </section>
 </section>
 
@@ -467,7 +453,7 @@
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">INTRO &amp; SETTINGS</div>
+                <div class="title">Waldo Posterior P-value Construction</div>
                 
               </div>
             </a>
@@ -496,8 +482,35 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">P-value Function Diagnostics</a><ul>
+<li><a class="reference internal" href="#INTRO-&amp;-SETTINGS">INTRO &amp; SETTINGS</a></li>
+<li><a class="reference internal" href="#SIMULATE">SIMULATE</a></li>
+<li><a class="reference internal" href="#FIT-THE-P-VALUE-FUNCTION">FIT THE P-VALUE FUNCTION</a></li>
+<li><a class="reference internal" href="#DIAGNOSE-THE-FIT">DIAGNOSE THE FIT</a><ul>
+<li><a class="reference internal" href="#Calibration-score-heatmap">Calibration score heatmap</a></li>
+<li><a class="reference internal" href="#CDF-comparison-at-a-single-theta">CDF comparison at a single theta</a></li>
+<li><a class="reference internal" href="#Combined-diagnostic-panel">Combined diagnostic panel</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

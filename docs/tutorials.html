@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="INTRO &amp; SETTINGS" href="examples/1_quantile_regression_construction.html"><link rel="prev" title="LF2I: Likelihood-Free Frequentist Inference" href="index.html">
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Quantile Regression Construction" href="examples/1_quantile_regression_construction.html"><link rel="prev" title="LF2I: Likelihood-Free Frequentist Inference" href="index.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
         <title>Tutorials - LF2I 0.4.1 documentation</title>
@@ -193,29 +193,12 @@
   <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current has-children current-page"><a class="current reference internal" href="#">Tutorials</a><input aria-label="Toggle navigation of Tutorials" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l2"><a class="reference internal" href="examples/1_quantile_regression_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/1_quantile_regression_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/1_quantile_regression_construction.html#CONFIDENCE-SET-via-ACORE">CONFIDENCE SET via ACORE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/1_quantile_regression_construction.html#CONFIDENCE-SET-via-BFF-(implicit-nuisance-marginalization)">CONFIDENCE SET via BFF (implicit nuisance marginalization)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/1_quantile_regression_construction.html#COMPARISON">COMPARISON</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/1_quantile_regression_construction.html#EXACT-COVERAGE">EXACT COVERAGE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/1_quantile_regression_construction.html#EXACT-COVERAGE-OVER-(mu,-nu)">EXACT COVERAGE OVER (mu, nu)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/2_confidence_distribution_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/2_confidence_distribution_construction.html#DATA-GENERATION">DATA GENERATION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/2_confidence_distribution_construction.html#A-FREQUENTIST-CONFIDENCE-PROCEDURE">A FREQUENTIST CONFIDENCE PROCEDURE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/3_waldo_critical_values_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/3_waldo_critical_values_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/3_waldo_critical_values_construction.html#CONFIDENCE-SET-by-leveraging-a-POSTERIOR-ESTIMATOR">CONFIDENCE SET by leveraging a POSTERIOR ESTIMATOR</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/3_waldo_critical_values_construction.html#LOCAL-COVERAGE">LOCAL COVERAGE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/4_waldo_posterior_pvalue_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/4_waldo_posterior_pvalue_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/4_waldo_posterior_pvalue_construction.html#CONFIDENCE-SET-via-Posterior-+-p-values">CONFIDENCE SET via Posterior + p-values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/4_waldo_posterior_pvalue_construction.html#CONFIDENCE-SET-via-Waldo-(posterior-based)-+-p-values">CONFIDENCE SET via Waldo (posterior-based) + p-values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/4_waldo_posterior_pvalue_construction.html#COMPARISON">COMPARISON</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/5_pvalue_function_diagnostics.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/5_pvalue_function_diagnostics.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/5_pvalue_function_diagnostics.html#FIT-THE-P-VALUE-FUNCTION">FIT THE P-VALUE FUNCTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples/5_pvalue_function_diagnostics.html#DIAGNOSE-THE-FIT">DIAGNOSE THE FIT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples/1_quantile_regression_construction.html">Quantile Regression Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples/2_confidence_distribution_construction.html">Confidence Distribution Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples/2_confidence_distribution_construction.html#ESTIMATED-COVERAGE">ESTIMATED COVERAGE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples/3_waldo_critical_values_construction.html">Waldo Critical Values Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples/4_waldo_posterior_pvalue_construction.html">Waldo Posterior P-value Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples/5_pvalue_function_diagnostics.html">P-value Function Diagnostics</a></li>
 </ul>
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="api/lf2i.html">lf2i package</a><input aria-label="Toggle navigation of lf2i package" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -278,29 +261,12 @@ from estimating test statistics to running full diagnostics. They are rendered
 here with their saved outputs (not re-executed at build time).</p>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="examples/1_quantile_regression_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/1_quantile_regression_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/1_quantile_regression_construction.html#CONFIDENCE-SET-via-ACORE">CONFIDENCE SET via ACORE</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/1_quantile_regression_construction.html#CONFIDENCE-SET-via-BFF-(implicit-nuisance-marginalization)">CONFIDENCE SET via BFF (implicit nuisance marginalization)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/1_quantile_regression_construction.html#COMPARISON">COMPARISON</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/1_quantile_regression_construction.html#EXACT-COVERAGE">EXACT COVERAGE</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/1_quantile_regression_construction.html#EXACT-COVERAGE-OVER-(mu,-nu)">EXACT COVERAGE OVER (mu, nu)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/2_confidence_distribution_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/2_confidence_distribution_construction.html#DATA-GENERATION">DATA GENERATION</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/2_confidence_distribution_construction.html#A-FREQUENTIST-CONFIDENCE-PROCEDURE">A FREQUENTIST CONFIDENCE PROCEDURE</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/3_waldo_critical_values_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/3_waldo_critical_values_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/3_waldo_critical_values_construction.html#CONFIDENCE-SET-by-leveraging-a-POSTERIOR-ESTIMATOR">CONFIDENCE SET by leveraging a POSTERIOR ESTIMATOR</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/3_waldo_critical_values_construction.html#LOCAL-COVERAGE">LOCAL COVERAGE</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/4_waldo_posterior_pvalue_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/4_waldo_posterior_pvalue_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/4_waldo_posterior_pvalue_construction.html#CONFIDENCE-SET-via-Posterior-+-p-values">CONFIDENCE SET via Posterior + p-values</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/4_waldo_posterior_pvalue_construction.html#CONFIDENCE-SET-via-Waldo-(posterior-based)-+-p-values">CONFIDENCE SET via Waldo (posterior-based) + p-values</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/4_waldo_posterior_pvalue_construction.html#COMPARISON">COMPARISON</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/5_pvalue_function_diagnostics.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/5_pvalue_function_diagnostics.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/5_pvalue_function_diagnostics.html#FIT-THE-P-VALUE-FUNCTION">FIT THE P-VALUE FUNCTION</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples/5_pvalue_function_diagnostics.html#DIAGNOSE-THE-FIT">DIAGNOSE THE FIT</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/1_quantile_regression_construction.html">Quantile Regression Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/2_confidence_distribution_construction.html">Confidence Distribution Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/2_confidence_distribution_construction.html#ESTIMATED-COVERAGE">ESTIMATED COVERAGE</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/3_waldo_critical_values_construction.html">Waldo Critical Values Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/4_waldo_posterior_pvalue_construction.html">Waldo Posterior P-value Construction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/5_pvalue_function_diagnostics.html">P-value Function Diagnostics</a></li>
 </ul>
 </div>
 </section>
@@ -315,7 +281,7 @@ here with their saved outputs (not re-executed at build time).</p>
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">INTRO &amp; SETTINGS</div>
+                <div class="title">Quantile Regression Construction</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>

@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="INTRO &amp; SETTINGS" href="2_confidence_distribution_construction.html"><link rel="prev" title="Tutorials" href="../tutorials.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Confidence Distribution Construction" href="2_confidence_distribution_construction.html"><link rel="prev" title="Tutorials" href="../tutorials.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
-        <title>INTRO &amp; SETTINGS - LF2I 0.4.1 documentation</title>
+        <title>Quantile Regression Construction - LF2I 0.4.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
@@ -173,7 +173,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
       </label>
     </div>
@@ -194,29 +194,12 @@
   <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../tutorials.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#CONFIDENCE-SET-via-ACORE">CONFIDENCE SET via ACORE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#CONFIDENCE-SET-via-BFF-(implicit-nuisance-marginalization)">CONFIDENCE SET via BFF (implicit nuisance marginalization)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#COMPARISON">COMPARISON</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#EXACT-COVERAGE">EXACT COVERAGE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#EXACT-COVERAGE-OVER-(mu,-nu)">EXACT COVERAGE OVER (mu, nu)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html#DATA-GENERATION">DATA GENERATION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html#A-FREQUENTIST-CONFIDENCE-PROCEDURE">A FREQUENTIST CONFIDENCE PROCEDURE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html#CONFIDENCE-SET-by-leveraging-a-POSTERIOR-ESTIMATOR">CONFIDENCE SET by leveraging a POSTERIOR ESTIMATOR</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html#LOCAL-COVERAGE">LOCAL COVERAGE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html#CONFIDENCE-SET-via-Posterior-+-p-values">CONFIDENCE SET via Posterior + p-values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html#CONFIDENCE-SET-via-Waldo-(posterior-based)-+-p-values">CONFIDENCE SET via Waldo (posterior-based) + p-values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html#COMPARISON">COMPARISON</a></li>
-<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html#FIT-THE-P-VALUE-FUNCTION">FIT THE P-VALUE FUNCTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html#DIAGNOSE-THE-FIT">DIAGNOSE THE FIT</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Quantile Regression Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html">Confidence Distribution Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html#ESTIMATED-COVERAGE">ESTIMATED COVERAGE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html">Waldo Critical Values Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html">Waldo Posterior P-value Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html">P-value Function Diagnostics</a></li>
 </ul>
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api/lf2i.html">lf2i package</a><input aria-label="Toggle navigation of lf2i package" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -267,7 +250,7 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
           </label>
         </div>
@@ -281,8 +264,10 @@
 </pre></div>
 </div>
 </div>
+<section id="Quantile-Regression-Construction">
+<h1>Quantile Regression Construction<a class="headerlink" href="#Quantile-Regression-Construction" title="Link to this heading">¶</a></h1>
 <section id="INTRO-&amp;-SETTINGS">
-<h1>INTRO &amp; SETTINGS<a class="headerlink" href="#INTRO-&-SETTINGS" title="Link to this heading">¶</a></h1>
+<h2>INTRO &amp; SETTINGS<a class="headerlink" href="#INTRO-&-SETTINGS" title="Link to this heading">¶</a></h2>
 <p>The goal of this tutorial is to show how to construct confidence sets via <strong>quantile regression</strong>, using the likelihood-based test statistics <code class="docutils literal notranslate"><span class="pre">ACORE</span></code> and <code class="docutils literal notranslate"><span class="pre">BFF</span></code>, on the “on-off” Poisson counting experiment described in <a class="reference external" href="https://arxiv.org/abs/2107.03920">https://arxiv.org/abs/2107.03920</a> (Section 5.1 of the EJS paper).</p>
 <p>A Poisson counting experiment where particle collision events are counted in the presence of both an uncertain background process and a (new) signal process:</p>
 <div class="math-wrapper docutils container">
@@ -315,7 +300,7 @@
 </div>
 </section>
 <section id="SIMULATE">
-<h1>SIMULATE<a class="headerlink" href="#SIMULATE" title="Link to this heading">¶</a></h1>
+<h2>SIMULATE<a class="headerlink" href="#SIMULATE" title="Link to this heading">¶</a></h2>
 <p>Let’s start from the simulator, which is used internally to generate the data needed to</p>
 <ol class="arabic simple">
 <li><p>estimate the test statistics;</p></li>
@@ -340,7 +325,7 @@
 </div>
 </div>
 <section id="Observations">
-<h2>Observations<a class="headerlink" href="#Observations" title="Link to this heading">¶</a></h2>
+<h3>Observations<a class="headerlink" href="#Observations" title="Link to this heading">¶</a></h3>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
@@ -365,7 +350,7 @@
 </section>
 </section>
 <section id="CONFIDENCE-SET-via-ACORE">
-<h1>CONFIDENCE SET via ACORE<a class="headerlink" href="#CONFIDENCE-SET-via-ACORE" title="Link to this heading">¶</a></h1>
+<h2>CONFIDENCE SET via ACORE<a class="headerlink" href="#CONFIDENCE-SET-via-ACORE" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">ACORE</span></code> estimates the full odds function over <span class="math notranslate nohighlight">\((\mu, \nu)\)</span> jointly, then profiles out the nuisance <span class="math notranslate nohighlight">\(\nu\)</span> by numerical optimization at evaluation time (<code class="docutils literal notranslate"><span class="pre">param_space_bounds</span></code> tells it the box over which to profile). This is the “textbook” nuisance-parameter treatment: nothing about <span class="math notranslate nohighlight">\(\nu\)</span> is special-cased here, it’s simply part of the odds function’s input.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
@@ -527,7 +512,7 @@ Creating set 0...
 </div>
 </section>
 <section id="CONFIDENCE-SET-via-BFF-(implicit-nuisance-marginalization)">
-<h1>CONFIDENCE SET via BFF (implicit nuisance marginalization)<a class="headerlink" href="#CONFIDENCE-SET-via-BFF-(implicit-nuisance-marginalization)" title="Link to this heading">¶</a></h1>
+<h2>CONFIDENCE SET via BFF (implicit nuisance marginalization)<a class="headerlink" href="#CONFIDENCE-SET-via-BFF-(implicit-nuisance-marginalization)" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">BFF</span></code>’s nuisance-marginalization path (numerically integrating the odds function over <span class="math notranslate nohighlight">\(\nu\)</span> via <code class="docutils literal notranslate"><span class="pre">scipy.integrate.nquad</span></code>) turns out to be unimplemented in the current <code class="docutils literal notranslate"><span class="pre">lf2i</span></code> codebase. Rather than implementing that numerical-integration machinery here, we take the approach of having <code class="docutils literal notranslate"><span class="pre">BFF</span></code> <strong>implicitly marginalize</strong> over <span class="math notranslate nohighlight">\(\nu\)</span>: we simulate full <span class="math notranslate nohighlight">\((\mu, \nu)\)</span> pairs from <code class="docutils literal notranslate"><span class="pre">OnOff</span></code> (so <span class="math notranslate nohighlight">\(X\)</span> still reflects the true <span class="math notranslate nohighlight">\(\nu\)</span> variability across the training/calibration
 sets), but only expose <span class="math notranslate nohighlight">\(\mu\)</span> to <code class="docutils literal notranslate"><span class="pre">BFF</span></code>’s odds estimator — i.e. <code class="docutils literal notranslate"><span class="pre">BFF</span></code> is configured with <code class="docutils literal notranslate"><span class="pre">nuisance_dim=0</span></code> and never sees <span class="math notranslate nohighlight">\(\nu\)</span> as an input feature. Since <span class="math notranslate nohighlight">\(\nu\)</span> varies across the training distribution but is not conditioned on, the classifier learns the <span class="math notranslate nohighlight">\(\mu\)</span>-marginal-over-<span class="math notranslate nohighlight">\(\nu\)</span> likelihood ratio automatically, rather than through explicit integration.</p>
 <p>This means we bypass <code class="docutils literal notranslate"><span class="pre">LF2I.inference</span></code>’s <code class="docutils literal notranslate"><span class="pre">simulator=</span></code>/<code class="docutils literal notranslate"><span class="pre">b=</span></code>/<code class="docutils literal notranslate"><span class="pre">b_prime=</span></code> convenience (which would forward <em>all</em> parameter columns unfiltered) and instead build the training (<code class="docutils literal notranslate"><span class="pre">T</span></code>) and calibration (<code class="docutils literal notranslate"><span class="pre">T_prime</span></code>) sets manually, dropping the <span class="math notranslate nohighlight">\(\nu\)</span> column before handing them to <code class="docutils literal notranslate"><span class="pre">BFF</span></code>.</p>
@@ -610,7 +595,7 @@ Creating set 0...
 </div>
 </section>
 <section id="COMPARISON">
-<h1>COMPARISON<a class="headerlink" href="#COMPARISON" title="Link to this heading">¶</a></h1>
+<h2>COMPARISON<a class="headerlink" href="#COMPARISON" title="Link to this heading">¶</a></h2>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
@@ -631,7 +616,7 @@ Creating set 0...
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_1_quantile_regression_construction_16_0.png" src="../_images/examples_1_quantile_regression_construction_16_0.png" />
+<img alt="../_images/examples_1_quantile_regression_construction_17_0.png" src="../_images/examples_1_quantile_regression_construction_17_0.png" />
 </div>
 </div>
 <div class="nbinput docutils container">
@@ -652,12 +637,12 @@ Creating set 0...
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_1_quantile_regression_construction_17_0.png" src="../_images/examples_1_quantile_regression_construction_17_0.png" />
+<img alt="../_images/examples_1_quantile_regression_construction_18_0.png" src="../_images/examples_1_quantile_regression_construction_18_0.png" />
 </div>
 </div>
 </section>
 <section id="EXACT-COVERAGE">
-<h1>EXACT COVERAGE<a class="headerlink" href="#EXACT-COVERAGE" title="Link to this heading">¶</a></h1>
+<h2>EXACT COVERAGE<a class="headerlink" href="#EXACT-COVERAGE" title="Link to this heading">¶</a></h2>
 <p>Since <code class="docutils literal notranslate"><span class="pre">OnOff</span></code> is cheap to simulate, we can check exact (Monte Carlo) coverage of both confidence-set constructions across the <code class="docutils literal notranslate"><span class="pre">mu</span></code> grid. For <code class="docutils literal notranslate"><span class="pre">ACORE</span></code>, the evaluation grid must include the nuisance dimension too (<code class="docutils literal notranslate"><span class="pre">evaluation_grid</span></code> needs <code class="docutils literal notranslate"><span class="pre">param_dim</span></code> columns) — we fix <code class="docutils literal notranslate"><span class="pre">nu</span></code> at its nominal value, 1.0, for this diagnostic slice. For <code class="docutils literal notranslate"><span class="pre">BFF</span></code>, only <code class="docutils literal notranslate"><span class="pre">mu</span></code> is needed, since the nuisance dimension was never part of its parameter space.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
@@ -706,7 +691,7 @@ Evaluating ACORE for 100000 points...: 100%|██████████| 1000
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_1_quantile_regression_construction_21_0.png" src="../_images/examples_1_quantile_regression_construction_21_0.png" />
+<img alt="../_images/examples_1_quantile_regression_construction_22_0.png" src="../_images/examples_1_quantile_regression_construction_22_0.png" />
 </div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">LF2I.coverage(exact=True,</span> <span class="pre">...)</span></code> can’t be reused as-is for <code class="docutils literal notranslate"><span class="pre">BFF</span></code>: internally it simulates data <em>and</em> evaluates the test statistic/calibration model from the same <code class="docutils literal notranslate"><span class="pre">evaluation_grid</span></code> columns (see <code class="docutils literal notranslate"><span class="pre">lf2i.diagnostics.monte_carlo_methods.monte_carlo_coverage</span></code>). <code class="docutils literal notranslate"><span class="pre">OnOff</span></code> needs both <code class="docutils literal notranslate"><span class="pre">mu</span></code> and <code class="docutils literal notranslate"><span class="pre">nu</span></code> to simulate, but <code class="docutils literal notranslate"><span class="pre">BFF</span></code>’s odds estimator and calibration model were only ever trained on <code class="docutils literal notranslate"><span class="pre">mu</span></code> (implicit marginalization, as above). So we write a small helper that decouples the two: the full
@@ -782,12 +767,12 @@ Evaluating ACORE for 100000 points...: 100%|██████████| 1000
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_1_quantile_regression_construction_25_0.png" src="../_images/examples_1_quantile_regression_construction_25_0.png" />
+<img alt="../_images/examples_1_quantile_regression_construction_26_0.png" src="../_images/examples_1_quantile_regression_construction_26_0.png" />
 </div>
 </div>
 </section>
 <section id="EXACT-COVERAGE-OVER-(mu,-nu)">
-<h1>EXACT COVERAGE OVER (mu, nu)<a class="headerlink" href="#EXACT-COVERAGE-OVER-(mu,-nu)" title="Link to this heading">¶</a></h1>
+<h2>EXACT COVERAGE OVER (mu, nu)<a class="headerlink" href="#EXACT-COVERAGE-OVER-(mu,-nu)" title="Link to this heading">¶</a></h2>
 <p>The slices above fix <code class="docutils literal notranslate"><span class="pre">nu</span></code> at its nominal value 1.0. Since <code class="docutils literal notranslate"><span class="pre">BFF</span></code> marginalizes <code class="docutils literal notranslate"><span class="pre">nu</span></code> out only <em>implicitly</em> (by never conditioning on it, relying on the training distribution to average over it correctly), it’s worth checking coverage on the full <code class="docutils literal notranslate"><span class="pre">(mu,</span> <span class="pre">nu)</span></code> plane rather than a single slice: if <code class="docutils literal notranslate"><span class="pre">nu</span></code> drifts away from where the training prior placed most of its mass, does <code class="docutils literal notranslate"><span class="pre">BFF</span></code> coverage still hold? <code class="docutils literal notranslate"><span class="pre">ACORE</span></code>, which explicitly profiles <code class="docutils literal notranslate"><span class="pre">nu</span></code>, gives a natural point of comparison on the same
 grid.</p>
 <p>Note this is <code class="docutils literal notranslate"><span class="pre">POI_GRID_SIZE</span> <span class="pre">//</span> <span class="pre">50</span> <span class="pre">*</span> <span class="pre">20</span> <span class="pre">=</span> <span class="pre">20</span> <span class="pre">*</span> <span class="pre">20</span> <span class="pre">=</span> <span class="pre">400</span></code> grid points, each needing its own Monte Carlo batch.</p>
@@ -847,7 +832,7 @@ Evaluating ACORE for 120000 points...: 100%|██████████| 1200
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_1_quantile_regression_construction_29_0.png" src="../_images/examples_1_quantile_regression_construction_29_0.png" />
+<img alt="../_images/examples_1_quantile_regression_construction_30_0.png" src="../_images/examples_1_quantile_regression_construction_30_0.png" />
 </div>
 </div>
 <div class="nbinput nblast docutils container">
@@ -880,9 +865,10 @@ Evaluating ACORE for 120000 points...: 100%|██████████| 1200
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_1_quantile_regression_construction_31_0.png" src="../_images/examples_1_quantile_regression_construction_31_0.png" />
+<img alt="../_images/examples_1_quantile_regression_construction_32_0.png" src="../_images/examples_1_quantile_regression_construction_32_0.png" />
 </div>
 </div>
+</section>
 </section>
 
         </article>
@@ -895,7 +881,7 @@ Evaluating ACORE for 120000 points...: 100%|██████████| 1200
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">INTRO &amp; SETTINGS</div>
+                <div class="title">Confidence Distribution Construction</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -935,8 +921,36 @@ Evaluating ACORE for 120000 points...: 100%|██████████| 1200
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Quantile Regression Construction</a><ul>
+<li><a class="reference internal" href="#INTRO-&amp;-SETTINGS">INTRO &amp; SETTINGS</a></li>
+<li><a class="reference internal" href="#SIMULATE">SIMULATE</a><ul>
+<li><a class="reference internal" href="#Observations">Observations</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#CONFIDENCE-SET-via-ACORE">CONFIDENCE SET via ACORE</a></li>
+<li><a class="reference internal" href="#CONFIDENCE-SET-via-BFF-(implicit-nuisance-marginalization)">CONFIDENCE SET via BFF (implicit nuisance marginalization)</a></li>
+<li><a class="reference internal" href="#COMPARISON">COMPARISON</a></li>
+<li><a class="reference internal" href="#EXACT-COVERAGE">EXACT COVERAGE</a></li>
+<li><a class="reference internal" href="#EXACT-COVERAGE-OVER-(mu,-nu)">EXACT COVERAGE OVER (mu, nu)</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="INTRO &amp; SETTINGS" href="3_waldo_critical_values_construction.html"><link rel="prev" title="INTRO &amp; SETTINGS" href="1_quantile_regression_construction.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Waldo Critical Values Construction" href="3_waldo_critical_values_construction.html"><link rel="prev" title="Quantile Regression Construction" href="1_quantile_regression_construction.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
-        <title>INTRO &amp; SETTINGS - LF2I 0.4.1 documentation</title>
+        <title>Confidence Distribution Construction - LF2I 0.4.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
@@ -173,7 +173,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
       </label>
     </div>
@@ -194,29 +194,12 @@
   <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../tutorials.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#CONFIDENCE-SET-via-ACORE">CONFIDENCE SET via ACORE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#CONFIDENCE-SET-via-BFF-(implicit-nuisance-marginalization)">CONFIDENCE SET via BFF (implicit nuisance marginalization)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#COMPARISON">COMPARISON</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#EXACT-COVERAGE">EXACT COVERAGE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#EXACT-COVERAGE-OVER-(mu,-nu)">EXACT COVERAGE OVER (mu, nu)</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#DATA-GENERATION">DATA GENERATION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#A-FREQUENTIST-CONFIDENCE-PROCEDURE">A FREQUENTIST CONFIDENCE PROCEDURE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html#CONFIDENCE-SET-by-leveraging-a-POSTERIOR-ESTIMATOR">CONFIDENCE SET by leveraging a POSTERIOR ESTIMATOR</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html#LOCAL-COVERAGE">LOCAL COVERAGE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html#CONFIDENCE-SET-via-Posterior-+-p-values">CONFIDENCE SET via Posterior + p-values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html#CONFIDENCE-SET-via-Waldo-(posterior-based)-+-p-values">CONFIDENCE SET via Waldo (posterior-based) + p-values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html#COMPARISON">COMPARISON</a></li>
-<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html#FIT-THE-P-VALUE-FUNCTION">FIT THE P-VALUE FUNCTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html#DIAGNOSE-THE-FIT">DIAGNOSE THE FIT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html">Quantile Regression Construction</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Confidence Distribution Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ESTIMATED-COVERAGE">ESTIMATED COVERAGE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html">Waldo Critical Values Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="4_waldo_posterior_pvalue_construction.html">Waldo Posterior P-value Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html">P-value Function Diagnostics</a></li>
 </ul>
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api/lf2i.html">lf2i package</a><input aria-label="Toggle navigation of lf2i package" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -267,7 +250,7 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
           </label>
         </div>
@@ -281,8 +264,10 @@
 </pre></div>
 </div>
 </div>
+<section id="Confidence-Distribution-Construction">
+<h1>Confidence Distribution Construction<a class="headerlink" href="#Confidence-Distribution-Construction" title="Link to this heading">¶</a></h1>
 <section id="INTRO-&amp;-SETTINGS">
-<h1>INTRO &amp; SETTINGS<a class="headerlink" href="#INTRO-&-SETTINGS" title="Link to this heading">¶</a></h1>
+<h2>INTRO &amp; SETTINGS<a class="headerlink" href="#INTRO-&-SETTINGS" title="Link to this heading">¶</a></h2>
 <p>The goal of this tutorial is to show the capabilities of <code class="docutils literal notranslate"><span class="pre">lf2i</span></code> and the <code class="docutils literal notranslate"><span class="pre">posterior</span></code> test statistic with a simple example: inferring the mean <span class="math notranslate nohighlight">\(\theta \in \mathbb{R}^{2}\)</span> of a Gaussian model with fixed covariance, and a Gaussian prior distribution</p>
 <div class="math-wrapper docutils container">
 <div class="math notranslate nohighlight">
@@ -310,7 +295,7 @@
 </div>
 </section>
 <section id="DATA-GENERATION">
-<h1>DATA GENERATION<a class="headerlink" href="#DATA-GENERATION" title="Link to this heading">¶</a></h1>
+<h2>DATA GENERATION<a class="headerlink" href="#DATA-GENERATION" title="Link to this heading">¶</a></h2>
 <p>Let’s start from the simulator, which is used internally to generate data needed to</p>
 <ol class="arabic simple">
 <li><p>estimate the test statistics;</p></li>
@@ -355,7 +340,7 @@
 </div>
 </div>
 <section id="Observations">
-<h2>Observations<a class="headerlink" href="#Observations" title="Link to this heading">¶</a></h2>
+<h3>Observations<a class="headerlink" href="#Observations" title="Link to this heading">¶</a></h3>
 <p>For simplicity, let’s use the simulator to generate two “observed” samples from the true likelihood: one consistent with the prior (<span class="math notranslate nohighlight">\(\boldsymbol{\theta}^{\star} = [0, 0]\)</span>) and one not (<span class="math notranslate nohighlight">\(\boldsymbol{\theta}^{\star} = [-1.45, 1.45]\)</span>)</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[37]:
@@ -372,7 +357,7 @@
 </section>
 </section>
 <section id="A-FREQUENTIST-CONFIDENCE-PROCEDURE">
-<h1>A FREQUENTIST CONFIDENCE PROCEDURE<a class="headerlink" href="#A-FREQUENTIST-CONFIDENCE-PROCEDURE" title="Link to this heading">¶</a></h1>
+<h2>A FREQUENTIST CONFIDENCE PROCEDURE<a class="headerlink" href="#A-FREQUENTIST-CONFIDENCE-PROCEDURE" title="Link to this heading">¶</a></h2>
 <p>Assume we want to do inference on the Gaussian mean by estimating its posterior distribution. <code class="docutils literal notranslate"><span class="pre">Posterior</span></code> allows to leverage a neural posterior estimator like <code class="docutils literal notranslate"><span class="pre">SNPE</span></code> to obtain a confidence region for the parameter of interest that is guaranteed to have the desired level of coverage regardless of</p>
 <ol class="arabic simple">
 <li><p>the prior distribution;</p></li>
@@ -515,7 +500,7 @@ Creating set 0...
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_2_confidence_distribution_construction_20_1.png" src="../_images/examples_2_confidence_distribution_construction_20_1.png" />
+<img alt="../_images/examples_2_confidence_distribution_construction_21_1.png" src="../_images/examples_2_confidence_distribution_construction_21_1.png" />
 </div>
 </div>
 <p>Posterior Credible Region</p>
@@ -557,7 +542,7 @@ Creating set 0...
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_2_confidence_distribution_construction_22_1.png" src="../_images/examples_2_confidence_distribution_construction_22_1.png" />
+<img alt="../_images/examples_2_confidence_distribution_construction_23_1.png" src="../_images/examples_2_confidence_distribution_construction_23_1.png" />
 </div>
 </div>
 <p>LF2I Confidence Region</p>
@@ -594,7 +579,7 @@ Creating set 0...
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_2_confidence_distribution_construction_25_1.png" src="../_images/examples_2_confidence_distribution_construction_25_1.png" />
+<img alt="../_images/examples_2_confidence_distribution_construction_26_1.png" src="../_images/examples_2_confidence_distribution_construction_26_1.png" />
 </div>
 </div>
 <p>Posterior Credible Region</p>
@@ -636,9 +621,13 @@ Creating set 0...
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_2_confidence_distribution_construction_27_1.png" src="../_images/examples_2_confidence_distribution_construction_27_1.png" />
+<img alt="../_images/examples_2_confidence_distribution_construction_28_1.png" src="../_images/examples_2_confidence_distribution_construction_28_1.png" />
 </div>
 </div>
+</section>
+</section>
+<section id="ESTIMATED-COVERAGE">
+<h1>ESTIMATED COVERAGE<a class="headerlink" href="#ESTIMATED-COVERAGE" title="Link to this heading">¶</a></h1>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[64]:
 </pre></div>
@@ -649,8 +638,6 @@ Creating set 0...
 </pre></div>
 </div>
 </div>
-<section id="Posterior-Credible-Regions">
-<h2>Posterior Credible Regions<a class="headerlink" href="#Posterior-Credible-Regions" title="Link to this heading">¶</a></h2>
 <p>Note that for this example we are using the simulator to obtain training datasets. If one has pre-simulated datasets, they can be given as inputs directly to the <code class="docutils literal notranslate"><span class="pre">inference</span></code> method.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[67]:
@@ -699,12 +686,9 @@ Computing indicators for 10000 credible regions: 100%|████████�
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_2_confidence_distribution_construction_34_0.png" src="../_images/examples_2_confidence_distribution_construction_34_0.png" />
+<img alt="../_images/examples_2_confidence_distribution_construction_35_0.png" src="../_images/examples_2_confidence_distribution_construction_35_0.png" />
 </div>
 </div>
-</section>
-<section id="LF2I-Confidence-Regions">
-<h2>LF2I Confidence Regions<a class="headerlink" href="#LF2I-Confidence-Regions" title="Link to this heading">¶</a></h2>
 <p>Note that for this example we are using the simulator to obtain training datasets. If one has pre-simulated datasets, they can be given as inputs directly to the <code class="docutils literal notranslate"><span class="pre">inference</span></code> method.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[65]:
@@ -750,10 +734,9 @@ Evaluating posterior for 10000 points ...:   0%|          | 0/10000 [00:00&lt;?,
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_2_confidence_distribution_construction_39_0.png" src="../_images/examples_2_confidence_distribution_construction_39_0.png" />
+<img alt="../_images/examples_2_confidence_distribution_construction_40_0.png" src="../_images/examples_2_confidence_distribution_construction_40_0.png" />
 </div>
 </div>
-</section>
 </section>
 
         </article>
@@ -766,7 +749,7 @@ Evaluating posterior for 10000 points ...:   0%|          | 0/10000 [00:00&lt;?,
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">INTRO &amp; SETTINGS</div>
+                <div class="title">Waldo Critical Values Construction</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -777,7 +760,7 @@ Evaluating posterior for 10000 points ...:   0%|          | 0/10000 [00:00&lt;?,
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">INTRO &amp; SETTINGS</div>
+                <div class="title">Quantile Regression Construction</div>
                 
               </div>
             </a>
@@ -806,8 +789,33 @@ Evaluating posterior for 10000 points ...:   0%|          | 0/10000 [00:00&lt;?,
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Confidence Distribution Construction</a><ul>
+<li><a class="reference internal" href="#INTRO-&amp;-SETTINGS">INTRO &amp; SETTINGS</a></li>
+<li><a class="reference internal" href="#DATA-GENERATION">DATA GENERATION</a><ul>
+<li><a class="reference internal" href="#Observations">Observations</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#A-FREQUENTIST-CONFIDENCE-PROCEDURE">A FREQUENTIST CONFIDENCE PROCEDURE</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#ESTIMATED-COVERAGE">ESTIMATED COVERAGE</a></li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

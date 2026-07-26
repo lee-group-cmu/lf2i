@@ -3,10 +3,10 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="INTRO &amp; SETTINGS" href="5_pvalue_function_diagnostics.html"><link rel="prev" title="INTRO &amp; SETTINGS" href="3_waldo_critical_values_construction.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="P-value Function Diagnostics" href="5_pvalue_function_diagnostics.html"><link rel="prev" title="Waldo Critical Values Construction" href="3_waldo_critical_values_construction.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
-        <title>INTRO &amp; SETTINGS - LF2I 0.4.1 documentation</title>
+        <title>Waldo Posterior P-value Construction - LF2I 0.4.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
@@ -173,7 +173,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
       </label>
     </div>
@@ -194,29 +194,12 @@
   <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../tutorials.html">Tutorials</a><input aria-label="Toggle navigation of Tutorials" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#CONFIDENCE-SET-via-ACORE">CONFIDENCE SET via ACORE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#CONFIDENCE-SET-via-BFF-(implicit-nuisance-marginalization)">CONFIDENCE SET via BFF (implicit nuisance marginalization)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#COMPARISON">COMPARISON</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#EXACT-COVERAGE">EXACT COVERAGE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html#EXACT-COVERAGE-OVER-(mu,-nu)">EXACT COVERAGE OVER (mu, nu)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html#DATA-GENERATION">DATA GENERATION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html#A-FREQUENTIST-CONFIDENCE-PROCEDURE">A FREQUENTIST CONFIDENCE PROCEDURE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html#CONFIDENCE-SET-by-leveraging-a-POSTERIOR-ESTIMATOR">CONFIDENCE SET by leveraging a POSTERIOR ESTIMATOR</a></li>
-<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html#LOCAL-COVERAGE">LOCAL COVERAGE</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#CONFIDENCE-SET-via-Posterior-+-p-values">CONFIDENCE SET via Posterior + p-values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#CONFIDENCE-SET-via-Waldo-(posterior-based)-+-p-values">CONFIDENCE SET via Waldo (posterior-based) + p-values</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#COMPARISON">COMPARISON</a></li>
-<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html">INTRO &amp; SETTINGS</a></li>
-<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html#SIMULATE">SIMULATE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html#FIT-THE-P-VALUE-FUNCTION">FIT THE P-VALUE FUNCTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html#DIAGNOSE-THE-FIT">DIAGNOSE THE FIT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="1_quantile_regression_construction.html">Quantile Regression Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html">Confidence Distribution Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="2_confidence_distribution_construction.html#ESTIMATED-COVERAGE">ESTIMATED COVERAGE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="3_waldo_critical_values_construction.html">Waldo Critical Values Construction</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Waldo Posterior P-value Construction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="5_pvalue_function_diagnostics.html">P-value Function Diagnostics</a></li>
 </ul>
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../api/lf2i.html">lf2i package</a><input aria-label="Toggle navigation of lf2i package" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -267,7 +250,7 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
           </label>
         </div>
@@ -281,8 +264,10 @@
 </pre></div>
 </div>
 </div>
+<section id="Waldo-Posterior-P-value-Construction">
+<h1>Waldo Posterior P-value Construction<a class="headerlink" href="#Waldo-Posterior-P-value-Construction" title="Link to this heading">¶</a></h1>
 <section id="INTRO-&amp;-SETTINGS">
-<h1>INTRO &amp; SETTINGS<a class="headerlink" href="#INTRO-&-SETTINGS" title="Link to this heading">¶</a></h1>
+<h2>INTRO &amp; SETTINGS<a class="headerlink" href="#INTRO-&-SETTINGS" title="Link to this heading">¶</a></h2>
 <p>The goal of this tutorial is to show how to construct confidence sets for a <strong>generative-model-based</strong> test statistic, using both <code class="docutils literal notranslate"><span class="pre">Waldo</span></code> (posterior-based) and <code class="docutils literal notranslate"><span class="pre">Posterior</span></code>, calibrated via <strong>p-values</strong> (monotonic probabilistic classification), on a two-component Gaussian-mixture location model (as used in the MLST paper).</p>
 <p>The likelihood is a two-component Gaussian mixture:</p>
 <div class="math-wrapper docutils container">
@@ -312,7 +297,7 @@
 </div>
 </section>
 <section id="SIMULATE">
-<h1>SIMULATE<a class="headerlink" href="#SIMULATE" title="Link to this heading">¶</a></h1>
+<h2>SIMULATE<a class="headerlink" href="#SIMULATE" title="Link to this heading">¶</a></h2>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
@@ -332,7 +317,7 @@
 </div>
 </div>
 <section id="Observations">
-<h2>Observations<a class="headerlink" href="#Observations" title="Link to this heading">¶</a></h2>
+<h3>Observations<a class="headerlink" href="#Observations" title="Link to this heading">¶</a></h3>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
@@ -354,7 +339,7 @@ tensor([[0.8363]])
 </section>
 </section>
 <section id="CONFIDENCE-SET-via-Posterior-+-p-values">
-<h1>CONFIDENCE SET via Posterior + p-values<a class="headerlink" href="#CONFIDENCE-SET-via-Posterior-+-p-values" title="Link to this heading">¶</a></h1>
+<h2>CONFIDENCE SET via Posterior + p-values<a class="headerlink" href="#CONFIDENCE-SET-via-Posterior-+-p-values" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">Posterior</span></code> uses the (log-)posterior density itself as the test statistic. Calibrating it via <code class="docutils literal notranslate"><span class="pre">calibration_method='p-values'</span></code> fits a monotonic probabilistic classifier that estimates the rejection probability <span class="math notranslate nohighlight">\(P(T \le \tau \mid \theta)\)</span> directly, which doubles as a p-value function usable for confidence sets.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
@@ -465,7 +450,7 @@ Creating set 0...
 </div>
 </section>
 <section id="CONFIDENCE-SET-via-Waldo-(posterior-based)-+-p-values">
-<h1>CONFIDENCE SET via Waldo (posterior-based) + p-values<a class="headerlink" href="#CONFIDENCE-SET-via-Waldo-(posterior-based)-+-p-values" title="Link to this heading">¶</a></h1>
+<h2>CONFIDENCE SET via Waldo (posterior-based) + p-values<a class="headerlink" href="#CONFIDENCE-SET-via-Waldo-(posterior-based)-+-p-values" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">Waldo</span></code> with <code class="docutils literal notranslate"><span class="pre">estimation_method='posterior'</span></code> instead centers the test statistic on the posterior mean and variance (estimated from posterior samples), rather than the density itself — a different way of using the same underlying posterior estimator to build a confidence set.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
@@ -554,7 +539,7 @@ Creating set 0...
 </div>
 </section>
 <section id="COMPARISON">
-<h1>COMPARISON<a class="headerlink" href="#COMPARISON" title="Link to this heading">¶</a></h1>
+<h2>COMPARISON<a class="headerlink" href="#COMPARISON" title="Link to this heading">¶</a></h2>
 <p>Alongside the two LF2I-calibrated regions, we also plot the posterior’s own highest-posterior-density (HPD) credible region at the same level, as an (uncalibrated) reference.</p>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
@@ -584,9 +569,10 @@ Creating set 0...
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/examples_4_waldo_posterior_pvalue_construction_14_0.png" src="../_images/examples_4_waldo_posterior_pvalue_construction_14_0.png" />
+<img alt="../_images/examples_4_waldo_posterior_pvalue_construction_15_0.png" src="../_images/examples_4_waldo_posterior_pvalue_construction_15_0.png" />
 </div>
 </div>
+</section>
 </section>
 
         </article>
@@ -599,7 +585,7 @@ Creating set 0...
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">INTRO &amp; SETTINGS</div>
+                <div class="title">P-value Function Diagnostics</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -610,7 +596,7 @@ Creating set 0...
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">INTRO &amp; SETTINGS</div>
+                <div class="title">Waldo Critical Values Construction</div>
                 
               </div>
             </a>
@@ -639,8 +625,34 @@ Creating set 0...
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Waldo Posterior P-value Construction</a><ul>
+<li><a class="reference internal" href="#INTRO-&amp;-SETTINGS">INTRO &amp; SETTINGS</a></li>
+<li><a class="reference internal" href="#SIMULATE">SIMULATE</a><ul>
+<li><a class="reference internal" href="#Observations">Observations</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#CONFIDENCE-SET-via-Posterior-+-p-values">CONFIDENCE SET via Posterior + p-values</a></li>
+<li><a class="reference internal" href="#CONFIDENCE-SET-via-Waldo-(posterior-based)-+-p-values">CONFIDENCE SET via Waldo (posterior-based) + p-values</a></li>
+<li><a class="reference internal" href="#COMPARISON">COMPARISON</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

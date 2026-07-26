@@ -14,6 +14,13 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
+    "# Waldo Posterior P-value Construction"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
     "## INTRO & SETTINGS"
    ]
   },
