@@ -41,10 +41,12 @@ class Waldo(TestStatistic):
     n_jobs : int, optional
         Number of workers to use when evaluating Waldo over multiple inputs if using a posterior estimator. By default -2, which uses all cores minus one.
         `n_jobs == -1` uses all cores. If `n_jobs < -1`, then `n_jobs = os.cpu_count()+1+n_jobs`.
+    cond_variance_epsilon : float, optional
+        Lower bound used to clip predictions from `cond_variance_estimator`, in case the regression method returns non-positive values. By default 1e-6.
     """
 
     def __init__(
-        self, 
+        self,
         estimator: Union[str, Any],
         poi_dim: int,
         estimation_method: str,
@@ -53,7 +55,8 @@ class Waldo(TestStatistic):
         estimator_kwargs: Dict = {},
         cond_variance_estimator_kwargs: Dict = {},
         verbose: bool = True,
-        n_jobs: int = -2
+        n_jobs: int = -2,
+        cond_variance_epsilon: float = 1e-6
     ) -> None:
         super().__init__(acceptance_region='left', estimation_method=estimation_method)
 
@@ -70,6 +73,7 @@ class Waldo(TestStatistic):
             raise ValueError(f"Waldo estimation is supported only using `prediction` algorithms or `posterior` estimators, got {estimation_method}")
         self.verbose = verbose
         self.n_jobs = n_jobs
+        self.cond_variance_epsilon = cond_variance_epsilon
     
     @staticmethod
     def _compute_for_critical_values(
@@ -200,7 +204,7 @@ class Waldo(TestStatistic):
 
         if self.estimation_method == 'prediction':
             conditional_mean = self.estimator.predict(X=samples)
-            conditional_var = self.cond_variance_estimator.predict(X=samples)
+            conditional_var = np.clip(self.cond_variance_estimator.predict(X=samples), a_min=self.cond_variance_epsilon, a_max=None)
         else:
             def sampling_loop(idx):
                 with warnings.catch_warnings():
