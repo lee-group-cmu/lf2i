@@ -201,26 +201,29 @@ def set_size_boxplot(
     whiskers_loc: Union[Tuple[float, float], float] = 1.5,
     plot_fliers: bool = True,
     ylim: Optional[Sequence[float]] = (0, 1),
+    xlabel: Optional[str] = None,
     save_fig_path: Optional[str] = None,
     figsize: Tuple = (8, 6)
 ) -> None:
     """Boxplot comparing set sizes across different methods."""
-    
+
     plt.figure(figsize=figsize)
     sns.set_style('whitegrid')
 
     plt.boxplot(
-        x=set_sizes, notch=False, labels=labels, 
+        x=set_sizes, notch=False, labels=labels,
         whis=whiskers_loc, sym=None if plot_fliers else ''
     )
-    
+
     whiskers_vals = (
-        f'0.25-{round(whiskers_loc, 1)}IQR', 
+        f'0.25-{round(whiskers_loc, 1)}IQR',
         f'0.75+{round(whiskers_loc, 1)}IQR'
     ) if isinstance(whiskers_loc, float) else (whiskers_loc[0]/100, whiskers_loc[1]/100)
-    
+
     plt.title('Set Size', fontsize=20)
     plt.ylabel('Fraction of parameter space', fontsize=18)
+    if xlabel is not None:
+        plt.xlabel(xlabel, fontsize=18)
     plt.legend(loc='upper right')
     
     if ylim:

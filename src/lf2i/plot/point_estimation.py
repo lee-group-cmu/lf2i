@@ -62,7 +62,7 @@ def plot_point_estimate_population(
         ax.scatter(jitter, true_parameters[:, 0], s=120, color=true_color,
                    alpha=0.3, label='True', zorder=2)
         ax.scatter(jitter, point_estimates[:, 0], s=20, color=estimate_color,
-                   alpha=1.0, label='Focal estimate', zorder=3)
+                   alpha=1.0, label='Estimate', zorder=3)
         ax.set_ylabel(param_names[0], fontsize=13)
         ax.set_xticks([])
         ax.legend(fontsize=11)
@@ -73,7 +73,7 @@ def plot_point_estimate_population(
         ax.scatter(true_parameters[:, 0], true_parameters[:, 1], s=80,
                    color=true_color, alpha=0.3, label='True', zorder=2)
         ax.scatter(point_estimates[:, 0], point_estimates[:, 1], s=15,
-                   color=estimate_color, alpha=1.0, label='Focal estimate', zorder=3)
+                   color=estimate_color, alpha=1.0, label='Estimate', zorder=3)
         ax.set_xlabel(param_names[0], fontsize=13)
         ax.set_ylabel(param_names[1], fontsize=13)
         ax.legend(fontsize=11)
@@ -92,7 +92,7 @@ def plot_point_estimate_population(
                 ax.scatter(true_parameters[:, d0], true_parameters[:, d1], s=80,
                            color=true_color, alpha=0.3, label='True' if panel == 0 else None, zorder=2)
                 ax.scatter(point_estimates[:, d0], point_estimates[:, d1], s=15,
-                           color=estimate_color, alpha=1.0, label='Focal estimate' if panel == 0 else None, zorder=3)
+                           color=estimate_color, alpha=1.0, label='Estimate' if panel == 0 else None, zorder=3)
                 ax.set_xlabel(param_names[d0], fontsize=12)
                 ax.set_ylabel(param_names[d1], fontsize=12)
                 panel += 1

@@ -374,11 +374,11 @@ def plot_parameter_region_1D(
         return
 
     parameter_region = to_np_if_torch(parameter_region).reshape(-1)
-    ax.scatter(x=true_parameter, y=true_parameter, alpha=1, c="red", marker="*", s=250, zorder=10)
+    ax.scatter(x=0.5, y=true_parameter, alpha=1, c="red", marker="*", s=250, zorder=10)
     ax.axhline(y=np.min(parameter_region), xmin=0.45, xmax=0.55, label=region_name, color=color, linestyle=linestyle)
     ax.axhline(y=np.max(parameter_region), xmin=0.45, xmax=0.55, color=color, linestyle=linestyle)
     ax.plot([0.5, 0.5], [np.min(parameter_region), np.max(parameter_region)], color=color, linestyle=linestyle)
-    ax.vlines(x=true_parameter, ymin=np.min(parameter_region), ymax=np.max(parameter_region), color=color, linestyle=linestyle)
+    ax.vlines(x=0.5, ymin=np.min(parameter_region), ymax=np.max(parameter_region), color=color, linestyle=linestyle)
 
     if custom_ax is None:
         if parameter_space_bounds is not None:
