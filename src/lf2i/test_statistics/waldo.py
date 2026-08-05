@@ -5,9 +5,11 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 import numpy as np
 import torch
-from sbi.simulators.simutils import tqdm_joblib
+
 from lf2i.test_statistics._base import TestStatistic
+from lf2i.utils.parallel import tqdm_joblib
 from lf2i.utils.waldo_inputs import preprocess_waldo_estimation, preprocess_waldo_evaluation, preprocess_waldo_computation
+from lf2i.utils.miscellanea import _estimator_on_gpu
 
 
 class Waldo(TestStatistic):
@@ -18,7 +20,7 @@ class Waldo(TestStatistic):
     ----------
     estimator : Union[str, Any]
         If `estimation_method == prediction`, then this is the conditional mean estimator.
-        If `estimation_method == posterior`, then this is the posterior estimator. Currently compatible with posterior objects from SBI package (https://github.com/mackelab/sbi)
+        If `estimation_method == posterior`, then this is the posterior estimator. Currently compatible with posterior objects with interface of lf2i.estimators.base_posteriors.AbstractNeuralPosteriorTrainer.
 
         If `str`, will use one of the predefined estimators. 
         If `Any`, a trained estimator is expected. Needs to implement `estimator.predict(X=...)` ("prediction"), or `estimator.sample(sample_shape=..., x=...)` ("posterior").
@@ -34,8 +36,11 @@ class Waldo(TestStatistic):
         Hyperparameters and settings for the conditional mean estimator, by default {}.
     cond_variance_estimator_kwargs: Dict
         Hyperparameters and settings for the conditional variance estimator, by default {}.
+    verbose: bool, optional
+        Whether to print progress bars when evaluating or not, by default True.
     n_jobs : int, optional
         Number of workers to use when evaluating Waldo over multiple inputs if using a posterior estimator. By default -2, which uses all cores minus one.
+        `n_jobs == -1` uses all cores. If `n_jobs < -1`, then `n_jobs = os.cpu_count()+1+n_jobs`.
     """
 
     def __init__(
@@ -47,11 +52,12 @@ class Waldo(TestStatistic):
         cond_variance_estimator: Optional[Union[str, Any]] = None,
         estimator_kwargs: Dict = {},
         cond_variance_estimator_kwargs: Dict = {},
+        verbose: bool = True,
         n_jobs: int = -2
     ) -> None:
         super().__init__(acceptance_region='left', estimation_method=estimation_method)
 
-        self.poi_dim = poi_dim
+        self.poi_dim = self.param_dim = poi_dim
         if estimation_method == 'prediction':
             self.estimator = self._choose_estimator(estimator, estimator_kwargs, 'conditional_mean')
             assert cond_variance_estimator is not None, "Need to specify a model to estimate the conditional variance"
@@ -62,6 +68,7 @@ class Waldo(TestStatistic):
             self.num_posterior_samples = num_posterior_samples
         else:
             raise ValueError(f"Waldo estimation is supported only using `prediction` algorithms or `posterior` estimators, got {estimation_method}")
+        self.verbose = verbose
         self.n_jobs = n_jobs
     
     @staticmethod
@@ -196,32 +203,13 @@ class Waldo(TestStatistic):
             conditional_var = self.cond_variance_estimator.predict(X=samples)
         else:
             def sampling_loop(idx):
-                posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).numpy()
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
+                    posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).cpu().numpy()
                 cond_mean = np.mean(posterior_samples, axis=0).reshape(1, self.poi_dim)
                 cond_var = np.cov(posterior_samples.T)  # need samples.shape = (data_d, num_samples)
                 return cond_mean, cond_var
-            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Approximating conditional mean and covariance for {samples.shape[0]} points...", total=len(it))) as _:
-                out = list(zip(*Parallel(n_jobs=self.n_jobs)(delayed(sampling_loop)(idx) for idx in it)))  # axis 0 indexes different simulations/observations
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Approximating conditional mean and covariance for {samples.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
+                out = list(zip(*Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(sampling_loop)(idx) for idx in it)))  # axis 0 indexes different simulations/observations
                 conditional_mean, conditional_var = out[0], out[1]
         return self._compute(parameters, conditional_mean, conditional_var, mode)
-
-
-"""
-def sampling_loop(idx):
-    posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).numpy()
-    cond_mean = np.mean(posterior_samples, axis=0).reshape(1, self.poi_dim)
-    cond_var = np.cov(posterior_samples.T)  # need samples.shape = (data_d, num_samples)
-    return cond_mean, cond_var
-with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Approximating conditional mean and covariance for {samples.shape[0]} points...", total=len(it))) as _:
-    out = list(zip(*Parallel(n_jobs=self.n_jobs)(delayed(sampling_loop)(idx) for idx in it)))  # axis 0 indexes different simulations/observations
-conditional_mean, conditional_var = out[0], out[1]
-"""
-
-"""
-conditional_mean = []
-conditional_var = []
-for idx in tqdm(range(samples.shape[0]), desc='Approximating conditional mean and covariance'):  # axis 0 indexes different simulations/observations
-    posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).numpy()
-    conditional_mean.append(np.mean(posterior_samples, axis=0).reshape(1, self.poi_dim))
-    conditional_var.append(np.cov(posterior_samples.T))  # need samples.shape = (data_d, num_samples)
-"""

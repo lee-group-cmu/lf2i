@@ -31,9 +31,31 @@ class Simulator(ABC):
         
         self.poi_dim = poi_dim
         self.nuisance_dim = nuisance_dim or 0
-        self.param_dim = poi_dim + nuisance_dim
+        self.param_dim = poi_dim + self.nuisance_dim
         self.data_dim = data_dim
         self.batch_size = batch_size
+
+    @abstractmethod
+    def __call__(
+        self,
+        param: Union[np.ndarray, torch.Tensor],
+        batch_size: Optional[int] = None
+    ) -> Union[np.ndarray, torch.Tensor]:
+        """Forward model / likelihood: draw samples given parameter values.
+
+        Parameters
+        ----------
+        param : Union[np.ndarray, torch.Tensor]
+            Parameter values, shape `(size, param_dim)`.
+        batch_size : Optional[int], optional
+            Number of observations to draw for each row of `param`. Defaults to `self.batch_size`.
+
+        Returns
+        -------
+        Union[np.ndarray, torch.Tensor]
+            Samples, shape `(size, batch_size, data_dim)`.
+        """
+        pass
 
     @abstractmethod
     def simulate_for_test_statistic(

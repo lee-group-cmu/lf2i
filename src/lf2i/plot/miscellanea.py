@@ -126,7 +126,7 @@ def PolygonPathFixed(polygon):
         if ptype == 'Polygon':
             polygon = [Polygon(polygon)]
         elif ptype == 'MultiPolygon':
-            polygon = [Polygon(p) for p in polygon]
+            polygon = [Polygon(p) for p in polygon.geoms]
         else:
             raise ValueError(
                 "A polygon or multi-polygon representation is required")

@@ -1,12 +1,12 @@
-# LF2I: Likelihood-Free Frequentist Inference
-
 [![PyPI](https://img.shields.io/pypi/v/lf2i)](https://pypi.org/project/lf2i/)
 [![GitHub](https://img.shields.io/github/license/lee-group-cmu/lf2i)](./LICENSE.txt)
+
+# `lf2i`: Likelihood-Free Frequentist Inference
 
 <!--- - [LF2I: Likelihood-Free Frequentist Inference](#lf2i-likelihood-free-frequentist-inference)---> 
 - [LF2I: Likelihood-Free Frequentist Inference](#lf2i-likelihood-free-frequentist-inference)
   - [Getting Started](#getting-started)
-    - [What is LFI?](#what-is-lfi)
+    - [What is LF2I?](#what-is-lf2i)
     - [What does LF2I do?](#what-does-lf2i-do)
     - [Structure of LF2I](#structure-of-lf2i)
     - [Usage](#usage)
@@ -16,7 +16,7 @@
 
 ## Getting Started
 
-### What is LFI?
+### What is LF2I?
 `lf2i` is a Python package for likelihood-free inference; that is, inference on the parameters $\boldsymbol{\theta}$ of a statistical model $F_{\boldsymbol{\theta}}$ in a setting where the likelihood $\mathcal{L}(\boldsymbol{\theta}; \mathcal{D}):=p(\mathcal{D}|\boldsymbol{\theta})$ cannot be evaluated but is *implicitly* encoded by a high-fidelity simulator for $F_{\boldsymbol{\theta}}$. In other words, one can simulate data in batches of size $n$, $\mathcal{D}=(X_1, \dots, X_n)$, for any given $\boldsymbol{\theta}$ in the parameter space.
 
 ### What does LF2I do?
@@ -43,12 +43,20 @@ While *1.* and *2.* are used to construct the confidence sets, *3.* is an indepe
 ### Usage
 `lf2i` offers a simple interface that allows you to get started quickly. The entry point is the `LF2I` class in the `lf2i.inference` module, which contains classes to wrap the different functionalities. The method `inference` merges steps *1.* and *2.* to return confidence sets with correct coverage. The method `diagnostics` performs step *3.* as an independent check of empirical coverage of the constructed parameter regions.
 
-Check the [website](https://lee-group-cmu.github.io/lf2i/) for the full documentation, complete of tutorials on the [Waldo](https://arxiv.org/pdf/2205.15680.pdf) test statistics. Tutorials on likelihood-based test statistics like ACORE and BFF are coming soon!
+```python
+from lf2i.inference import LF2I
+
+inference = LF2I(test_statistic=..., prior=...)
+confidence_sets = inference.inference(...) # Steps 1 and 2
+diagnostics = inference.diagnostics(...) # Step 3
+```
+
+Check the [website](https://lee-group-cmu.github.io/lf2i/) for the full documentation.
 
 
 ## Install
 
-The package is under active development, and is available on PyPI at this [link](https://pypi.org/project/lf2i/). It can be installed using `pip`:
+The package available on PyPI at this [link](https://pypi.org/project/lf2i/). It can be installed using `pip`:
 
 ```python
 pip install lf2i
@@ -58,7 +66,7 @@ The diagnostics module leverages smoothing splines implemented in `R`, which is 
 
 ## Feedback and Contributions
 
-We strongly encourage users to leave feedback and report bugs either by using the *Issues* tab, or by contacting us directly. The current maintainer can be reached [here](mailto:lmassera@andrew.cmu.edu).
+We strongly encourage users to leave feedback and report bugs either by using the *Issues* tab, or by contacting us directly. The current maintainer(s) can be reached [here](mailto:jamescarzon98@gmail.com).
 
 If you want to contribute, feel free to open an issue and/or a pull request.
 
@@ -66,5 +74,6 @@ If you want to contribute, feel free to open an issue and/or a pull request.
 
 LF2I is based on the following research articles:\
     - [Confidence sets and hypothesis testing in a likelihood-free inference setting (ICML 2020)](http://proceedings.mlr.press/v119/dalmasso20a/dalmasso20a.pdf)\
-    - [Likelihood-Free Frequentist Inference: Bridging Classical Statistics and Machine Learning for Reliable Simulator-Based Inference (2021)](https://arxiv.org/pdf/2107.03920.pdf)\
-    - [Simulation-Based Inference with Waldo: Confidence Regions by Leveraging Prediction Algorithms and Posterior Estimators for Inverse Problems (AISTATS 2023)](https://arxiv.org/pdf/2205.15680.pdf)
+    - [Simulation-Based Inference with Waldo: Confidence Regions by Leveraging Prediction Algorithms and Posterior Estimators for Inverse Problems (AISTATS 2023)](https://arxiv.org/pdf/2205.15680.pdf)\
+    - [Likelihood-free frequentist inference: bridging classical statistics and machine learning for reliable simulator-based inference (Electron. J. Statist., 2025)](10.1214/24-EJS2307)\
+    - [Trustworthy scientific inference with generative models (Mach. Learn.: Sci. Technol., 2026)](10.1088/2632-2153/ae67cd)

@@ -5,7 +5,6 @@ from joblib import Parallel, delayed
 import numpy as np
 from scipy import integrate
 import torch
-from sbi.simulators.simutils import tqdm_joblib
 
 from lf2i.test_statistics._base import TestStatistic
 from lf2i.utils.odds_inputs import (
@@ -14,7 +13,8 @@ from lf2i.utils.odds_inputs import (
     preprocess_for_odds_cs, 
     preprocess_odds_integration
 )
-from lf2i.utils.miscellanea import to_np_if_torch
+from lf2i.utils.miscellanea import to_np_if_torch, _estimator_on_gpu
+from lf2i.utils.parallel import tqdm_joblib
 
 
 class BFF(TestStatistic):
@@ -38,8 +38,14 @@ class BFF(TestStatistic):
         Dimensionality of a single datapoint X.
     estimator_kwargs : Dict, optional
         Hyperparameters and settings for the conditional mean estimator, by default {}.
+    verbose: bool, optional
+        Whether to print progress bars when evaluating or not, by default True.
     n_jobs : int, optional
         Number of workers to use when computing BFF over multiple inputs, by default -2, which uses all cores minus one.
+        `n_jobs == -1` uses all cores. If `n_jobs < -1`, then `n_jobs = os.cpu_count()+1+n_jobs`.
+    param_space_bounds : List[Tuple[float]], optional
+        Bounds of the parameter space (POIs and nuisances), used as the fallback whenever `evaluate(...)` is
+        not given its own `param_space_bounds` (e.g. when called through `LF2I.inference(...)`).
     """
 
     def __init__(
@@ -50,7 +56,9 @@ class BFF(TestStatistic):
         batch_size: int,
         data_dim: int,
         estimator_kwargs: Dict = {},
-        n_jobs: int = -2
+        verbose: bool = True,
+        n_jobs: int = -2,
+        param_space_bounds: Optional[List[Tuple[float]]] = None
     ) -> None:
         super().__init__(acceptance_region='right', estimation_method='likelihood')
 
@@ -60,31 +68,39 @@ class BFF(TestStatistic):
         self.batch_size = batch_size
         self.data_dim = data_dim
         self.estimator = self._choose_estimator(estimator, estimator_kwargs, 'odds')
+        self.verbose = verbose
         self.n_jobs = n_jobs
+        self.param_space_bounds = param_space_bounds
 
     def estimate(
         self,
-        labels: Union[np.ndarray, torch.Tensor], 
         parameters: Union[np.ndarray, torch.Tensor], 
         samples: Union[np.ndarray, torch.Tensor],
     ) -> None:
         r"""Train the estimator for odds (i.e. likelihood up to a normalization constant).
-        The training dataset should contain two classes:
-            - label 1, with pairs :math:`(\theta, X)` where :math:`X \sim p(\cdot;\theta)` is drawn from the likelihood/simulator.
-            - label 0, with pairs :math:`(\theta, X)` where :math:`X \sim G` is drawn from a dominating reference distribution (e.g., empirical marginal).
-        To goal is to train a classifier that is able to distinguish whether a sample comes from the likelihood or not.
+        
+        The training dataset is created by:
+
+        - label 1: pairs :math:`(\theta, X)` where :math:`X \sim p(\cdot;\theta)`
+          from the true joint distribution (original matched pairs).
+        - label 0: pairs :math:`(\theta', X)` where :math:`\theta'` is a permuted
+          parameter vector, ensuring no overlap with the positive class pairs.
+        
+        This creates a classifier that distinguishes true parameter-sample pairs from 
+        mismatched pairs, effectively learning the likelihood ratio.
+        
         See https://arxiv.org/abs/2107.03920 for a more detailed explanation.
 
         Parameters
         ----------
-        labels : Union[np.ndarray, torch.Tensor]
-            Class labels 0/1.
         parameters : Union[np.ndarray, torch.Tensor]
-            Simulated parameters to be used for training.
+            Simulated parameters from the true joint distribution (n_samples, param_dim).
         samples : Union[np.ndarray, torch.Tensor]
-            Simulated samples to be used for training.
+            Simulated samples from the true joint distribution (n_samples, sample_dim).
         """
-        labels, params_samples = preprocess_odds_estimation(labels, parameters, samples, self.param_dim, self.estimator)
+        labels, params_samples = preprocess_odds_estimation(
+            parameters, samples, self.param_dim, self.estimator
+        )
         self.estimator.fit(X=params_samples, y=labels)
         self._estimator_trained['odds'] = True
 
@@ -95,10 +111,11 @@ class BFF(TestStatistic):
         mode: str,
         param_space_bounds: Optional[List[Tuple[float]]] = None
     ) -> np.ndarray:
-        r"""Evaluate the BFF test statistic over the given parameters and samples. 
-        Behaviour differs depending on mode: 
-            - 'critical_values' and 'diagnostics' compute BFF once for each pair :math:`(\theta, X)`.
-            - 'confidence_sets' computes BFF over all pairs given by the cartesian product of `parameters` (the parameter grid to construct confidence sets) and `samples`. 
+        r"""Evaluate the BFF test statistic over the given parameters and samples.
+        Behaviour differs depending on mode:
+
+        - 'critical_values' and 'diagnostics' compute BFF once for each pair :math:`(\theta, X)`.
+        - 'confidence_sets' computes BFF over all pairs given by the cartesian product of `parameters` (the parameter grid to construct confidence sets) and `samples`.
 
         Parameters
         ----------
@@ -122,6 +139,9 @@ class BFF(TestStatistic):
         ValueError
             If `mode` is not among the pre-specified values.
         """
+        if param_space_bounds is None:
+            param_space_bounds = self.param_space_bounds
+
         if mode == 'critical_values':
             return self._compute_for_critical_values(parameters, samples, param_space_bounds)
         elif mode == 'confidence_sets':
@@ -136,6 +156,7 @@ class BFF(TestStatistic):
         probs: Union[np.ndarray, torch.Tensor]
     ) -> np.ndarray:
         probs = to_np_if_torch(probs)
+        probs = np.clip(probs, 1e-4, 1e4)
         return np.prod((probs[:, 1] / probs[:, 0]).reshape(-1, self.batch_size), axis=1)
 
     def _integrate_odds(
@@ -171,8 +192,8 @@ class BFF(TestStatistic):
                 return self._odds(self.estimator.predict_proba(X=params_samples))
             else:
                 numerator = self._odds(self.estimator.predict_proba(X=params_samples))
-                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)} points...", total=len(it))) as _:
-                    denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
+                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
+                    denominator = np.array(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(
                         lambda idx: self._integrate_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), integration_bounds=param_space_bounds[:self.poi_dim]) 
                         )(i) for i in it
                     ))
@@ -183,8 +204,8 @@ class BFF(TestStatistic):
                 den = self._integrate_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), integration_bounds=param_space_bounds)
                 return num / den
             
-            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)} points...", total=len(it))) as _:
-                bff = np.array(Parallel(n_jobs=self.n_jobs)(delayed(do_one)(i) for i in it))
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
+                bff = np.array(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(do_one)(i) for i in it))
             return bff
     
     def _compute_for_confidence_sets(
@@ -203,8 +224,8 @@ class BFF(TestStatistic):
             else:
                 numerator = self._odds(self.estimator.predict_proba(X=param_grid_samples)).reshape(samples.shape[0], parameter_grid.shape[0])
                 # denominator is the same regardless of parameter grid value
-                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)} points...", total=len(it))) as _:
-                    denominator = np.array(Parallel(n_jobs=self.n_jobs)(delayed(
+                with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)} points...", total=len(it), disable=not self.verbose)) as _:
+                    denominator = np.array(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(
                         lambda idx: self._integrate_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), integration_bounds=param_space_bounds[:self.poi_dim]) 
                         )(i) for i in it
                     )).reshape(-1, 1)
@@ -216,8 +237,8 @@ class BFF(TestStatistic):
                     numerator[j] = self._integrate_odds(sample=sample, fixed_poi=parameter_grid[j, :], integration_bounds=param_space_bounds[-self.nuisance_dim:])
                 return numerator / denominator
             
-            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it))) as _:
-                out = np.vstack(Parallel(n_jobs=self.n_jobs)(delayed(lambda idx: param_grid_loop(
+            with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Computing BFF for {len(it)}x{parameter_grid.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
+                out = np.vstack(Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(lambda idx: param_grid_loop(
                     sample=samples[idx, :, :], 
                     denominator=self._integrate_odds(sample=samples[idx, :, :], fixed_poi=torch.empty(0), integration_bounds=param_space_bounds)
                     ).reshape(1, -1))(i) for i in it

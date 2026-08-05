@@ -21,11 +21,13 @@ __pycache__/
 /.mypy_cache
 .ipynb_checkpoints/
 sbi-logs/
+catboost_info/
 
 /doc/_apidoc/
 /build
 /dist/
 /docs_build/
+/_build/
 
 playground/
 TODOs.txt

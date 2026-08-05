@@ -2,9 +2,7 @@ from typing import Union, Optional, Dict, Tuple
 
 import numpy as np
 import torch
-from torch.distributions import Distribution, MultivariateNormal, Uniform
-from pyro import distributions as pdist
-from sbi.utils import MultipleIndependent
+from torch.distributions import Distribution, Independent, MultivariateNormal, Uniform
 
 from lf2i.simulator._base import Simulator
 
@@ -64,44 +62,50 @@ class GaussianMean(Simulator):
         self.poi_grid_size = self.poi_grid.shape[0]
         
         # sampling parameters to estimate critical values via quantile regression
-        if poi_dim == 1:
-            self.qr_prior = Uniform(low=poi_space_bounds['low']*torch.ones(1), high=poi_space_bounds['high']*torch.ones(1))
-        else:
-            self.qr_prior = MultipleIndependent(dists=[
-                pdist.Uniform(low=poi_space_bounds['low']*torch.ones(1), high=poi_space_bounds['high']*torch.ones(1)) for _ in range(poi_dim)
-            ])
+        # Independent(..., 1) reinterprets the poi_dim batch dims as a single event dim, so
+        # log_prob returns one joint log-density per parameter vector instead of poi_dim
+        # separate per-dimension log-densities.
+        self.qr_prior = Independent(Uniform(
+            low=poi_space_bounds['low'] * torch.ones(poi_dim),
+            high=poi_space_bounds['high'] * torch.ones(poi_dim)
+        ), 1)
         
-        self.likelihood = lambda loc: MultivariateNormal(loc=loc, covariance_matrix=torch.eye(n=poi_dim)*likelihood_cov)
+        self.likelihood = lambda loc: MultivariateNormal(
+            loc=loc, 
+            covariance_matrix=torch.eye(n=poi_dim) * likelihood_cov
+        )
+        
         if prior == 'gaussian': 
-            self.prior = MultivariateNormal(loc=torch.ones(size=(poi_dim, ))*prior_kwargs['loc'], 
-                                            covariance_matrix=torch.eye(n=poi_dim)*prior_kwargs['cov'])
+            self.prior = MultivariateNormal(
+                loc=torch.ones(size=(poi_dim,)) * prior_kwargs['loc'], 
+                covariance_matrix=torch.eye(n=poi_dim) * prior_kwargs['cov']
+            )
         elif prior == 'uniform':
             if prior_kwargs is None:
                 prior_kwargs = poi_space_bounds
-            if poi_dim == 1:
-                self.prior = Uniform(low=prior_kwargs['low']*torch.ones(1), high=prior_kwargs['high']*torch.ones(1))
-            else:
-                self.prior = MultipleIndependent(dists=[
-                    pdist.Uniform(low=prior_kwargs['low']*torch.ones(1), high=prior_kwargs['high']*torch.ones(1)) for _ in range(poi_dim)
-                ])
+            self.prior = Independent(Uniform(
+                low=prior_kwargs['low'] * torch.ones(poi_dim),
+                high=prior_kwargs['high'] * torch.ones(poi_dim)
+            ), 1)
         else: 
-            raise NotImplementedError
-            
+            raise NotImplementedError(f"Prior '{prior}' not supported. Use 'gaussian' or 'uniform'.")
+   
+    def __call__(self, param: torch.Tensor, batch_size: Optional[int] = None) -> torch.Tensor:
+        batch_size = batch_size or self.batch_size
+        # shape is interpreted as 'draw `shape` samples for each d-dim element of param'
+        samples = self.likelihood(loc=param).sample(sample_shape=(batch_size,))
+        return torch.transpose(samples, 0, 1)  # (size, batch_size, data_dim)
+
     def simulate_for_test_statistic(self, size: int, estimation_method: str) -> Tuple[torch.Tensor]:
-        if estimation_method == 'likelihood':
-            raise NotImplementedError
-        elif estimation_method in ['prediction', 'posterior']:
-            params = self.prior.sample(sample_shape=(size, )).reshape(size, self.poi_dim)
-            # shape is interpreted as 'draw `shape` samples for each d-dim element of params'
-            samples = self.likelihood(loc=params).sample(sample_shape=(self.batch_size, ))
-            return params, torch.transpose(samples, 0, 1)  # (size, batch_size, data_dim)
+        if estimation_method in ['likelihood', 'prediction', 'posterior']:
+            params = self.prior.sample(sample_shape=(size,)).reshape(size, self.poi_dim)
+            return params, self(param=params, batch_size=self.batch_size)
         else:
             raise ValueError(f"Only one of ['likelihood', 'prediction', 'posterior'] is supported, got {estimation_method}")
 
     def simulate_for_critical_values(self, size: int) -> Tuple[torch.Tensor]:
-        params = self.qr_prior.sample(sample_shape=(size, )).reshape(size, self.poi_dim)
-        samples = self.likelihood(loc=params).sample(sample_shape=(self.batch_size, ))
-        return params, torch.transpose(samples, 0, 1)  # (size, batch_size, data_dim)
-    
+        params = self.qr_prior.sample(sample_shape=(size,)).reshape(size, self.poi_dim)
+        return params, self(param=params, batch_size=self.batch_size)
+
     def simulate_for_diagnostics(self, size: int) -> Tuple[torch.Tensor]:
         return self.simulate_for_critical_values(size)
