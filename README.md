@@ -1,10 +1,10 @@
 [![PyPI](https://img.shields.io/pypi/v/lf2i)](https://pypi.org/project/lf2i/)
 [![GitHub](https://img.shields.io/github/license/lee-group-cmu/lf2i)](./LICENSE.txt)
 
-# `lf2i`: Likelihood-Free Frequentist Inference
+# `lf2i`: Likelihood-Free Frequentist-Bayes Inference
 
 <!--- - [LF2I: Likelihood-Free Frequentist Inference](#lf2i-likelihood-free-frequentist-inference)---> 
-- [LF2I: Likelihood-Free Frequentist Inference](#lf2i-likelihood-free-frequentist-inference)
+- [LF2I: Likelihood-Free Frequentist-Bayes Inference](#lf2i-likelihood-free-frequentist-inference)
   - [Getting Started](#getting-started)
     - [What is LF2I?](#what-is-lf2i)
     - [What does LF2I do?](#what-does-lf2i-do)
