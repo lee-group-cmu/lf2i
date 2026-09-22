@@ -1,0 +1,11 @@
+lf2i.inference package
+======================
+
+Module contents
+---------------
+
+.. automodule:: lf2i.inference
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource

@@ -1,0 +1,11 @@
+lf2i.test\_statistics package
+=============================
+
+Module contents
+---------------
+
+.. automodule:: lf2i.test_statistics
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :member-order: bysource

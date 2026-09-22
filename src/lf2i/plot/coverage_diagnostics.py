@@ -419,31 +419,42 @@ def coverage_boxplot(
     whiskers_loc: Union[Tuple[float, float], float] = 1.5,
     plot_fliers: bool = True,
     ylim: Optional[Sequence[float]] = (0, 1),
+    xlabel: Optional[str] = None,
     save_fig_path: Optional[str] = None,
-    figsize: Tuple = (8, 6)
-) -> None:
-    plt.figure(figsize=figsize)
+    figsize: Tuple = (8, 6),
+    ax: Optional[Axes] = None
+) -> Optional[Axes]:
+    own_fig = ax is None
+    if own_fig:
+        _, ax = plt.subplots(figsize=figsize)
 
-    plt.boxplot(x=probabilities, notch=False, labels=labels, whis=whiskers_loc, sym=None if plot_fliers else '')
-    plt.axhline(y=confidence_level, label=f'Nominal Coverage Level: {round(confidence_level*100, 1)}%', linestyle='--', linewidth=1, color='red')
+    ax.boxplot(x=probabilities, notch=False, labels=labels, whis=whiskers_loc, sym=None if plot_fliers else '')
+    ax.axhline(y=confidence_level, label=f'Nominal Coverage Level: {round(confidence_level*100, 1)}%', linestyle='--', linewidth=1, color='red')
     whiskers_vals = (f'0.25-{round(whiskers_loc, 1)}IQR', f'0.75+{round(whiskers_loc, 1)}IQR') if isinstance(whiskers_loc, float) else (whiskers_loc[0]/100, whiskers_loc[1]/100)
-    
+
     sns.set_style('whitegrid')
-    plt.title('Coverage probability', fontsize=20)
-    plt.legend(loc='lower right')
+    ax.set_title('Coverage probability', fontsize=20)
+    if xlabel is not None:
+        ax.set_xlabel(xlabel, fontsize=18)
+    ax.legend(loc='lower right')
 
     if ylim:
-        plt.ylim(*ylim)
+        ax.set_ylim(*ylim)
         yticks = np.arange(start=ylim[0], stop=ylim[1]+0.1, step=0.1)
-        plt.yticks(ticks=yticks, labels=[f'{round(i*100, 0)}%' for i in yticks])
+        ax.set_yticks(yticks)
+        ax.set_yticklabels([f'{round(i*100, 0)}%' for i in yticks])
     else:
-        yticks, _ = plt.yticks()
-        plt.yticks(ticks=yticks, labels=[f'{round(i*100, 0)}%' for i in yticks])
-    plt.tick_params(axis='both', labelsize=15)
+        yticks = ax.get_yticks()
+        ax.set_yticks(yticks)
+        ax.set_yticklabels([f'{round(i*100, 0)}%' for i in yticks])
+    ax.tick_params(axis='both', labelsize=15)
 
-    if save_fig_path is not None:
-        plt.savefig(save_fig_path, bbox_inches='tight')
-    plt.show()
+    if own_fig:
+        if save_fig_path is not None:
+            plt.savefig(save_fig_path, bbox_inches='tight')
+        plt.show()
+    else:
+        return ax
 
 def coverage_nominal_actual_band(
     probabilities: Sequence[np.ndarray],

@@ -374,11 +374,11 @@ def plot_parameter_region_1D(
         return
 
     parameter_region = to_np_if_torch(parameter_region).reshape(-1)
-    ax.scatter(x=true_parameter, y=true_parameter, alpha=1, c="red", marker="*", s=250, zorder=10)
+    ax.scatter(x=0.5, y=true_parameter, alpha=1, c="red", marker="*", s=250, zorder=10)
     ax.axhline(y=np.min(parameter_region), xmin=0.45, xmax=0.55, label=region_name, color=color, linestyle=linestyle)
     ax.axhline(y=np.max(parameter_region), xmin=0.45, xmax=0.55, color=color, linestyle=linestyle)
     ax.plot([0.5, 0.5], [np.min(parameter_region), np.max(parameter_region)], color=color, linestyle=linestyle)
-    ax.vlines(x=true_parameter, ymin=np.min(parameter_region), ymax=np.max(parameter_region), color=color, linestyle=linestyle)
+    ax.vlines(x=0.5, ymin=np.min(parameter_region), ymax=np.max(parameter_region), color=color, linestyle=linestyle)
 
     if custom_ax is None:
         if parameter_space_bounds is not None:
@@ -579,6 +579,7 @@ def plot_parameter_intervals(
     point_estimates: Optional[Sequence[np.ndarray]] = None,
     true_parameters: Optional[Sequence[np.ndarray]] = None,
     interval_type: str = 'projection',
+    oat_intervals: Optional[Sequence[np.ndarray]] = None,
     param_names: Optional[Sequence[str]] = None,
     colors: Optional[Sequence] = None,
     region_names: Optional[Sequence[str]] = None,
@@ -614,6 +615,12 @@ def plot_parameter_intervals(
         * ``'projection'`` (default) — take ``[min, max]`` of each column.
         * ``'slice'`` — fix all dimensions except *d* at the nearest grid value to
           θ^Focal, then take ``[min, max]`` of column *d*.  Requires ``point_estimates``.
+        * ``'oat'`` — use pre-computed OAT intervals passed via ``oat_intervals``.
+    oat_intervals : sequence of np.ndarray, optional
+        Pre-computed one-at-a-time intervals from ``LF2I.oat_intervals``.  Each element
+        has shape ``(param_dim, 2)`` and corresponds to one region.  When provided,
+        ``interval_type`` is ignored for interval derivation and ``*parameter_regions``
+        may be omitted.
     param_names : sequence of str, optional
         Axis labels; falls back to ``θ_0, θ_1, …`` if not supplied.
     colors : sequence, optional
@@ -633,7 +640,10 @@ def plot_parameter_intervals(
     """
     if interval_type == 'slice' and point_estimates is None:
         raise ValueError("interval_type='slice' requires point_estimates")
-    n_regions = len(parameter_regions)
+    if oat_intervals is not None and len(parameter_regions) == 0:
+        n_regions = len(oat_intervals)
+    else:
+        n_regions = len(parameter_regions)
 
     colors = list(colors) if colors is not None else list(cm.rainbow(np.linspace(0, 1, n_regions)))
     region_names = list(region_names) if region_names is not None else [f'Region {i}' for i in range(n_regions)]
@@ -664,17 +674,23 @@ def plot_parameter_intervals(
         return slice_pts.min(), slice_pts.max()
 
     # intervals[k][d] = (lo, hi)
-    intervals = []
-    for k, cs in enumerate(regions_2d):
-        pe = to_np_if_torch(point_estimates[k]) if point_estimates is not None else None
-        row = []
-        for d in range(param_dim):
-            if interval_type == 'slice':
-                lo, hi = _slice_interval(cs, d, pe)
-            else:
-                lo, hi = _projection_interval(cs, d)
-            row.append((lo, hi))
-        intervals.append(row)
+    if oat_intervals is not None:
+        intervals = [
+            [(float(oat_intervals[k][d, 0]), float(oat_intervals[k][d, 1])) for d in range(param_dim)]
+            for k in range(n_regions)
+        ]
+    else:
+        intervals = []
+        for k, cs in enumerate(regions_2d):
+            pe = to_np_if_torch(point_estimates[k]) if point_estimates is not None else None
+            row = []
+            for d in range(param_dim):
+                if interval_type == 'slice':
+                    lo, hi = _slice_interval(cs, d, pe)
+                else:
+                    lo, hi = _projection_interval(cs, d)
+                row.append((lo, hi))
+            intervals.append(row)
 
     # --- layout ---
     dist_in = 0.9
@@ -750,7 +766,7 @@ def plot_parameter_intervals(
                 pe_val = float(pe[d]) if param_dim > 1 else float(pe)
                 ax.plot(pe_val, y, marker='*', color=color,
                         markersize=10, zorder=4, linestyle='none',
-                        label='Focal point')
+                        label='CD mode')
 
             # true parameter: red star
             if true_parameters is not None:
@@ -759,14 +775,19 @@ def plot_parameter_intervals(
                 ax.plot(tp_val, y, marker='*', color='red',
                         markersize=10, zorder=5, linestyle='none',
                         label='Truth')
+                ax.axvline(tp_val, color='red', linestyle='--',
+                           linewidth=1, zorder=1)
 
         ax.set_xlabel(param_names[d], fontsize=12, labelpad=4)
         ax.tick_params(axis='x', labelsize=10)
 
-    star_patch = mlines.Line2D([], [], color=colors[0], marker='*', linestyle='None',
-                               markersize=10, label='Focal point')
-    if star_patch not in legend_handles:
-        legend_handles.append(star_patch)
+    for k in range(n_regions):
+        label = ['CD mode', 'Point prediction'][k]
+
+        star_patch = mlines.Line2D([], [], color=colors[k], marker='*', linestyle='None',
+                                markersize=10, label=label)
+        if star_patch not in legend_handles:
+            legend_handles.append(star_patch)
 
     red_star_patch = mlines.Line2D([], [], color='red', marker='*', linestyle='None',
                                    markersize=10, label='Truth')

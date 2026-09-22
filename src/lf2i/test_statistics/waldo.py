@@ -41,10 +41,12 @@ class Waldo(TestStatistic):
     n_jobs : int, optional
         Number of workers to use when evaluating Waldo over multiple inputs if using a posterior estimator. By default -2, which uses all cores minus one.
         `n_jobs == -1` uses all cores. If `n_jobs < -1`, then `n_jobs = os.cpu_count()+1+n_jobs`.
+    cond_variance_epsilon : float, optional
+        Lower bound used to clip residuals away from zero, to ensure log is well defined. By default 1e-6.
     """
 
     def __init__(
-        self, 
+        self,
         estimator: Union[str, Any],
         poi_dim: int,
         estimation_method: str,
@@ -53,7 +55,8 @@ class Waldo(TestStatistic):
         estimator_kwargs: Dict = {},
         cond_variance_estimator_kwargs: Dict = {},
         verbose: bool = True,
-        n_jobs: int = -2
+        n_jobs: int = -2,
+        cond_variance_epsilon: float = 1e-6,
     ) -> None:
         super().__init__(acceptance_region='left', estimation_method=estimation_method)
 
@@ -70,14 +73,15 @@ class Waldo(TestStatistic):
             raise ValueError(f"Waldo estimation is supported only using `prediction` algorithms or `posterior` estimators, got {estimation_method}")
         self.verbose = verbose
         self.n_jobs = n_jobs
-    
+        self.cond_variance_epsilon = cond_variance_epsilon
+
     @staticmethod
     def _compute_for_critical_values(
         parameters: np.ndarray,
         conditional_mean: Union[np.ndarray, List],
         conditional_var: Union[np.ndarray, List]
     ) -> np.ndarray:
-        if parameters.shape[-1] == 1:  # parameter is 1-dimensional
+        if parameters.shape[-1] == 1:
             return ( (conditional_mean - parameters)**2 ) / conditional_var
         else:
             # conditional mean and var lists of arrays
@@ -131,20 +135,35 @@ class Waldo(TestStatistic):
             preprocess_waldo_computation(parameters, conditional_mean, conditional_var, self.poi_dim)
 
         if mode == 'critical_values':
-            return self._compute_for_critical_values(parameters, conditional_mean, conditional_var)        
+            return self._compute_for_critical_values(
+                parameters,
+                conditional_mean,
+                conditional_var)        
         elif mode == 'confidence_sets':
-            return self._compute_for_confidence_sets(parameters, conditional_mean, conditional_var)
+            return self._compute_for_confidence_sets(
+                parameters,
+                conditional_mean,
+                conditional_var
+            )
         elif mode == 'diagnostics':
-            return self._compute_for_diagnostics(parameters, conditional_mean, conditional_var)
+            return self._compute_for_diagnostics(
+                parameters,
+                conditional_mean,
+                conditional_var
+            )
         else:
             raise ValueError(f"Only `critical_values`, `confidence_sets`, and `diagnostics` are supported, got {mode}")
-    
+
     def estimate(
-        self, 
-        parameters: Union[np.ndarray, torch.Tensor], 
-        samples: Union[np.ndarray, torch.Tensor], 
+        self,
+        parameters: Union[np.ndarray, torch.Tensor],
+        samples: Union[np.ndarray, torch.Tensor],
+        sample_weight: Optional[Union[np.ndarray, torch.Tensor]] = None,
     ) -> None:
-        """Train the estimator(s) for the conditional mean and conditional variance. 
+        """Train the estimator(s) for the conditional mean and conditional variance.
+
+        Both estimators are fit on the full training set; the conditional variance is
+        regressed on in-sample squared residuals of the conditional mean.
 
         Parameters
         ----------
@@ -152,17 +171,39 @@ class Waldo(TestStatistic):
             Simulated parameters to be used for training.
         samples : Union[np.ndarray, torch.Tensor]
             Simulated samples to be used for training.
+        sample_weight : Optional[Union[np.ndarray, torch.Tensor]], optional
+            Per-example weights forwarded to the conditional mean estimator's `fit`, by
+            default None. The conditional variance estimator is left unweighted.
         """
-        # if `self.estimation_method == prediction`, assume both estimators accept same input types
-        parameters, samples = preprocess_waldo_estimation(parameters, samples, self.estimation_method, self.estimator, self.poi_dim)
+        parameters, samples = preprocess_waldo_estimation(
+            parameters,
+            samples,
+            self.estimation_method,
+            self.estimator,
+            self.poi_dim
+        )
+
         if self.estimation_method == 'prediction':
-            self.estimator.fit(X=samples, y=parameters)
             if self.poi_dim > 1:
                 warnings.warn("Using 'prediction' with poi_dim > 1 might have inconsistencies and has not been thoroughly checked yet")
-            conditional_var_response = (( parameters.reshape(-1, self.poi_dim) - self.estimator.predict(X=samples).reshape(-1, self.poi_dim) )**2).reshape(-1, )
-            self.cond_variance_estimator.fit(X=samples, y=conditional_var_response)
+
+            fit_kwargs = {} if sample_weight is None else {'sample_weight': np.asarray(sample_weight).reshape(-1, )}
+            self.estimator.fit(X=samples, y=parameters, **fit_kwargs)
+
+            residual_sq = (
+                ( parameters.reshape(-1, self.poi_dim) - self.estimator.predict(X=samples).reshape(-1, self.poi_dim) )**2
+            ).reshape(-1, )
+            cond_var_response = np.log(
+                residual_sq +\
+                self.cond_variance_epsilon
+            )
+            self.cond_variance_estimator.fit(
+                X=samples,
+                y=cond_var_response
+            )
             self._estimator_trained['conditional_mean'] = True
             self._estimator_trained['conditional_variance'] = True
+
         else:
             _ = self.estimator.append_simulations(parameters, samples).train()
             self.estimator = self.estimator.build_posterior()
@@ -195,21 +236,71 @@ class Waldo(TestStatistic):
             Waldo test statistics evaluated over parameters and samples.
         """
         assert self._check_is_trained(), "Not all needed estimators are trained. Check self._estimator_trained"
-        # if `self.estimation_method == prediction`, assume both estimators accept same input types
         parameters, samples = preprocess_waldo_evaluation(parameters, samples, self.estimation_method, self.estimator, self.poi_dim)
 
         if self.estimation_method == 'prediction':
             conditional_mean = self.estimator.predict(X=samples)
-            conditional_var = self.cond_variance_estimator.predict(X=samples)
+            conditional_var = np.clip(np.exp(self.cond_variance_estimator.predict(X=samples)), self.cond_variance_epsilon, None)
         else:
             def sampling_loop(idx):
                 with warnings.catch_warnings():
-                    warnings.simplefilter('ignore', UserWarning)  # from nflows: torch.triangular_solve is deprecated in favor of ...
-                    posterior_samples = self.estimator.sample(sample_shape=(self.num_posterior_samples, ), x=samples[idx, ...], show_progress_bars=False).cpu().numpy()
-                cond_mean = np.mean(posterior_samples, axis=0).reshape(1, self.poi_dim)
+                    warnings.simplefilter('ignore', UserWarning)
+                    posterior_samples = self.estimator.sample(
+                        sample_shape=(self.num_posterior_samples, ),
+                        x=samples[idx, ...],
+                        show_progress_bars=False
+                    ).cpu().numpy()
+                cond_mean = np.mean(
+                    posterior_samples, axis=0
+                ).reshape(1, self.poi_dim)
                 cond_var = np.cov(posterior_samples.T)  # need samples.shape = (data_d, num_samples)
                 return cond_mean, cond_var
             with tqdm_joblib(tqdm(it:=range(samples.shape[0]), desc=f"Approximating conditional mean and covariance for {samples.shape[0]} points...", total=len(it), disable=not self.verbose)) as _:
                 out = list(zip(*Parallel(n_jobs=self.n_jobs, prefer='threads' if _estimator_on_gpu(self.estimator) else 'processes')(delayed(sampling_loop)(idx) for idx in it)))  # axis 0 indexes different simulations/observations
                 conditional_mean, conditional_var = out[0], out[1]
         return self._compute(parameters, conditional_mean, conditional_var, mode)
+
+
+class SqrtWaldo(Waldo):
+    """
+    Variant of `Waldo` whose output is the square root of the standard Waldo statistic,
+    i.e. the (Mahalanobis) distance between estimate and parameter rather than its square.
+
+    Since the Waldo statistic is always non-negative (a squared normalized residual, or a
+    quadratic form with a positive-definite covariance inverse), the square root is always
+    well defined. Being a monotonic transform, it does not affect the ordering of test
+    statistic values, and thus the acceptance region ('left') is unchanged.
+    """
+
+    def _compute(
+        self,
+        parameters: np.ndarray,
+        conditional_mean: Union[np.ndarray, List],
+        conditional_var: Union[np.ndarray, List],
+        mode: str
+    ) -> np.ndarray:
+        return np.sqrt(super()._compute(parameters, conditional_mean, conditional_var, mode))
+
+
+class LogSqrtWaldo(SqrtWaldo):
+    """
+    Variant of `SqrtWaldo` whose output is further transformed by `log1p`.
+
+    `SqrtWaldo` values can be heavily right-skewed for some estimation problems
+    (rare points where the conditional-variance estimator predicts a
+    near-zero variance blow up the ratio), which can make a downstream
+    quantile fit (e.g. `lf2i.estimators.QuantileOperatorCDFEstimator`)
+    dominated by a handful of extreme values. `log1p` is well-defined
+    everywhere since `SqrtWaldo` is always non-negative, and being a
+    monotonic transform, it does not affect the ordering of test statistic
+    values, so the acceptance region ('left') is unchanged.
+    """
+
+    def _compute(
+        self,
+        parameters: np.ndarray,
+        conditional_mean: Union[np.ndarray, List],
+        conditional_var: Union[np.ndarray, List],
+        mode: str
+    ) -> np.ndarray:
+        return np.log1p(super()._compute(parameters, conditional_mean, conditional_var, mode))

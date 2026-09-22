@@ -200,34 +200,46 @@ def set_size_boxplot(
     labels: Sequence[str],
     whiskers_loc: Union[Tuple[float, float], float] = 1.5,
     plot_fliers: bool = True,
-    ylim: Optional[Sequence[float]] = (0, 1),
+    ylim: Optional[Sequence[float]] = None,
+    xlabel: Optional[str] = None,
     save_fig_path: Optional[str] = None,
-    figsize: Tuple = (8, 6)
-) -> None:
+    figsize: Tuple = (8, 6),
+    ax: Optional[Axes] = None
+) -> Optional[Axes]:
     """Boxplot comparing set sizes across different methods."""
-    
-    plt.figure(figsize=figsize)
+
+    own_fig = ax is None
+    if own_fig:
+        _, ax = plt.subplots(figsize=figsize)
     sns.set_style('whitegrid')
 
-    plt.boxplot(
-        x=set_sizes, notch=False, labels=labels, 
+    # `labels` was renamed to `tick_labels` in matplotlib 3.9 and removed in 3.11.
+    ax.boxplot(
+        x=set_sizes, notch=False, tick_labels=labels,
         whis=whiskers_loc, sym=None if plot_fliers else ''
     )
-    
+
     whiskers_vals = (
-        f'0.25-{round(whiskers_loc, 1)}IQR', 
+        f'0.25-{round(whiskers_loc, 1)}IQR',
         f'0.75+{round(whiskers_loc, 1)}IQR'
     ) if isinstance(whiskers_loc, float) else (whiskers_loc[0]/100, whiskers_loc[1]/100)
-    
-    plt.title('Set Size', fontsize=20)
-    plt.ylabel('Fraction of parameter space', fontsize=18)
-    plt.legend(loc='upper right')
-    
-    if ylim:
-        plt.ylim(*ylim)
-    
-    plt.tick_params(axis='both', labelsize=15)
 
-    if save_fig_path is not None:
-        plt.savefig(save_fig_path, bbox_inches='tight')
-    plt.show()
+    ax.set_title('Set Size', fontsize=20)
+    ax.set_ylabel('Fraction of parameter space', fontsize=18)
+    if xlabel is not None:
+        ax.set_xlabel(xlabel, fontsize=18)
+    ax.legend(loc='upper right')
+
+    if ylim is not None:
+        ax.set_ylim(*ylim)
+    else:
+        ax.set_ylim(bottom=0)
+
+    ax.tick_params(axis='both', labelsize=15)
+
+    if own_fig:
+        if save_fig_path is not None:
+            plt.savefig(save_fig_path, bbox_inches='tight')
+        plt.show()
+    else:
+        return ax

@@ -20,7 +20,6 @@ class BrierScoreLoss(nn.Module):
         mask = ~torch.eye(n, dtype=torch.bool, device=lambda_obs.device)
         return ((cdf_vals - indicators)**2)[mask].mean()
 
-
 class QuantileWeightedCRPSLoss(nn.Module):
     """
     Pinball loss integrated over α ∈ (0, 1) with a smooth weight function w(α):
@@ -30,11 +29,11 @@ class QuantileWeightedCRPSLoss(nn.Module):
     The weight function controls which quantile levels the fit prioritises.
     Built-in options (via `weight_fn`):
 
-    - ``'uniform'``: w(α) = 1 — standard unweighted CRPS / pinball
-    - ``'gaussian'``: w(α) ∝ N(α; center, bandwidth²) — smooth emphasis around
-      a target α level
-    - ``'beta'``: w(α) ∝ Beta(α; a, b) — flexible skewed weighting
-    - callable: any user-supplied function w(alpha_grid) → Tensor
+        'uniform'   : w(α) = 1  — standard unweighted CRPS / pinball
+        'gaussian'  : w(α) ∝ N(α; center, bandwidth²) — smooth emphasis
+                      around a target α level
+        'beta'      : w(α) ∝ Beta(α; a, b) — flexible skewed weighting
+        callable    : any user-supplied function w(alpha_grid) → Tensor
 
     Parameters
     ----------
@@ -209,8 +208,6 @@ class ParametricCDFEstimator:
         Default 'tanh'.
     loss : str
         Loss function. One of 'brier', 'weighted'. Default 'brier'.
-    cdf_model : str
-        Distributional assumption on local sampling distribution. Default 'sigmoid'.
     n_alpha : int
         Quadrature points for 'weighted'. Default 500.
     weight_fn : str or callable
@@ -226,10 +223,6 @@ class ParametricCDFEstimator:
         α parameter of Beta weight. Default 2.0.
     beta_b : float
         β parameter of Beta weight. Default 5.0.
-    normalize_ts : str
-        Whether the test statistic scale should be normalized, from none', 'mean-std', 'min-max', 'percentiles'. Default 'none'.
-    normalize_theta : str
-        Whether the parameter scale should be normalized, from none', 'mean-std', 'min-max'. Default 'none'.
     epochs : int
         Training epochs. Default 500.
     lr : float
@@ -257,7 +250,7 @@ class ParametricCDFEstimator:
         bandwidth:   float = 0.1,
         beta_a:      float = 2.0,
         beta_b:      float = 5.0,
-        # normalization
+        # Normalization
         normalize_ts:   str   = 'none',
         normalize_theta: str = 'none',
         # optimisation
@@ -420,7 +413,7 @@ class ParametricCDFEstimator:
         if self.loss == 'brier':
             criterion = BrierScoreLoss()
         else:
-            criterion = QuantileWeightedCRPSLoss(
+            criterion = WeightedPinballLoss(
                 n_alpha   = self.n_alpha,
                 weight_fn = self.weight_fn,
                 center    = self.center,

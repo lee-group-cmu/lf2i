@@ -61,16 +61,18 @@ def estimate_coverage_proba(
         If not provided, both training and evaluation of the probabilistic classifier are done over `parameters`.
     n_sigma : int, optional
         Uncertainties around the estimated mean coverage proabilities are computed as :math:`\mu \pm se \cdot n\_sigma`.
+        If using the `splines` estimator, the standard errors are based on the posterior distribution of the model coefficients. 
+        By default 2.
 
     Returns
     -------
     Tuple[Any, np.ndarray, Optional[np.ndarray], Optional[np.ndarray]]
-        Fitted estimator, evaluated parameters, and estimated coverage probabilities -- mean, upper-n_sigma bound, lower-n_sigma bound.
+        Fitted estimator, evaluated parameters, and estimated coverage probabilities -- mean, upper-n_sigma bound, lower-n_sigma bound. Bounds only available if `estimator="splines"`.
 
     Raises
     ------
     ValueError
-        `Estimator` must be one of [`cat-gb`].
+        `Estimator` must be one of [`splines`, `cat-gb`].
     """
     indicators, parameters, new_parameters = preprocess_diagnostics(indicators, parameters, new_parameters, param_dim)
     if estimator == 'cat-gb':
