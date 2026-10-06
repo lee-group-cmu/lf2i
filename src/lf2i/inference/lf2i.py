@@ -262,9 +262,9 @@ class LF2I:
         test_statistics_x = self.test_statistic.evaluate(evaluation_grid, x, mode='confidence_sets')
 
         if calibration_method == 'critical-values':
-            critical_values = to_np_if_pd(self.calibration_model[calib_dict_key].predict(
+            critical_values = to_np_if_torch(to_np_if_pd(self.calibration_model[calib_dict_key].predict(
                 preprocess_predict_quantile_regression(evaluation_grid, self.calibration_model[calib_dict_key], self.test_statistic.param_dim)
-            ))
+            )))
             p_values = None
         else:
             if verbose:

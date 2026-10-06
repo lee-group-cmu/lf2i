@@ -7,10 +7,11 @@ from torch.nn.functional import sigmoid
 from tqdm import tqdm
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import make_scorer, mean_pinball_loss
+from sklearn.base import BaseEstimator, RegressorMixin
 from catboost import CatBoostRegressor
 
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_train_quantile_regression
-from lf2i.utils.miscellanea import select_n_jobs
+from lf2i.utils.miscellanea import select_n_jobs, to_np_if_torch
 from lf2i.estimators import AbstractQuantileRegressor
 
 
@@ -188,6 +189,154 @@ class LearnerRegression(Learner):
     ) -> torch.Tensor:
         self.model.eval()
         return self.model(X.float().to(self.device)).cpu().detach()
+
+
+class ScaledQuantileRegressor(BaseEstimator, RegressorMixin):
+    """
+    Feed-forward-NN quantile regressor with input standardization and flat
+    extrapolation beyond the training range -- a thin, sklearn-compatible
+    (`BaseEstimator`/`RegressorMixin`) wrapper around `FeedForwardNN` +
+    `LearnerRegression` + `QuantileLoss`, usable directly with
+    `sklearn.model_selection.RandomizedSearchCV` (matching the `'cat-gb'` calibration
+    path's own hyperparameter-search mechanism -- see
+    `lf2i.calibration.critical_values.train_qr_algorithm`).
+
+    Standardization is data-driven: `X` is min-max scaled to `[0, 1]` using its own
+    training-time min/max (fit fresh in `.fit()`, reused at `.predict()` time) -- no
+    external bounds needed. This matters in practice: an unscaled scalar input
+    spanning thousands of raw units (e.g. an effective temperature in Kelvin) starves
+    a default-initialized `Linear`+`ReLU` stack of any useful gradient signal.
+
+    clamp_lo/clamp_hi: where clamp_extrapolation's flat region actually kicks
+    in, if set -- e.g. the caller's own grid_lo/grid_hi (a chosen percentile
+    of train+calib theta), not necessarily the same as _lo/_hi below (the raw
+    min/max of whatever theta sample X.fit() was actually called with, used
+    for scaling). Decoupled on purpose: the QR's own training theta sample can
+    span nearly the full data range even when the caller wants the flat region
+    to start well inside that -- leaving clamp_lo/clamp_hi at their None
+    default falls back to _lo/_hi, i.e. the original (pre-decoupling)
+    behavior, unchanged for any existing caller that doesn't set these.
+
+    Parameters
+    ----------
+    quantiles : Sequence[float], optional
+        Target quantile(s), by default (0.5,).
+    poi_dim : int, optional
+        Dimensionality of the parameter(s) of interest (the regressor's input), by
+        default 1.
+    hidden_layer_shapes : Sequence[int], optional
+        Hidden layer widths, by default (64, 64).
+    hidden_activation : Optional[torch.nn.Module], optional
+        Passed through to `FeedForwardNN`; `None` resolves to `torch.nn.ReLU()`, by
+        default None.
+    dropout_p : Optional[float], optional
+        Passed through to `FeedForwardNN`, by default None.
+    batch_norm : bool, optional
+        Passed through to `FeedForwardNN`, by default False.
+    epochs : int, optional
+        By default 100.
+    batch_size : int, optional
+        By default 64.
+    clamp_extrapolation : bool
+        By default True.
+    clamp_lo : float, optional
+    clamp_hi : float, optional
+    device : str, optional
+        By default "cpu".
+    verbose : bool, optional
+        By default False -- quieter than `Learner`'s own default, since this is
+        meant to also work inside a hyperparameter search where per-candidate
+        progress bars would be noisy.
+    """
+
+    def __init__(
+        self,
+        quantiles: Sequence[float] = (0.5,),
+        poi_dim: int = 1,
+        hidden_layer_shapes: Sequence[int] = (64, 64),
+        hidden_activation: Optional[torch.nn.Module] = None,
+        dropout_p: Optional[float] = None,
+        batch_norm: bool = False,
+        epochs: int = 100,
+        batch_size: int = 64,
+        clamp_extrapolation: bool = True,
+        clamp_lo: Optional[float] = None,
+        clamp_hi: Optional[float] = None,
+        device: str = "cpu",
+        verbose: bool = False,
+    ) -> None:
+        # sklearn convention: __init__ only stores constructor arguments verbatim
+        # (no resolving/validating here) so get_params()/set_params()/clone() work.
+        self.quantiles = quantiles
+        self.poi_dim = poi_dim
+        self.hidden_layer_shapes = hidden_layer_shapes
+        self.hidden_activation = hidden_activation
+        self.dropout_p = dropout_p
+        self.batch_norm = batch_norm
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.clamp_extrapolation = clamp_extrapolation
+        self.clamp_lo = clamp_lo
+        self.clamp_hi = clamp_hi
+        self.device = device
+        self.verbose = verbose
+
+        feedforward_nn = FeedForwardNN(
+            input_d=self.poi_dim,
+            output_d=len(self.quantiles),
+            hidden_layer_shapes=list(self.hidden_layer_shapes),
+            hidden_activation=self.hidden_activation or torch.nn.ReLU(),
+            dropout_p=self.dropout_p,
+            batch_norm=self.batch_norm,
+        )
+        self.model = feedforward_nn
+        self._learner = LearnerRegression(
+            model=feedforward_nn,
+            optimizer=torch.optim.Adam,
+            loss=QuantileLoss(quantiles=list(self.quantiles)),
+            device=self.device,
+            verbose=self.verbose,
+        )
+        self._lo: Optional[torch.Tensor] = None
+        self._hi: Optional[torch.Tensor] = None
+
+    def _scale(self, X: torch.Tensor) -> torch.Tensor:
+        span = torch.clamp(self._hi - self._lo, min=1e-12)
+        return (X - self._lo) / span
+
+    def fit(self, X: torch.Tensor, y: torch.Tensor) -> "ScaledQuantileRegressor":
+        X = X if isinstance(X, torch.Tensor) else torch.as_tensor(to_np_if_torch(X))
+        y = y if isinstance(y, torch.Tensor) else torch.as_tensor(to_np_if_torch(y))
+        self._lo = X.amin(dim=0, keepdim=True).float()
+        self._hi = X.amax(dim=0, keepdim=True).float()
+        self._learner.fit(
+            X=self._scale(X.float()),
+            y=y,
+            epochs=self.epochs,
+            batch_size=self.batch_size,
+        )
+        return self
+
+    def predict(self, X: torch.Tensor) -> torch.Tensor:
+        """By default (clamp_extrapolation=True, the CatBoost-matching behavior --
+        see __init__), X is clamped before being fed to the network, so predictions
+        outside the clamp range are a CONSTANT extrapolant (whatever the boundary
+        predicts) rather than the network's raw, unconstrained -- and potentially
+        non-monotonic -- output. The clamp range is [self.clamp_lo, self.clamp_hi]
+        when those are set (e.g. to the caller's own chosen grid bounds); otherwise
+        it falls back to [self._lo, self._hi] (the training data's own raw min/max,
+        the original pre-decoupling behavior). Existing pickled instances predate
+        both attributes; getattr defaults them to that same fallback rather than
+        raising."""
+        X = X if isinstance(X, torch.Tensor) else torch.as_tensor(to_np_if_torch(X))
+        X = X.float()
+        if getattr(self, "clamp_extrapolation", True):
+            clamp_lo = getattr(self, "clamp_lo", None)
+            clamp_hi = getattr(self, "clamp_hi", None)
+            lo = self._lo if clamp_lo is None else torch.as_tensor(clamp_lo, dtype=self._lo.dtype, device=self._lo.device).expand_as(self._lo)
+            hi = self._hi if clamp_hi is None else torch.as_tensor(clamp_hi, dtype=self._hi.dtype, device=self._hi.device).expand_as(self._hi)
+            X = torch.clamp(X, min=lo, max=hi)
+        return self._learner.predict(self._scale(X))
 
 
 class LearnerClassification(Learner):

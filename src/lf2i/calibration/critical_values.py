@@ -10,7 +10,7 @@ from catboost import CatBoostRegressor
 from lf2i.utils.calibration_diagnostics_inputs import preprocess_train_quantile_regression
 from lf2i.utils.miscellanea import select_n_jobs
 from lf2i.estimators import AbstractQuantileRegressor
-from lf2i.estimators.torch_utils.quantile_regressor import QuantileLoss, FeedForwardNN, LearnerRegression
+from lf2i.estimators.torch_utils.quantile_regressor import QuantileLoss, FeedForwardNN, LearnerRegression, ScaledQuantileRegressor
 
 
 def multi_quantile_mean_pinball_loss(
@@ -106,29 +106,52 @@ def train_qr_algorithm(
         elif algorithm == 'nn':
             # TODO: implement some form of hyperparameter tuning
             quantiles = [alpha] if isinstance(alpha, float) else alpha
-            nn_kwargs = {arg: algorithm_kwargs[arg] for arg in ['hidden_activation', 'dropout_p', 'batch_norm'] if arg in algorithm_kwargs}
-            feedforward_nn = FeedForwardNN(
-                input_d=parameters.shape[1], 
-                output_d=len(quantiles),
-                hidden_layer_shapes=algorithm_kwargs.get('hidden_layer_shapes', [64, 64]),
-                **nn_kwargs
-            )
-            algorithm = LearnerRegression(
-                model=feedforward_nn, 
-                optimizer=torch.optim.Adam, 
-                loss=QuantileLoss(quantiles=quantiles), 
-                device="cuda" if torch.cuda.is_available() else "cpu",
-                verbose=verbose
-            )
-            test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)
+            standardize_inputs = algorithm_kwargs.get('standardize_inputs', True)
+            if standardize_inputs:
+                # ScaledQuantileRegressor min-max scales its input to [0, 1] (fit
+                # fresh on `parameters` inside .fit()) before feeding the network
+                nn_kwargs = {
+                    arg: algorithm_kwargs[arg] for arg in
+                    ['hidden_activation', 'dropout_p', 'batch_norm',
+                     'clamp_extrapolation', 'clamp_lo', 'clamp_hi']
+                    if arg in algorithm_kwargs
+                }
+                algorithm = ScaledQuantileRegressor(
+                    quantiles=quantiles,
+                    poi_dim=parameters.shape[1],
+                    hidden_layer_shapes=algorithm_kwargs.get('hidden_layer_shapes', [64, 64]),
+                    epochs=algorithm_kwargs.get('epochs', 100),
+                    batch_size=algorithm_kwargs.get('batch_size', 64),
+                    device="cuda" if torch.cuda.is_available() else "cpu",
+                    verbose=verbose,
+                    **nn_kwargs,
+                )
+                test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)
+                algorithm.fit(X=parameters, y=test_statistics)
+            else:
+                nn_kwargs = {arg: algorithm_kwargs[arg] for arg in ['hidden_activation', 'dropout_p', 'batch_norm'] if arg in algorithm_kwargs}
+                feedforward_nn = FeedForwardNN(
+                    input_d=parameters.shape[1],
+                    output_d=len(quantiles),
+                    hidden_layer_shapes=algorithm_kwargs.get('hidden_layer_shapes', [64, 64]),
+                    **nn_kwargs
+                )
+                algorithm = LearnerRegression(
+                    model=feedforward_nn,
+                    optimizer=torch.optim.Adam,
+                    loss=QuantileLoss(quantiles=quantiles),
+                    device="cuda" if torch.cuda.is_available() else "cpu",
+                    verbose=verbose
+                )
+                test_statistics, parameters = preprocess_train_quantile_regression(test_statistics, parameters, param_dim, algorithm)
 
-            learner_kwargs = {arg: algorithm_kwargs[arg] for arg in ['epochs', 'batch_size'] if arg in algorithm_kwargs}
-            if 'epochs' not in learner_kwargs:
-                learner_kwargs['epochs'] = 100
-            if 'batch_size' not in learner_kwargs:
-                learner_kwargs['batch_size'] = 64
+                learner_kwargs = {arg: algorithm_kwargs[arg] for arg in ['epochs', 'batch_size'] if arg in algorithm_kwargs}
+                if 'epochs' not in learner_kwargs:
+                    learner_kwargs['epochs'] = 100
+                if 'batch_size' not in learner_kwargs:
+                    learner_kwargs['batch_size'] = 64
 
-            algorithm.fit(X=parameters, y=test_statistics, **learner_kwargs)
+                algorithm.fit(X=parameters, y=test_statistics, **learner_kwargs)
         else:
             raise ValueError(f"Only 'cat-gb', 'nn' or custom algorithm (Any) are currently supported, got {algorithm}")
     else:
